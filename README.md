@@ -1,8 +1,8 @@
 [![SemApps](https://badgen.net/badge/Powered%20by/SemApps/28CDFB)](https://semapps.org)
 
-# Mastopod
+# Memory
 
-A Mastodon-compatible app that saves all data on your Pod.
+An ActivityPods Microblogging app that saves all data on your Pod.
 
 ## Installation
 
