@@ -26,5 +26,5 @@ module.exports = {
     },
     void: false,
     webid: false
-  }
+  },
 };

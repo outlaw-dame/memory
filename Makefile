@@ -7,12 +7,16 @@ DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file .env.pr
 
 # Dev commands
 
+# Start relevant docker containers and run frontend and backend in separate screen
 start:
 	$(DOCKER_COMPOSE_DEV) up -d
+#	screen -d -m -S mastopod-frontend cd frontend && yarn run dev
+#	screen -d -m -S mastopod-backend cd backend && yarn run dev
 
 stop:
 	$(DOCKER_COMPOSE_DEV) kill
 	$(DOCKER_COMPOSE_DEV) rm -fv
+#	screen -
 
 config:
 	$(DOCKER_COMPOSE_DEV) config

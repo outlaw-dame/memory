@@ -8,7 +8,7 @@ import BoostButton from '../../buttons/BoostButton';
 import ReplyButton from '../../buttons/ReplyButton';
 import RelativeDate from '../../RelativeDate';
 import useActor from '../../../hooks/useActor';
-import { arrayOf } from '../../../utils';
+import { arrayOf, convertHashtags, extractHashtags, replaceHashtags } from '../../../utils';
 import MoreButton from '../../buttons/MoreButton';
 
 const mentionRegex = /\<a href="([^"]*)" class=\"[^"]*?mention[^"]*?\">@\<span>(.*?)\<\/span>\<\/a\>/gm;
@@ -47,6 +47,12 @@ const Note = ({ object, activity, clickOnContent }) => {
         }
       });
     }
+
+    // Process hashtags, include them as object tags
+    object.tag = convertHashtags(extractHashtags(content));
+
+    // Replace hashtags with link to relevant tag
+    content = replaceHashtags(content);
 
     return content;
   }, [object, activity]);

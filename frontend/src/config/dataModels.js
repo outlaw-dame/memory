@@ -15,6 +15,10 @@ const dataModels = {
     types: ["vcard:Individual"],
     list: {},
   },
+  Tag: {
+    types: ["as:Tag"],
+    list: {},
+  },
 };
 
 export default dataModels;

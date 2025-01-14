@@ -49,5 +49,27 @@ module.exports = {
       }
     },
     queueServiceUrl: CONFIG.QUEUE_SERVICE_URL
-  }
+  },
+  /*actions: {
+    async fetchPostsByHashtag(ctx) {
+      const { tag } = ctx.params;
+      const query = `
+        SELECT ?activity WHERE {
+          ?activity as:tag <${CONFIG.HOME_URL}/tags/${tag}> ;
+                    as:published ?published .
+          FILTER NOT EXISTS {
+            ?activity as:actor ?blockedActor .
+            ?blockedActor <acl:denied> ?requestingUser .
+          }
+          FILTER NOT EXISTS {
+            ?activity <app:blockedServer> ?blockedServer .
+            ?blockedServer <acl:denied> ?requestingServer .
+          }
+        }
+        ORDER BY DESC(?published)
+      `;
+      const results = await ctx.call("triplestore.query", { query });
+      return results.map(row => row.activity);
+    },
+  },*/
 };
