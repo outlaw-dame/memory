@@ -31,7 +31,7 @@ import Mention from '@tiptap/extension-mention';
 import { HardBreak } from '@tiptap/extension-hard-break';
 import { uniqBy, sortBy } from 'lodash';
 import { required } from 'ra-core';
-import { replaceHashtags } from '../../utils';
+import { convertHashtags, extractHashtags, replaceHashtags } from '../../utils';
 
 const PostBlock = ({ inReplyTo, mention }) => {
   const dataProvider = useDataProvider();
@@ -111,8 +111,6 @@ const PostBlock = ({ inReplyTo, mention }) => {
             }
   */
   const processEditorContent = useCallback((content) => {
-    // Replace hashtags with links to relevant Tag pages
-    content = replaceHashtags(content);
 
     const document = new DOMParser().parseFromString(content, 'text/html');
     const mentionNodes = Array.from(document.body.getElementsByClassName('mention'));
@@ -182,9 +180,10 @@ const PostBlock = ({ inReplyTo, mention }) => {
         const activity = {
           type: OBJECT_TYPES.NOTE,
           attributedTo: outbox.owner,
-          content: processedContent,
+          content: replaceHashtags(processedContent),
           inReplyTo,
-          to: getRecipients(mentionedUsersUris, values)
+          to: getRecipients(mentionedUsersUris, values),
+          tag: convertHashtags(extractHashtags(processedContent))
         };
 
         //handle attachments

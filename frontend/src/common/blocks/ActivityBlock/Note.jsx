@@ -48,12 +48,6 @@ const Note = ({ object, activity, clickOnContent }) => {
       });
     }
 
-    // Process hashtags, include them as object tags
-    object.tag = convertHashtags(extractHashtags(content));
-
-    // Replace hashtags with link to relevant tag
-    content = replaceHashtags(content);
-
     return content;
   }, [object, activity]);
 

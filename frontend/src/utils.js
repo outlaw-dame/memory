@@ -30,6 +30,7 @@ export const extractHashtags = (text) => {
 export const convertHashtags = (hashtags) => {
   return hashtags.map(tag => ({
     type: "Hashtag",
+    id: `/tags/${tag.substring(1)}`,
     name: tag.substring(1),
   }));
 };
