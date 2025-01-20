@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
-import { Box, Button, Typography, ThemeProvider, Alert } from '@mui/material';
-import makeStyles from '@mui/styles/makeStyles';
-import { useGetIdentity, useTranslate, Link, useRedirect, LocalesMenuButton } from 'react-admin';
-import theme from '../config/theme';
+import { useEffect } from 'react'
+import { Box, Button, Typography, ThemeProvider, Alert } from '@mui/material'
+import makeStyles from '@mui/styles/makeStyles'
+import { useGetIdentity, useTranslate, Link, useRedirect, LocalesMenuButton } from 'react-admin'
+import theme from '../config/theme'
 
 const useStyles = makeStyles(() => ({
   root: {
@@ -41,21 +41,21 @@ const useStyles = makeStyles(() => ({
   button: {
     margin: 5
   }
-}));
+}))
 
 const HomePage = () => {
-  const classes = useStyles();
-  const redirect = useRedirect();
-  const { data: identity, isLoading } = useGetIdentity();
-  const translate = useTranslate();
+  const classes = useStyles()
+  const redirect = useRedirect()
+  const { data: identity, isLoading } = useGetIdentity()
+  const translate = useTranslate()
 
   useEffect(() => {
     if (!isLoading && identity?.id) {
-      redirect('/inbox');
+      redirect('/inbox')
     }
-  }, [identity, isLoading, redirect]);
+  }, [identity, isLoading, redirect])
 
-  if (isLoading) return null;
+  if (isLoading) return null
 
   return (
     <ThemeProvider theme={theme}>
@@ -106,7 +106,7 @@ const HomePage = () => {
         </Alert>
       </Box>
     </ThemeProvider>
-  );
-};
+  )
+}
 
-export default HomePage;
+export default HomePage

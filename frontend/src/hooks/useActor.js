@@ -1,72 +1,65 @@
-import { useMemo } from "react";
-import isObject from "isobject";
-import { useGetOne, useGetIdentity } from "react-admin";
-import { ACTOR_TYPES } from "@semapps/activitypub-components";
-import { formatUsername } from "../utils";
+import { useMemo } from 'react'
+import isObject from 'isobject'
+import { useGetOne, useGetIdentity } from 'react-admin'
+import { ACTOR_TYPES } from '@semapps/activitypub-components'
+import { formatUsername } from '../utils'
 
-const useActor = (actorUri) => {
-  const { data: identity } = useGetIdentity();
+const useActor = actorUri => {
+  const { data: identity } = useGetIdentity()
 
   if (Array.isArray(actorUri)) {
     // Case of Peertube which allow to post as an actor AND a group
     // actor: [{id: 'https://framatube.org/accounts/test', type: 'Person'}, {id: 'https://framatube.org/video-channels/channel-name', type: 'Group'}]
-    actorUri = actorUri.find((actor) => actor.type === ACTOR_TYPES.PERSON)?.id;
+    actorUri = actorUri.find(actor => actor.type === ACTOR_TYPES.PERSON)?.id
   }
 
   const { data: webId, isLoading: isWebIdLoading } = useGetOne(
-    "Actor",
+    'Actor',
     {
-      id: actorUri,
+      id: actorUri
     },
     {
       enabled: !!actorUri,
-      staleTime: Infinity,
+      staleTime: Infinity
     }
-  );
+  )
 
   const { data: profile, isLoading: isProfileLoading } = useGetOne(
-    "Profile",
+    'Profile',
     {
-      id: webId?.url,
+      id: webId?.url
     },
     {
       enabled: !!webId?.url,
-      staleTime: Infinity,
+      staleTime: Infinity
     }
-  );
+  )
 
-  const username = useMemo(
-    () => actorUri && formatUsername(actorUri),
-    [actorUri]
-  );
+  const username = useMemo(() => actorUri && formatUsername(actorUri), [actorUri])
 
   const name = useMemo(() => {
     if (webId) {
-      const name =
-        profile?.["vcard:given-name"] ||
-        webId?.name ||
-        webId?.["foaf:nick"] ||
-        webId?.preferredUsername;
+      const name = profile?.['vcard:given-name'] || webId?.name || webId?.['foaf:nick'] || webId?.preferredUsername
 
       if (isObject(name)) {
-        return name?.["@value"];
+        return name?.['@value']
       } else {
-        return name;
+        return name
       }
     }
-  }, [webId, profile]);
+  }, [webId, profile])
 
   const image = useMemo(() => {
-    let image = profile?.["vcard:photo"] || webId?.icon;
+    let image = profile?.['vcard:photo'] || webId?.icon
 
     if (Array.isArray(image)) {
       // Select the largest image
-      image.sort((a, b) => b?.height - a?.height);
-      image = image[0];
+      image.sort((a, b) => b?.height - a?.height)
+      image = image[0]
     }
 
-    return image?.url || image;
-  }, [webId, profile]);
+    return image?.url || image
+  }, [webId, profile])
 
   return {
     ...webId,
@@ -75,8 +68,8 @@ const useActor = (actorUri) => {
     name,
     image,
     username,
-    isLoading: isWebIdLoading || isProfileLoading,
-  };
-};
+    isLoading: isWebIdLoading || isProfileLoading
+  }
+}
 
-export default useActor;
+export default useActor

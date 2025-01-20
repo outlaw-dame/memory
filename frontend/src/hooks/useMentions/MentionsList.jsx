@@ -1,6 +1,6 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import {useTranslate} from 'react-admin';
-import makeStyles from '@mui/styles/makeStyles';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useTranslate } from 'react-admin'
+import makeStyles from '@mui/styles/makeStyles'
 
 const useStyles = makeStyles(theme => ({
   items: {
@@ -26,55 +26,55 @@ const useStyles = makeStyles(theme => ({
       borderColor: '#000'
     }
   }
-}));
+}))
 
 export default forwardRef((props, ref) => {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const classes = useStyles();
-  const translate = useTranslate();
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const classes = useStyles()
+  const translate = useTranslate()
 
   const selectItem = index => {
-    const item = props.items[index];
+    const item = props.items[index]
 
     if (item) {
-      props.command(item);
+      props.command(item)
     }
-  };
+  }
 
   const upHandler = () => {
-    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
-  };
+    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length)
+  }
 
   const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length);
-  };
+    setSelectedIndex((selectedIndex + 1) % props.items.length)
+  }
 
   const enterHandler = () => {
-    selectItem(selectedIndex);
-  };
+    selectItem(selectedIndex)
+  }
 
-  useEffect(() => setSelectedIndex(0), [props.items]);
+  useEffect(() => setSelectedIndex(0), [props.items])
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
       if (event.key === 'ArrowUp') {
-        upHandler();
-        return true;
+        upHandler()
+        return true
       }
 
       if (event.key === 'ArrowDown') {
-        downHandler();
-        return true;
+        downHandler()
+        return true
       }
 
       if (event.key === 'Enter') {
-        enterHandler();
-        return true;
+        enterHandler()
+        return true
       }
 
-      return false;
+      return false
     }
-  }));
+  }))
 
   return (
     <div className={classes.items}>
@@ -92,5 +92,5 @@ export default forwardRef((props, ref) => {
         <div className={classes.item}>{translate('app.message.no_result')}</div>
       )}
     </div>
-  );
-});
+  )
+})

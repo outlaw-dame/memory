@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import renderMentions from './renderMentions';
+import { useMemo } from 'react'
+import renderMentions from './renderMentions'
 
 /**
  *
@@ -16,14 +16,16 @@ const useMentions = data => {
    * @type {function({query: *}): *}
    */
   const items = useMemo(
-    () => ({ query }) => data.filter(({ label }) => label.toLowerCase().includes(query.toLowerCase())).slice(0, 5)
-    , [data]
-  );
+    () =>
+      ({ query }) =>
+        data.filter(({ label }) => label.toLowerCase().includes(query.toLowerCase())).slice(0, 5),
+    [data]
+  )
 
   return {
     items,
     render: renderMentions
-  };
-};
+  }
+}
 
-export default useMentions;
+export default useMentions

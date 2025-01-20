@@ -1,6 +1,6 @@
-import { useCollection } from '@semapps/activitypub-components';
-import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock';
-import LoadMore from '../../common/LoadMore';
+import { useCollection } from '@semapps/activitypub-components'
+import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock'
+import LoadMore from '../../common/LoadMore'
 
 const Replies = ({ repliesUrl }) => {
   const {
@@ -8,7 +8,7 @@ const Replies = ({ repliesUrl }) => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage
-  } = useCollection(repliesUrl, { dereferenceItems: true, liveUpdates: true });
+  } = useCollection(repliesUrl, { dereferenceItems: true, liveUpdates: true })
   return (
     <>
       {activities?.map((activity, i) => (
@@ -16,7 +16,7 @@ const Replies = ({ repliesUrl }) => {
       ))}
       {hasNextPage && <LoadMore fetchNextPage={fetchNextPage} isFetchingNextPage={isFetchingNextPage} />}
     </>
-  );
-};
+  )
+}
 
-export default Replies;
+export default Replies

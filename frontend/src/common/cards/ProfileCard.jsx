@@ -1,8 +1,8 @@
-import { Box, Card, Typography, Avatar, Skeleton } from '@mui/material';
-import makeStyles from '@mui/styles/makeStyles';
-import useActorContext from '../../hooks/useActorContext';
-import FollowButton from '../buttons/FollowButton';
-import EditProfileButton from '../buttons/EditProfileButton';
+import { Box, Card, Typography, Avatar, Skeleton } from '@mui/material'
+import makeStyles from '@mui/styles/makeStyles'
+import useActorContext from '../../hooks/useActorContext'
+import FollowButton from '../buttons/FollowButton'
+import EditProfileButton from '../buttons/EditProfileButton'
 
 const useStyles = makeStyles(theme => ({
   title: {
@@ -37,11 +37,11 @@ const useStyles = makeStyles(theme => ({
     marginTop: 8,
     color: theme.palette.primary.main
   }
-}));
+}))
 
 const ProfileCard = () => {
-  const classes = useStyles();
-  const actor = useActorContext();
+  const classes = useStyles()
+  const actor = useActorContext()
 
   return (
     <Card>
@@ -83,7 +83,7 @@ const ProfileCard = () => {
         )}
       </Box>
     </Card>
-  );
-};
+  )
+}
 
-export default ProfileCard;
+export default ProfileCard

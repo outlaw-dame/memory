@@ -1,6 +1,6 @@
-const { TripleStoreAdapter } = require('@semapps/triplestore');
-const { NotificationsListenerService } = require('@semapps/solid');
-const CONFIG = require('../../config/config');
+const { TripleStoreAdapter } = require('@semapps/triplestore')
+const { NotificationsListenerService } = require('@semapps/solid')
+const CONFIG = require('../../config/config')
 
 module.exports = {
   mixins: [NotificationsListenerService],
@@ -8,4 +8,4 @@ module.exports = {
   settings: {
     baseUrl: CONFIG.HOME_URL
   }
-};
+}

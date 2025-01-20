@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import { AppBar, Container, Tabs, Tab } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useCollection } from '@semapps/activitypub-components';
-import { useTranslate } from 'react-admin';
+import { useState } from 'react'
+import { AppBar, Container, Tabs, Tab } from '@mui/material'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useCollection } from '@semapps/activitypub-components'
+import { useTranslate } from 'react-admin'
 
 const SubBar = () => {
-  const location = useLocation();
-  const [tab, setTab] = useState(location.pathname);
-  const navigate = useNavigate();
-  const translate = useTranslate();
+  const location = useLocation()
+  const [tab, setTab] = useState(location.pathname)
+  const navigate = useNavigate()
+  const translate = useTranslate()
 
-  const { totalItems: numFollowers } = useCollection('followers', { liveUpdates: true });
-  const { totalItems: numFollowing } = useCollection('following', { liveUpdates: true });
+  const { totalItems: numFollowers } = useCollection('followers', { liveUpdates: true })
+  const { totalItems: numFollowing } = useCollection('following', { liveUpdates: true })
 
   const onChange = (_, v) => {
-    navigate(v);
-    setTab(v);
-  };
+    navigate(v)
+    setTab(v)
+  }
 
   return (
     <AppBar
@@ -44,7 +44,7 @@ const SubBar = () => {
         </Tabs>
       </Container>
     </AppBar>
-  );
-};
+  )
+}
 
-export default SubBar;
+export default SubBar

@@ -1,24 +1,24 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AppBar, Container, Tabs, Tab } from '@mui/material';
-import { useCollection } from '@semapps/activitypub-components';
-import useActorContext from '../../hooks/useActorContext';
-import { useTranslate } from 'react-admin';
+import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { AppBar, Container, Tabs, Tab } from '@mui/material'
+import { useCollection } from '@semapps/activitypub-components'
+import useActorContext from '../../hooks/useActorContext'
+import { useTranslate } from 'react-admin'
 
 const SubBar = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [tab, setTab] = useState(location.pathname);
-  const translate = useTranslate();
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState(location.pathname)
+  const translate = useTranslate()
 
-  const actor = useActorContext();
-  const { totalItems: numFollowers } = useCollection(actor?.followers, { liveUpdates: true });
-  const { totalItems: numFollowing } = useCollection(actor?.following, { liveUpdates: true });
+  const actor = useActorContext()
+  const { totalItems: numFollowers } = useCollection(actor?.followers, { liveUpdates: true })
+  const { totalItems: numFollowing } = useCollection(actor?.following, { liveUpdates: true })
 
   const onChange = (_, v) => {
-    navigate(v);
-    setTab(v);
-  };
+    navigate(v)
+    setTab(v)
+  }
 
   return (
     <AppBar
@@ -50,7 +50,7 @@ const SubBar = () => {
         </Tabs>
       </Container>
     </AppBar>
-  );
-};
+  )
+}
 
-export default SubBar;
+export default SubBar

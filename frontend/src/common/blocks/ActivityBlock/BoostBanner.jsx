@@ -1,11 +1,11 @@
-import { useTranslate } from 'react-admin';
-import { Box, Avatar, Typography } from '@mui/material';
-import RepeatIcon from '@mui/icons-material/Repeat';
-import useActor from '../../../hooks/useActor';
+import { useTranslate } from 'react-admin'
+import { Box, Avatar, Typography } from '@mui/material'
+import RepeatIcon from '@mui/icons-material/Repeat'
+import useActor from '../../../hooks/useActor'
 
 const BoostBanner = ({ activity }) => {
-  const actor = useActor(activity.actor || activity.attributedTo);
-  const translate = useTranslate();
+  const actor = useActor(activity.actor || activity.attributedTo)
+  const translate = useTranslate()
 
   return (
     <Box pl={8} pb={1} sx={{ position: 'relative' }}>
@@ -24,7 +24,7 @@ const BoostBanner = ({ activity }) => {
         <RepeatIcon sx={{ width: 13, height: 13 }} /> {translate('app.message.actor_boosted', { actor: actor?.name })}
       </Typography>
     </Box>
-  );
-};
+  )
+}
 
-export default BoostBanner;
+export default BoostBanner

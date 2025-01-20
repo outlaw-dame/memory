@@ -1,16 +1,16 @@
-import { useCollection } from '@semapps/activitypub-components';
-import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock';
-import useActorContext from '../../hooks/useActorContext';
-import LoadMore from '../../common/LoadMore';
+import { useCollection } from '@semapps/activitypub-components'
+import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock'
+import useActorContext from '../../hooks/useActorContext'
+import LoadMore from '../../common/LoadMore'
 
 const Posts = () => {
-  const actor = useActorContext();
+  const actor = useActorContext()
   const {
     items: activities,
     fetchNextPage,
     isLoading,
     isFetchingNextPage
-  } = useCollection(actor?.outbox, { liveUpdates: true });
+  } = useCollection(actor?.outbox, { liveUpdates: true })
   return (
     <>
       {activities?.map(activity => (
@@ -18,7 +18,7 @@ const Posts = () => {
       ))}
       <LoadMore fetchNextPage={fetchNextPage} isLoading={isFetchingNextPage || isLoading} />
     </>
-  );
-};
+  )
+}
 
-export default Posts;
+export default Posts

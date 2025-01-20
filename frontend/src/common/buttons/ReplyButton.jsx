@@ -1,10 +1,10 @@
-import { useTranslate } from 'react-admin';
-import { IconButton, Tooltip } from '@mui/material';
-import { Link } from 'react-router-dom';
-import ReplyIcon from '@mui/icons-material/Reply';
+import { useTranslate } from 'react-admin'
+import { IconButton, Tooltip } from '@mui/material'
+import { Link } from 'react-router-dom'
+import ReplyIcon from '@mui/icons-material/Reply'
 
 const ReplyButton = ({ objectUri, ...rest }) => {
-  const translate = useTranslate();
+  const translate = useTranslate()
   return (
     <Tooltip title={translate('app.action.reply')}>
       <IconButton
@@ -16,7 +16,7 @@ const ReplyButton = ({ objectUri, ...rest }) => {
         <ReplyIcon />
       </IconButton>
     </Tooltip>
-  );
-};
+  )
+}
 
-export default ReplyButton;
+export default ReplyButton

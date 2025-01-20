@@ -1,6 +1,6 @@
-import { Box } from '@mui/material';
-import { BackgroundChecks, SyncUserLocale } from '@activitypods/react';
-import AppBar from './AppBar';
+import { Box } from '@mui/material'
+import { BackgroundChecks, SyncUserLocale } from '@activitypods/react'
+import AppBar from './AppBar'
 
 const Layout = ({ children }) => (
   <BackgroundChecks clientId={import.meta.env.VITE_BACKEND_CLIENT_ID}>
@@ -10,6 +10,6 @@ const Layout = ({ children }) => (
       {children}
     </Box>
   </BackgroundChecks>
-);
+)
 
-export default Layout;
+export default Layout

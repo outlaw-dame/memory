@@ -1,19 +1,19 @@
-import { CircularProgress, Box } from '@mui/material';
-import { useCollection } from '@semapps/activitypub-components';
-import { useCheckAuthenticated } from '@semapps/auth-provider';
-import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock';
-import PostBlock from '../../common/blocks/PostBlock';
-import LoadMore from '../../common/LoadMore';
+import { CircularProgress, Box } from '@mui/material'
+import { useCollection } from '@semapps/activitypub-components'
+import { useCheckAuthenticated } from '@semapps/auth-provider'
+import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock'
+import PostBlock from '../../common/blocks/PostBlock'
+import LoadMore from '../../common/LoadMore'
 
 const Inbox = () => {
-  useCheckAuthenticated();
+  useCheckAuthenticated()
   const {
     items: activities,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
     isLoading
-  } = useCollection('inbox', { liveUpdates: true, dereferenceItems: true });
+  } = useCollection('inbox', { liveUpdates: true, dereferenceItems: true })
   return (
     <>
       <PostBlock />
@@ -27,7 +27,7 @@ const Inbox = () => {
       )}
       {hasNextPage && <LoadMore fetchNextPage={fetchNextPage} isLoading={isFetchingNextPage || isLoading} />}
     </>
-  );
-};
+  )
+}
 
-export default Inbox;
+export default Inbox

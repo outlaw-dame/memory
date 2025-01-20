@@ -1,7 +1,7 @@
-const { WebAclMiddleware, CacherMiddleware } = require('@semapps/webacl');
-const CONFIG = require('./config/config');
+const { WebAclMiddleware, CacherMiddleware } = require('@semapps/webacl')
+const CONFIG = require('./config/config')
 
-Error.stackTraceLimit = Infinity;
+Error.stackTraceLimit = Infinity
 
 // Use the cacher only if Redis is configured
 const cacherConfig = CONFIG.REDIS_CACHE_URL
@@ -13,7 +13,7 @@ const cacherConfig = CONFIG.REDIS_CACHE_URL
         redis: CONFIG.REDIS_CACHE_URL
       }
     }
-  : undefined;
+  : undefined
 
 module.exports = {
   // You can set all ServiceBroker configurations here
@@ -29,4 +29,4 @@ module.exports = {
       level: 'info'
     }
   }
-};
+}

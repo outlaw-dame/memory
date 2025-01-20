@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
-import { AppBar as MuiAppBar, Toolbar, Container, Typography } from '@mui/material';
-import makeStyles from '@mui/styles/makeStyles';
-import { UserMenu } from '@activitypods/react';
+import { Link } from 'react-router-dom'
+import { AppBar as MuiAppBar, Toolbar, Container, Typography } from '@mui/material'
+import makeStyles from '@mui/styles/makeStyles'
+import { UserMenu } from '@activitypods/react'
 
 const useStyles = makeStyles(theme => ({
   appBar: {
@@ -15,10 +15,10 @@ const useStyles = makeStyles(theme => ({
     width: 42,
     marginRight: 5
   }
-}));
+}))
 
 const AppBar = () => {
-  const classes = useStyles();
+  const classes = useStyles()
   return (
     <MuiAppBar position="static" sx={{ flexGrow: 1 }} elevation={0} className={classes.appBar}>
       <Container maxWidth="md">
@@ -43,7 +43,7 @@ const AppBar = () => {
         </Toolbar>
       </Container>
     </MuiAppBar>
-  );
-};
+  )
+}
 
-export default AppBar;
+export default AppBar

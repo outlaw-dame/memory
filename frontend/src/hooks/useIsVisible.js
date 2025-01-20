@@ -1,21 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react'
 
-const useIsVisible = (ref) => {
-  const [isVisible, setIsVisible] = useState(false);
+const useIsVisible = ref => {
+  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     if (ref.current) {
-      const observer = new IntersectionObserver(([entry]) =>
-        setIsVisible(entry.isIntersecting)
-      );
-      observer.observe(ref.current);
+      const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting))
+      observer.observe(ref.current)
       return () => {
-        observer.disconnect();
-      };
+        observer.disconnect()
+      }
     }
-  }, [ref, setIsVisible]);
+  }, [ref, setIsVisible])
 
-  return isVisible;
-};
+  return isVisible
+}
 
-export default useIsVisible;
+export default useIsVisible

@@ -1,6 +1,6 @@
 // Read all .env* files in the root folder and add them to process.env
 // See https://github.com/kerimdzhanov/dotenv-flow for more details
-require('dotenv-flow').config();
+require('dotenv-flow').config()
 
 module.exports = {
   APP_NAME: process.env.SEMAPPS_APP_NAME,
@@ -16,4 +16,4 @@ module.exports = {
   REDIS_CACHE_URL: process.env.SEMAPPS_REDIS_CACHE_URL,
   QUEUE_SERVICE_URL: process.env.SEMAPPS_QUEUE_SERVICE_URL,
   AUTH_ACCOUNTS_DATASET_NAME: process.env.SEMAPPS_AUTH_ACCOUNTS_DATASET_NAME
-};
+}

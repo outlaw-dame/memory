@@ -1,24 +1,24 @@
 const dataModels = {
   Note: {
-    types: ["as:Note"],
-    list: {},
+    types: ['as:Note'],
+    list: {}
   },
   Activity: {
-    types: ["as:Activity"],
-    list: {},
+    types: ['as:Activity'],
+    list: {}
   },
   Actor: {
-    types: ["as:Actor"],
-    list: {},
+    types: ['as:Actor'],
+    list: {}
   },
   Profile: {
-    types: ["vcard:Individual"],
-    list: {},
+    types: ['vcard:Individual'],
+    list: {}
   },
   Tag: {
-    types: ["as:Tag"],
-    list: {},
-  },
-};
+    types: ['as:Tag'],
+    list: {}
+  }
+}
 
-export default dataModels;
+export default dataModels

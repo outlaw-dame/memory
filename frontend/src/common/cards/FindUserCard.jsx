@@ -1,6 +1,6 @@
-import { Form, SearchInput, useRedirect, useTranslate } from 'react-admin';
-import { Box, Card, Typography } from '@mui/material';
-import makeStyles from '@mui/styles/makeStyles';
+import { Form, SearchInput, useRedirect, useTranslate } from 'react-admin'
+import { Box, Card, Typography } from '@mui/material'
+import makeStyles from '@mui/styles/makeStyles'
 
 const useStyles = makeStyles(theme => ({
   title: {
@@ -10,16 +10,16 @@ const useStyles = makeStyles(theme => ({
     color: theme.palette.primary.contrastText,
     padding: '5px 10px'
   }
-}));
+}))
 
 const FindUserCard = ({ stripCard }) => {
-  const classes = useStyles();
-  const redirect = useRedirect();
-  const translate = useTranslate();
+  const classes = useStyles()
+  const redirect = useRedirect()
+  const translate = useTranslate()
 
   const onSubmit = ({ username }) => {
-    redirect(`/actor/${username}`);
-  };
+    redirect(`/actor/${username}`)
+  }
 
   return stripCard ? (
     <Form onSubmit={onSubmit}>
@@ -43,7 +43,7 @@ const FindUserCard = ({ stripCard }) => {
         </Form>
       </Box>
     </Card>
-  );
-};
+  )
+}
 
-export default FindUserCard;
+export default FindUserCard

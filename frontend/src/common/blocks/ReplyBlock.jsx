@@ -1,16 +1,12 @@
-import { useGetOne } from "react-admin";
-import ActivityBlock from "./ActivityBlock/ActivityBlock";
+import { useGetOne } from 'react-admin'
+import ActivityBlock from './ActivityBlock/ActivityBlock'
 
 const ReplyBlock = ({ activityUri }) => {
-  const { data: activity } = useGetOne(
-    "Activity",
-    { id: activityUri },
-    { enabled: !!activityUri, staleTime: Infinity }
-  );
+  const { data: activity } = useGetOne('Activity', { id: activityUri }, { enabled: !!activityUri, staleTime: Infinity })
 
-  if (!activity) return null;
+  if (!activity) return null
 
-  return <ActivityBlock activity={activity} showReplies={true} />;
-};
+  return <ActivityBlock activity={activity} showReplies={true} />
+}
 
-export default ReplyBlock;
+export default ReplyBlock

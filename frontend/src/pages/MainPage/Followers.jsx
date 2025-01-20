@@ -1,7 +1,7 @@
-import { Card, List, CircularProgress, Box } from '@mui/material';
-import { useCollection } from '@semapps/activitypub-components';
-import ActorItem from './ActorItem';
-import LoadMore from '../../common/LoadMore';
+import { Card, List, CircularProgress, Box } from '@mui/material'
+import { useCollection } from '@semapps/activitypub-components'
+import ActorItem from './ActorItem'
+import LoadMore from '../../common/LoadMore'
 
 const Followers = () => {
   const {
@@ -9,7 +9,7 @@ const Followers = () => {
     fetchNextPage,
     isFetchingNextPage,
     isLoading
-  } = useCollection('followers', { liveUpdates: true });
+  } = useCollection('followers', { liveUpdates: true })
   return (
     <>
       <Card>
@@ -26,7 +26,7 @@ const Followers = () => {
       )}
       <LoadMore fetchNextPage={fetchNextPage} isLoading={isFetchingNextPage || isLoading} />
     </>
-  );
-};
+  )
+}
 
-export default Followers;
+export default Followers

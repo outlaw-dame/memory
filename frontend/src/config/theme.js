@@ -1,51 +1,51 @@
-import { createTheme } from "@mui/material/styles";
+import { createTheme } from '@mui/material/styles'
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#A7C340",
-      light: "#74A6F0",
-      contrastText: "#FFFFFF",
+      main: '#A7C340',
+      light: '#74A6F0',
+      contrastText: '#FFFFFF'
     },
     secondary: {
-      main: "#203142",
-      contrastText: "#FFFFFF",
+      main: '#203142',
+      contrastText: '#FFFFFF'
     },
     background: {
-      default: "#DDDDDD",
-    },
+      default: '#DDDDDD'
+    }
   },
   components: {
     RaImageField: {
       styleOverrides: {
         image: {
-          width: "100%",
+          width: '100%',
           margin: 0,
           maxHeight: 200,
-          objectFit: "cover",
-        },
-      },
+          objectFit: 'cover'
+        }
+      }
     },
     MuiButton: {
       styleOverrides: {
         contained: {
           borderRadius: 2,
-          padding: "6px 12px",
-          minWidth: 100,
-        },
-      },
+          padding: '6px 12px',
+          minWidth: 100
+        }
+      }
     },
     MuiCard: {
       defaultProps: {
-        elevation: 0,
+        elevation: 0
       },
       styleOverrides: {
         root: {
-          marginBottom: 24,
-        },
-      },
-    },
-  },
-});
+          marginBottom: 24
+        }
+      }
+    }
+  }
+})
 
-export default theme;
+export default theme

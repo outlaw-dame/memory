@@ -1,18 +1,18 @@
-import { Card, List, Typography } from '@mui/material';
-import { useCollection } from '@semapps/activitypub-components';
-import useActorContext from '../../hooks/useActorContext';
-import ActorItem from '../MainPage/ActorItem';
-import LoadMore from '../../common/LoadMore';
+import { Card, List, Typography } from '@mui/material'
+import { useCollection } from '@semapps/activitypub-components'
+import useActorContext from '../../hooks/useActorContext'
+import ActorItem from '../MainPage/ActorItem'
+import LoadMore from '../../common/LoadMore'
 
 const Followers = () => {
-  const actor = useActorContext();
+  const actor = useActorContext()
   const {
     items: followers,
     totalItems,
     isLoading,
     fetchNextPage,
     isFetchingNextPage
-  } = useCollection(actor?.followers, { liveUpdates: true });
+  } = useCollection(actor?.followers, { liveUpdates: true })
 
   return (
     <>
@@ -28,7 +28,7 @@ const Followers = () => {
       </Card>
       <LoadMore fetchNextPage={fetchNextPage} isLoading={isFetchingNextPage || isLoading} />
     </>
-  );
-};
+  )
+}
 
-export default Followers;
+export default Followers

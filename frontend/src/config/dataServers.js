@@ -15,6 +15,6 @@ const dataServers = {
     },
     uploadsContainer: '/semapps/file'
   }
-};
+}
 
-export default dataServers;
+export default dataServers

@@ -1,14 +1,14 @@
-import { useCallback } from 'react';
-import { IconButton, Tooltip } from '@mui/material';
-import { useNotify, useGetIdentity, useTranslate } from 'react-admin';
-import { useOutbox, ACTIVITY_TYPES, PUBLIC_URI } from '@semapps/activitypub-components';
-import RepeatIcon from '@mui/icons-material/Repeat';
+import { useCallback } from 'react'
+import { IconButton, Tooltip } from '@mui/material'
+import { useNotify, useGetIdentity, useTranslate } from 'react-admin'
+import { useOutbox, ACTIVITY_TYPES, PUBLIC_URI } from '@semapps/activitypub-components'
+import RepeatIcon from '@mui/icons-material/Repeat'
 
 const BoostButton = ({ object, activity, ...rest }) => {
-  const outbox = useOutbox();
-  const notify = useNotify();
-  const translate = useTranslate();
-  const { data: identity } = useGetIdentity();
+  const outbox = useOutbox()
+  const notify = useNotify()
+  const translate = useTranslate()
+  const { data: identity } = useGetIdentity()
 
   const boost = useCallback(async () => {
     try {
@@ -17,12 +17,12 @@ const BoostButton = ({ object, activity, ...rest }) => {
         actor: outbox.owner,
         object: object?.id || activity?.id,
         to: [identity.webIdData.followers, activity?.actor || object?.attributedTo, PUBLIC_URI]
-      });
-      notify('app.notification.post_boosted', { type: 'success' });
+      })
+      notify('app.notification.post_boosted', { type: 'success' })
     } catch (e) {
-      notify(e.message, 'error');
+      notify(e.message, 'error')
     }
-  }, [object, activity, outbox, notify]);
+  }, [object, activity, outbox, notify])
 
   return (
     <Tooltip title={translate('app.action.boost')}>
@@ -30,7 +30,7 @@ const BoostButton = ({ object, activity, ...rest }) => {
         <RepeatIcon />
       </IconButton>
     </Tooltip>
-  );
-};
+  )
+}
 
-export default BoostButton;
+export default BoostButton

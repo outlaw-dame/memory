@@ -58,4 +58,4 @@ export default {
       mentionsOnly: 'Specific people'
     }
   }
-};
+}

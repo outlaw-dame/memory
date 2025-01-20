@@ -1,3 +1,3 @@
-const { ProxyService } = require('@semapps/crypto');
+const { ProxyService } = require('@semapps/crypto')
 
-module.exports = ProxyService;
+module.exports = ProxyService

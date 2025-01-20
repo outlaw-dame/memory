@@ -1,34 +1,34 @@
-import { useEffect, useState } from "react";
-import { Outlet, useParams } from "react-router-dom";
-import StickyBox from "react-sticky-box";
-import { Box, Container, Grid, Hidden } from "@mui/material";
-import { useWebfinger } from "@semapps/activitypub-components";
-import useActor from "../../hooks/useActor";
-import ActorContext from "../../contexts/ActorContext";
-import ProfileCard from "../../common/cards/ProfileCard";
-import Hero from "./Hero";
-import SubBar from "./SubBar";
+import { useEffect, useState } from 'react'
+import { Outlet, useParams } from 'react-router-dom'
+import StickyBox from 'react-sticky-box'
+import { Box, Container, Grid, Hidden } from '@mui/material'
+import { useWebfinger } from '@semapps/activitypub-components'
+import useActor from '../../hooks/useActor'
+import ActorContext from '../../contexts/ActorContext'
+import ProfileCard from '../../common/cards/ProfileCard'
+import Hero from './Hero'
+import SubBar from './SubBar'
 
 const ActorPage = () => {
-  const { username } = useParams();
-  const [actorUri, setActorUri] = useState();
-  const webfinger = useWebfinger();
+  const { username } = useParams()
+  const [actorUri, setActorUri] = useState()
+  const webfinger = useWebfinger()
 
   useEffect(() => {
-    (async () => {
-      if (username.startsWith("http")) {
+    ;(async () => {
+      if (username.startsWith('http')) {
         // Allow to use the full URI for the username
-        setActorUri(username);
+        setActorUri(username)
       } else {
-        const actorUri = await webfinger.fetch(username);
-        setActorUri(actorUri);
+        const actorUri = await webfinger.fetch(username)
+        setActorUri(actorUri)
       }
-    })();
-  }, [webfinger, username, setActorUri]);
+    })()
+  }, [webfinger, username, setActorUri])
 
-  const actor = useActor(actorUri);
+  const actor = useActor(actorUri)
 
-  if (!actor.name) return null;
+  if (!actor.name) return null
 
   return (
     <ActorContext.Provider value={actor}>
@@ -51,7 +51,7 @@ const ActorPage = () => {
         </Container>
       </Box>
     </ActorContext.Provider>
-  );
-};
+  )
+}
 
-export default ActorPage;
+export default ActorPage

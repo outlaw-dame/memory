@@ -1,7 +1,7 @@
-const urlJoin = require('url-join');
-const { NodeinfoService } = require('@semapps/nodeinfo');
-const CONFIG = require('../../config/config');
-const package = require('../../package.json');
+const urlJoin = require('url-join')
+const { NodeinfoService } = require('@semapps/nodeinfo')
+const CONFIG = require('../../config/config')
+const package = require('../../package.json')
 
 module.exports = {
   mixins: [NodeinfoService],
@@ -23,12 +23,12 @@ module.exports = {
   },
   actions: {
     async getUsersCount(ctx) {
-      const appRegistrations = await ctx.call('app-registrations.list');
+      const appRegistrations = await ctx.call('app-registrations.list')
       return {
         total: appRegistrations['ldp:contains']?.length || 0,
         activeHalfYear: appRegistrations['ldp:contains']?.length || 0,
         activeMonth: appRegistrations['ldp:contains']?.length || 0
-      };
+      }
     }
   }
-};
+}

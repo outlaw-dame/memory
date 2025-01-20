@@ -1,18 +1,18 @@
-import { useEffect, useRef } from "react";
-import { Box, CircularProgress } from "@mui/material";
-import useIsVisible from "../hooks/useIsVisible";
+import { useEffect, useRef } from 'react'
+import { Box, CircularProgress } from '@mui/material'
+import useIsVisible from '../hooks/useIsVisible'
 
 /**
  * When this component becomes visible and `isLoading` is false, `fetchNextPage` is called.
  * When `isLoading` is set to true, a loading spinner is displayed.
  */
 const LoadMore = ({ fetchNextPage, isLoading }) => {
-  const ref = useRef(null);
-  const isVisible = useIsVisible(ref);
+  const ref = useRef(null)
+  const isVisible = useIsVisible(ref)
 
   useEffect(() => {
-    if (isVisible && !isLoading) fetchNextPage();
-  }, [isVisible, fetchNextPage]);
+    if (isVisible && !isLoading) fetchNextPage()
+  }, [isVisible, fetchNextPage])
 
   return (
     <div ref={ref}>
@@ -20,7 +20,7 @@ const LoadMore = ({ fetchNextPage, isLoading }) => {
         {isLoading && <CircularProgress />}
       </Box>
     </div>
-  );
-};
+  )
+}
 
-export default LoadMore;
+export default LoadMore

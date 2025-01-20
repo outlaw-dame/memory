@@ -1,6 +1,6 @@
-const urlJoin = require('url-join');
-const { AppService } = require('@activitypods/app');
-const CONFIG = require('../config/config');
+const urlJoin = require('url-join')
+const { AppService } = require('@activitypods/app')
+const CONFIG = require('../config/config')
 
 // For documentation, see: https://docs.activitypods.org/app-framework/backend/application-registration/
 module.exports = {
@@ -49,7 +49,7 @@ module.exports = {
       }
     },
     queueServiceUrl: CONFIG.QUEUE_SERVICE_URL
-  },
+  }
   /*actions: {
     async fetchPostsByHashtag(ctx) {
       const { tag } = ctx.params;
@@ -72,4 +72,4 @@ module.exports = {
       return results.map(row => row.activity);
     },
   },*/
-};
+}

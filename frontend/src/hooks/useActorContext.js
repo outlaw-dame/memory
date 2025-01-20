@@ -1,8 +1,8 @@
-import { useContext } from "react";
-import ActorContext from "../contexts/ActorContext";
+import { useContext } from 'react'
+import ActorContext from '../contexts/ActorContext'
 
 const useActorContext = () => {
-  return useContext(ActorContext);
-};
+  return useContext(ActorContext)
+}
 
-export default useActorContext;
+export default useActorContext

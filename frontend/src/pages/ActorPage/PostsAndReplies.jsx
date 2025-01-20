@@ -1,16 +1,16 @@
-import { useCollection } from '@semapps/activitypub-components';
-import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock';
-import useActorContext from '../../hooks/useActorContext';
-import LoadMore from '../../common/LoadMore';
+import { useCollection } from '@semapps/activitypub-components'
+import ActivityBlock from '../../common/blocks/ActivityBlock/ActivityBlock'
+import useActorContext from '../../hooks/useActorContext'
+import LoadMore from '../../common/LoadMore'
 
 const PostsAndReplies = () => {
-  const actor = useActorContext();
+  const actor = useActorContext()
   const {
     items: activities,
     fetchNextPage,
     isFetchingNextPage,
     isLoading
-  } = useCollection(actor?.outbox, { dereferenceItems: true });
+  } = useCollection(actor?.outbox, { dereferenceItems: true })
   return (
     <>
       {activities?.map(activity => (
@@ -18,7 +18,7 @@ const PostsAndReplies = () => {
       ))}
       <LoadMore fetchNextPage={fetchNextPage} isLoading={isFetchingNextPage || isLoading} />
     </>
-  );
-};
+  )
+}
 
-export default PostsAndReplies;
+export default PostsAndReplies
