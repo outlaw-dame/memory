@@ -9,6 +9,18 @@ import { AUTH_COOKIE_DURATION } from './config'
 
 const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
+class User {
+  userId: string
+
+  constructor() {
+    this.userId = ''
+  }
+
+  setUserId(userId: string) {
+    this.userId = userId
+  }
+}
+
 export const app = new Elysia()
   .use(
     jwt({
@@ -16,21 +28,26 @@ export const app = new Elysia()
       secret: process.env.JWT_SECRET || 'secret'
     })
   )
-  .state('userId', '')
+  .decorate('user', new User())
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return
 
       return {
-        async beforeHandle({ cookie: { auth }, jwt, error }) {
-          if (!auth.value || !(await jwt.verify(auth.value))) return error(401, 'You must be signed in to do that')
+        async beforeHandle({ cookie: { auth }, jwt, error, user }) {
+          const authValue = await jwt.verify(auth.value)
+          if (!authValue) {
+            return error(401, 'You must be signed in to do that')
+          } else {
+            user.setUserId(authValue.webId as string)
+          }
         }
       }
     }
   })
   .post(
     '/login',
-    async ({ body, jwt, cookie: { auth }, error, store: { userId } }) => {
+    async ({ body, jwt, cookie: { auth }, error }) => {
       // check if user is already logged in
       if (auth.value && (await jwt.verify(auth.value))) {
         return "You're already logged in"
@@ -78,7 +95,6 @@ export const app = new Elysia()
           maxAge: AUTH_COOKIE_DURATION,
           httpOnly: true
         })
-        userId = providerResponse.webId
 
         return 'Successfully logged in'
       }
