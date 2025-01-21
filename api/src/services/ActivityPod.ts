@@ -1,5 +1,6 @@
 import ky from 'ky'
-import type { PodProviderLoginResponse } from '../types'
+import type { NoteCreateRequest, PodProviderLoginResponse } from '../types'
+import type User from '../decorater/User'
 
 export default abstract class ActivityPod {
   static async login(endpoint: string, username: string, password: string) {
@@ -11,7 +12,6 @@ export default abstract class ActivityPod {
         }
       })
       .json()
-    console.log('response: ', response)
     return response
   }
 
@@ -25,7 +25,18 @@ export default abstract class ActivityPod {
         }
       })
       .json()
-    console.log('response: ', response)
+    return response
+  }
+
+  static async createPost(user: User, post: NoteCreateRequest) {
+    const response = await ky
+      .post(`${user.userId}/outbox`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        },
+        json: post
+      })
+      .json()
     return response
   }
 }

@@ -12,6 +12,14 @@ export interface PodProviderLoginResponse {
   newUser: boolean
 }
 
+export interface NoteCreateRequest {
+  '@context': string
+  type: string
+  attributedTo: string
+  content: string
+  to: string[]
+}
+
 // DB types
 export const _createPost = createInsertSchema(posts)
 export const _createUser = createInsertSchema(users)
