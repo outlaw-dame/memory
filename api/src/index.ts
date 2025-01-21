@@ -65,17 +65,8 @@ export const app = new Elysia()
             // the user is not in the database yet, so we need to create a new user
             await db.insert(users).values({
               name: username as string,
-              webId: providerResponse.webId,
-              providerAuth: providerResponse.token
+              webId: providerResponse.webId
             })
-          } else {
-            if (user[0].providerAuth !== providerResponse.token) {
-              // the user is in the database but the token is different, so we need to update the token
-              await db
-                .update(users)
-                .set({ providerAuth: providerResponse.token })
-                .where(eq(users.webId, providerResponse.webId))
-            }
           }
         } catch (e) {
           console.error('Error while checking if user is in the database: ', e)
@@ -83,7 +74,7 @@ export const app = new Elysia()
         }
         // set the auth cookie
         auth.set({
-          value: await jwt.sign({ webId: providerResponse.webId }),
+          value: await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token }),
           maxAge: AUTH_COOKIE_DURATION,
           httpOnly: true
         })
@@ -137,8 +128,7 @@ export const app = new Elysia()
               // the user is not in the database yet, so we need to create a new user
               await db.insert(users).values({
                 name: username as string,
-                webId: providerResponse.webId,
-                providerAuth: providerResponse.token
+                webId: providerResponse.webId
               })
             }
           } catch (e) {
