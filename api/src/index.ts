@@ -7,20 +7,9 @@ import { eq } from 'drizzle-orm'
 import jwt from '@elysiajs/jwt'
 import { AUTH_COOKIE_DURATION } from './config'
 import ActivityPod from './services/ActivityPod'
+import User from './decorater/User'
 
 const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
-
-class User {
-  userId: string
-
-  constructor() {
-    this.userId = ''
-  }
-
-  setUserId(userId: string) {
-    this.userId = userId
-  }
-}
 
 export const app = new Elysia()
   .use(
