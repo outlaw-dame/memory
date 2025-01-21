@@ -1,14 +1,15 @@
 import { Elysia, t } from 'elysia'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { _createPost, viablePodProviders, type PodProviderLoginResponse } from './types'
+import { _createPost, _selectposts, viablePodProviders, type PodProviderLoginResponse } from './types'
 import { posts, users } from './db/schema'
 import { eq } from 'drizzle-orm'
 import jwt from '@elysiajs/jwt'
 import { AUTH_COOKIE_DURATION } from './config'
 import ActivityPod from './services/ActivityPod'
 import User from './decorater/User'
+import postsRoutes from './plugin/posts'
 
-const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
+export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
 export const app = new Elysia()
   .use(
@@ -164,47 +165,7 @@ export const app = new Elysia()
       })
     }
   )
-  .post(
-    '/posts',
-    async ({ error, body, user }) => {
-      const { content, isPublic } = body
-
-      const addressats = [`${user.userId}/followers`]
-      if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
-
-      const post = {
-        '@context': 'https://www.w3.org/ns/activitystreams',
-        type: 'Note',
-        attributedTo: user.userId,
-        content: content,
-        to: addressats
-      }
-
-      try {
-        // create the post in the pod
-        await ActivityPod.createPost(user, post)
-        // insert the post into the database
-        await db.insert(posts).values({
-          content,
-          isPublic
-        })
-      } catch (e) {
-        console.error('Error while creating the post: ', e)
-        return error(500, 'Error while creating the post')
-      }
-
-      return 'Successfully created the post'
-    },
-    {
-      body: t.Omit(_createPost, ['id', 'created_at']),
-      response: {
-        200: t.String(),
-        500: t.String()
-      },
-      detail: 'Creates a new post',
-      isSignedIn: true
-    }
-  )
+  .use(postsRoutes)
   .listen(8796)
 
 console.log('Listening on port 8796')
