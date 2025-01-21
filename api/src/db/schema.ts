@@ -1,4 +1,4 @@
-import { boolean, text, serial, pgTable as table } from 'drizzle-orm/pg-core'
+import { boolean, text, serial, pgTable as table, timestamp } from 'drizzle-orm/pg-core'
 
 export const users = table('users', {
   id: serial().primaryKey(),
@@ -9,6 +9,6 @@ export const users = table('users', {
 export const posts = table('posts', {
   id: serial().primaryKey(),
   content: text().notNull(),
-  created_at: text().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   public: boolean().notNull()
 })
