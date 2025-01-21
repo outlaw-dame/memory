@@ -1,8 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import ky from 'ky'
-import { viablePodProviders, type PodProviderResponse } from './types'
-import { users } from './db/schema'
+import { _createPost, viablePodProviders, type PodProviderLoginResponse } from './types'
+import { posts, users } from './db/schema'
 import { eq } from 'drizzle-orm'
 import jwt from '@elysiajs/jwt'
 import { AUTH_COOKIE_DURATION } from './config'
@@ -30,6 +29,7 @@ export const app = new Elysia()
             return error(401, 'You must be signed in to do that')
           } else {
             user.setUserId(authValue.webId as string)
+            user.setToken(authValue.token as string)
           }
         }
       }
@@ -162,6 +162,47 @@ export const app = new Elysia()
         email: t.String(),
         provider: viablePodProviders
       })
+    }
+  )
+  .post(
+    '/posts',
+    async ({ error, body, user }) => {
+      const { content, isPublic } = body
+
+      const addressats = [`${user.userId}/followers`]
+      if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
+
+      const post = {
+        '@context': 'https://www.w3.org/ns/activitystreams',
+        type: 'Note',
+        attributedTo: user.userId,
+        content: content,
+        to: addressats
+      }
+
+      try {
+        // create the post in the pod
+        await ActivityPod.createPost(user, post)
+        // insert the post into the database
+        await db.insert(posts).values({
+          content,
+          isPublic
+        })
+      } catch (e) {
+        console.error('Error while creating the post: ', e)
+        return error(500, 'Error while creating the post')
+      }
+
+      return 'Successfully created the post'
+    },
+    {
+      body: t.Omit(_createPost, ['id', 'created_at']),
+      response: {
+        200: t.String(),
+        500: t.String()
+      },
+      detail: 'Creates a new post',
+      isSignedIn: true
     }
   )
   .listen(8796)
