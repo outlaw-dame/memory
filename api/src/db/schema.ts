@@ -1,8 +1,14 @@
-import { text, int, sqliteTable } from 'drizzle-orm/sqlite-core'
+import { boolean, text, serial, pgTable as table } from 'drizzle-orm/pg-core'
 
-export const usersTable = sqliteTable('users_table', {
-  id: int('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull(),
-  user_id: text('handle').notNull(),
-  created_at: text('created_at').notNull()
+export const users = table('users', {
+  id: serial().primaryKey(),
+  name: text().notNull(),
+  webId: text('web_id').notNull().unique()
+})
+
+export const posts = table('posts', {
+  id: serial().primaryKey(),
+  content: text().notNull(),
+  created_at: text().notNull(),
+  public: boolean().notNull()
 })

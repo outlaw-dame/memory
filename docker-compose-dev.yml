@@ -72,3 +72,15 @@ services:
       - '4567:4567'
     environment:
       REDIS_HOST: 'redis'
+
+  pg:
+    image: postgres:17
+    restart: always
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data:z
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
