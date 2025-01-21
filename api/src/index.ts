@@ -97,7 +97,7 @@ export const app = new Elysia()
       detail: 'Logs in a with a pod provider and sets an auth cookie for the user'
     }
   )
-  .post(
+  .get(
     '/logout',
     async ({ cookie: { auth } }) => {
       auth.remove()
