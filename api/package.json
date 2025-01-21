@@ -23,6 +23,7 @@
     "@elysiajs/jwt": "^1.2.0",
     "better-sqlite3": "^11.8.1",
     "drizzle-orm": "^0.38.4",
+    "drizzle-typebox": "^0.2.1",
     "elysia": "^1.2.10",
     "ky": "^1.7.4",
     "pg": "^8.13.1"
