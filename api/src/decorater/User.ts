@@ -10,8 +10,9 @@ export default class User {
   }
 
   setUserId(userId: string) {
+    const userIdSplit = userId.split('/')
     this.userId = userId
-    this.endpoint = userId.split('/')[-1]
+    this.endpoint = userIdSplit[userIdSplit.length - 2]
   }
   setToken(token: string) {
     this.token = token
