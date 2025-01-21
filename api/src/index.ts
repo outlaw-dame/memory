@@ -16,6 +16,7 @@ export const app = new Elysia()
       secret: process.env.JWT_SECRET || 'secret'
     })
   )
+  .state('userId', '')
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return
@@ -29,8 +30,7 @@ export const app = new Elysia()
   })
   .post(
     '/login',
-    async ({ body, jwt, cookie: { auth }, error }) => {
-      console.log('auth: ', await jwt.verify(auth.value))
+    async ({ body, jwt, cookie: { auth }, error, store: { userId } }) => {
       // check if user is already logged in
       if (auth.value && (await jwt.verify(auth.value))) {
         return "You're already logged in"
@@ -54,7 +54,6 @@ export const app = new Elysia()
         return error(400, "Endpoint didn't respond with a 200 status code")
       }
 
-      console.log('endpointResponse: ', providerResponse.token)
       // check if the endpoint returned a token
       if (providerResponse.token === undefined) {
         return error(400, 'Endpoint did not return a token')
@@ -79,6 +78,7 @@ export const app = new Elysia()
           maxAge: AUTH_COOKIE_DURATION,
           httpOnly: true
         })
+        userId = providerResponse.webId
 
         return 'Successfully logged in'
       }
