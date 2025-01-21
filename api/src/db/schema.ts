@@ -3,7 +3,8 @@ import { boolean, text, serial, pgTable as table, timestamp } from 'drizzle-orm/
 export const users = table('users', {
   id: serial().primaryKey(),
   name: text().notNull(),
-  webId: text('web_id').notNull().unique()
+  webId: text('web_id').notNull().unique(),
+  providerAuth: text('provider_auth').notNull()
 })
 
 export const posts = table('posts', {
