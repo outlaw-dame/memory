@@ -16,6 +16,17 @@ export const app = new Elysia()
       secret: process.env.JWT_SECRET || 'secret'
     })
   )
+  .macro({
+    isSignedIn: enabled => {
+      if (!enabled) return
+
+      return {
+        async beforeHandle({ cookie: { auth }, jwt, error }) {
+          if (!auth.value || !(await jwt.verify(auth.value))) return error(401, 'You must be signed in to do that')
+        }
+      }
+    }
+  })
   .post(
     '/login',
     async ({ body, jwt, cookie: { auth }, error }) => {
