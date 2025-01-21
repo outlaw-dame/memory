@@ -17,14 +17,11 @@ export const app = new Elysia()
   )
   .post(
     '/login',
-    async ({ body, jwt, cookie: { auth } }) => {
+    async ({ body, jwt, cookie: { auth }, error }) => {
       console.log('auth: ', await jwt.verify(auth.value))
       // check if user is already logged in
       if (auth.value && (await jwt.verify(auth.value))) {
-        return {
-          status: 200,
-          body: "You're already logged in"
-        }
+        return "You're already logged in"
       }
       const { username, password, endpoint } = body
 
@@ -42,19 +39,13 @@ export const app = new Elysia()
           .json()
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
-        return {
-          status: 400,
-          body: "Endpoint didn't respond with a 200 status code"
-        }
+        return error(400, "Endpoint didn't respond with a 200 status code")
       }
 
       console.log('endpointResponse: ', endpointResponse.token)
       // check if the endpoint returned a token
       if (endpointResponse.token === undefined) {
-        return {
-          status: 400,
-          body: 'Endpoint did not return a token'
-        }
+        return error(400, 'Endpoint did not return a token')
       } else {
         // the endpoint returned like expected now check if the user is already in the database
         try {
@@ -68,10 +59,7 @@ export const app = new Elysia()
           }
         } catch (e) {
           console.error('Error while checking if user is in the database: ', e)
-          return {
-            status: 500,
-            body: 'Error while checking user'
-          }
+          return error(500, 'Error while checking user')
         }
         // set the auth cookie
         auth.set({
@@ -80,10 +68,7 @@ export const app = new Elysia()
           httpOnly: true
         })
 
-        return {
-          status: 200,
-          body: 'Successfully logged in'
-        }
+        return 'Successfully logged in'
       }
     },
     {
@@ -92,10 +77,11 @@ export const app = new Elysia()
         password: t.String(),
         endpoint: viablePodProviders
       }),
-      response: t.Object({
-        status: t.Number(),
-        body: t.String()
-      }),
+      response: {
+        200: t.String(),
+        400: t.String(),
+        500: t.String()
+      },
       detail: 'Logs in a with a pod provider and sets an auth cookie for the user'
     }
   )
