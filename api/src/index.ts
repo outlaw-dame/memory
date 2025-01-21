@@ -6,6 +6,7 @@ import { users } from './db/schema'
 import { eq } from 'drizzle-orm'
 import jwt from '@elysiajs/jwt'
 import { AUTH_COOKIE_DURATION } from './config'
+import ActivityPod from './services/ActivityPod'
 
 const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
@@ -54,18 +55,11 @@ export const app = new Elysia()
       }
       const { username, password, endpoint } = body
 
-      let providerResponse: PodProviderResponse
+      let providerResponse: PodProviderLoginResponse
 
       // try to login to the endpoint
       try {
-        providerResponse = await ky
-          .post(`${endpoint}/auth/login`, {
-            json: {
-              username,
-              password
-            }
-          })
-          .json()
+        providerResponse = await ActivityPod.login(endpoint, username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
         return error(400, "Endpoint didn't respond with a 200 status code")
@@ -143,15 +137,7 @@ export const app = new Elysia()
 
       // try to sign up the user with the current provider
       try {
-        const providerResponse: PodProviderResponse = await ky
-          .post(`${provider}/auth/signup`, {
-            json: {
-              username,
-              password,
-              email
-            }
-          })
-          .json()
+        const providerResponse = await ActivityPod.signup(provider, username, password, email)
         if (providerResponse.token === undefined) {
           return error(400, 'Provider did not return a token')
         } else {

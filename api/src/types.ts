@@ -6,7 +6,7 @@ export const viablePodProviders = t.Enum({
   'http://localhost:3000': 'http://localhost:3000'
 })
 
-export interface PodProviderResponse {
+export interface PodProviderLoginResponse {
   token: string
   webId: string
   newUser: boolean
