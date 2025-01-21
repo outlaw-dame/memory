@@ -10,5 +10,5 @@ export const posts = table('posts', {
   id: serial().primaryKey(),
   content: text().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  public: boolean().notNull()
+  isPublic: boolean('is_public').notNull()
 })
