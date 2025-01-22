@@ -46,6 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
         setLoggedIn(true)
         setToken(loginResponse.token)
         setUser(loginResponse.user)
+        router.push({ name: 'home' })
       }
     } catch (error) {
       console.log('error when trying to login: ', error)
