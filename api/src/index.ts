@@ -8,10 +8,12 @@ import { AUTH_COOKIE_DURATION } from './config'
 import ActivityPod from './services/ActivityPod'
 import User from './decorater/User'
 import postsRoutes from './plugin/posts'
+import cors from '@elysiajs/cors'
 
 export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
 export const app = new Elysia()
+  .use(cors())
   .use(
     jwt({
       name: 'jwt',
