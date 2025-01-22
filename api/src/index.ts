@@ -5,22 +5,12 @@ import {
   _selectposts,
   _selectUsers,
 } from './types'
-import jwt from '@elysiajs/jwt'
-import User from './decorater/User'
-import {postsPlugin, authPlugin} from '@/plugin'
-import cors from '@elysiajs/cors'
+import {postsPlugin, authPlugin, setupPlugin} from '@/plugin'
 
 export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
 export const app = new Elysia()
-  .use(cors())
-  .use(
-    jwt({
-      name: 'jwt',
-      secret: process.env.JWT_SECRET || 'secret'
-    })
-  )
-  .decorate('user', new User())
+  .use(setupPlugin)
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return

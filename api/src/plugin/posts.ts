@@ -4,10 +4,10 @@ import { posts } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
 import { _createPost, _selectposts, selectQueryObject, type SelectPosts } from '../types'
 import { db } from '..'
-import User from '../decorater/User'
+import setupPlugin from './setup'
 
-const postsRoutes = new Elysia()
-  .decorate('user', new User())
+const postsRoutes = new Elysia({ name: 'posts' })
+  .use(setupPlugin)
   .guard({
     isSignedIn: true
   })

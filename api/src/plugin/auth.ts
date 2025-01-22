@@ -1,21 +1,14 @@
 import { AUTH_COOKIE_DURATION } from "@/config"
 import { users } from "@/db/schema"
-import User from "@/decorater/User"
 import ActivityPod from "@/services/ActivityPod"
 import { type PodProviderLoginResponse, type SelectUsers, viablePodProviders, loginResponse } from "@/types"
 import { eq } from "drizzle-orm"
 import Elysia, { t } from "elysia"
 import { db } from ".."
-import jwt from "@elysiajs/jwt"
+import setupPlugin from "./setup"
 
-const authPlugin = new Elysia()
-  .use(
-    jwt({
-      name: 'jwt',
-      secret: process.env.JWT_SECRET || 'secret'
-    })
-  )
-  .decorate('user', new User())
+const authPlugin = new Elysia({name: 'auth'})
+  .use(setupPlugin)
   .post(
     '/login',
     async ({ body, jwt, headers: { auth }, error }) => {
