@@ -8,7 +8,7 @@ import BoostButton from '../../buttons/BoostButton';
 import ReplyButton from '../../buttons/ReplyButton';
 import RelativeDate from '../../RelativeDate';
 import useActor from '../../../hooks/useActor';
-import { arrayOf, convertHashtags, extractHashtags, replaceHashtags } from '../../../utils';
+import { arrayOf } from '../../../utils';
 import MoreButton from '../../buttons/MoreButton';
 
 const mentionRegex = /\<a href="([^"]*)" class=\"[^"]*?mention[^"]*?\">@\<span>(.*?)\<\/span>\<\/a\>/gm;
