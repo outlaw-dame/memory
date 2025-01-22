@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import Elysia, { t } from 'elysia'
 import { posts } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
-import { _createPost, _selectposts, selectQueryObject } from '../types'
+import { _createPost, _selectposts, selectQueryObject, type SelectPosts } from '../types'
 import { db } from '..'
 import User from '../decorater/User'
 
@@ -26,26 +26,28 @@ const postsRoutes = new Elysia()
         content: content,
         to: addressats
       }
+      let newPost: SelectPosts
 
       try {
         // create the post in the pod
         await ActivityPod.createPost(user, post)
         // insert the post into the database
-        await db.insert(posts).values({
+        const newPosts = await db.insert(posts).values({
           content,
           isPublic
-        })
+        }).returning()
+        newPost = newPosts[0]
       } catch (e) {
         console.error('Error while creating the post: ', e)
         return error(500, 'Error while creating the post')
       }
 
-      return 'Successfully created the post'
+      return newPost
     },
     {
       body: t.Omit(_createPost, ['id', 'created_at']),
       response: {
-        200: t.String(),
+        200: _selectposts,
         500: t.String()
       },
       detail: 'Creates a new post',
