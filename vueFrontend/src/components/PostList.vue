@@ -7,7 +7,7 @@ const postsStore = usePostsStore()
 <template>
   <div class="Posts">
     <h2 class="text-2xl">Posts</h2>
-    <div class="border-2 border-black radius-md" v-for="post in postsStore.posts" :key="post.id">
+    <div class="radius-md border-2 border-black" v-for="post in postsStore.posts" :key="post.id">
       <p>{{ post.content }}</p>
     </div>
   </div>
