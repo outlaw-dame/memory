@@ -1,4 +1,4 @@
-import type { App, Post } from '@/types'
+import type { App, CreatePost, Post } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './authStore'
@@ -20,6 +20,7 @@ export const usePostsStore = defineStore('posts', () => {
     }
   })
 
+  // Util Functions
   /**
    * Fetches posts from the API
    */
@@ -35,6 +36,22 @@ export const usePostsStore = defineStore('posts', () => {
     }
   }
 
+  /**
+   * Create a new Post
+   * @param content {string} - The content of the new post
+   */
+  async function createPost(content: string) {
+    const requestBody: CreatePost = {
+      content,
+      isPublic: true
+    }
+    const postResponse = await client.posts.post(requestBody)
+    if (postResponse.status === 200) {
+      const newPost = postResponse.data as Post
+      posts.value.push(newPost)
+    }
+  }
+
   console.log('posts: ', posts)
   console.log('posts: ', posts.value.length)
   // Init store
@@ -44,6 +61,7 @@ export const usePostsStore = defineStore('posts', () => {
 
   return {
     posts,
-    fetchPosts
+    fetchPosts,
+    createPost
   }
 })
