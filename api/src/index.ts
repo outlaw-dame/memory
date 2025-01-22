@@ -90,7 +90,10 @@ export const app = new Elysia()
         // generate signed token for login
         const token = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
 
-        return 'Successfully logged in'
+        return {
+          token,
+          user: dbUser[0]
+        }
       }
     },
     {
@@ -100,7 +103,8 @@ export const app = new Elysia()
         endpoint: viablePodProviders
       }),
       response: {
-        200: t.String(),
+        200: loginResponse,
+        204: t.String(),
         400: t.String(),
         500: t.String()
       },
