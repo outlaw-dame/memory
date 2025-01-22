@@ -4,7 +4,7 @@ import AuthForm from '@/components/AuthForm.vue'
 
 <template>
   <div class="Login">
-    <h1>Login</h1>
+    <h1 class="text-4xl">Login</h1>
     <AuthForm />
   </div>
 </template>
