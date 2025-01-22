@@ -36,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   function initStore() {
     const localUser = localStorage.getItem('user')
-    if (localUser) {
+    if (localUser && localUser !== 'undefined') {
       user.value = JSON.parse(localUser)
     }
 
@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const localToken = localStorage.getItem('token')
-    if (localToken) {
+    if (localToken && localToken !== '') {
       token.value = localToken
     }
   }
