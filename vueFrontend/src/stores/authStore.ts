@@ -52,6 +52,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Checks if user is Currently logged in
+   */
+  function authenticateUser() {
+    return isLoggedIn.value
+  }
+
+  /**
+   * Logout
+   */
+  function logout() {
+    setLoggedIn(false)
+    setToken('')
+    setUser(undefined)
+    router.push({ name: 'login' })
+  }
+
   return {
     user,
     isLoggedIn,
