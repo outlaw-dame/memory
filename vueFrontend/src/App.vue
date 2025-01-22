@@ -7,8 +7,8 @@ import { RouterLink, RouterView } from 'vue-router'
     <div class="wrapper">
       <nav>
         <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/login">Login</RouterLink>
-        <RouterLink to="/login">Signup</RouterLink>
+        <RouterLink :to="{ name: 'login' }">Login</RouterLink>
+        <RouterLink :to="{ name: 'signup' }">Signup</RouterLink>
       </nav>
     </div>
   </header>
