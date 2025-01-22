@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import { useUserStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,7 +30,7 @@ router.beforeEach((to, from, next) => {
   console.log('beforeEach: ', to, from)
   // if the user is not logged in, redirect to login page
   if (to.name !== 'login' && to.name !== 'signup') {
-    const authStore = useUserStore()
+    const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
       next({ name: 'login' })
     }

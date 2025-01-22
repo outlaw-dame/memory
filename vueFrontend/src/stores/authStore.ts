@@ -1,12 +1,18 @@
-import type { App, ProviderEndpoints } from '@/types'
+import type { App, LoginResponse, ProviderEndpoints, User } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-export const useUserStore = defineStore('user', () => {
+export const useAuthStore = defineStore('auth', () => {
   // Default state
-  const user = localStorage.getItem('user')
-  const isLoggedIn = localStorage.getItem('loggedIn') || 'false'
+  const user = ref<User>()
+  const isLoggedIn = ref<boolean>(false)
+  const token = ref<string>('')
+  // API
   const client = treaty<App>(import.meta.env.VITE_API_URL)
+  // Vue Hooks
+  const router = useRouter()
 
   /**
    * Trys to login the user with the given username and password and endpoint
@@ -16,10 +22,14 @@ export const useUserStore = defineStore('user', () => {
    */
   async function login(username: string, password: string, endpoint: ProviderEndpoints) {
     try {
-      const { data: loginResponse } = await client.login.post({ username, password, endpoint })
-      console.log('loginResponse: ', loginResponse)
-      console.log('user: ', user)
-      localStorage.setItem('loggedIn', 'true')
+      const { data: response, status } = await client.login.post({ username, password, endpoint })
+      if (status === 200) {
+        const loginResponse = response as LoginResponse
+
+        setLoggedIn(true)
+        setToken(loginResponse.token)
+        setUser(loginResponse.user)
+      }
     } catch (error) {
       console.log('error when trying to login: ', error)
     }
@@ -27,8 +37,11 @@ export const useUserStore = defineStore('user', () => {
 
   return {
     user,
-    isLoggedIn: isLoggedIn === 'true',
+    isLoggedIn,
+    token,
     // functions
-    login
+    login,
+    logout,
+    authenticateUser
   }
 })
