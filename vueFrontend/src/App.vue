@@ -3,15 +3,18 @@ import { RouterLink, RouterView } from 'vue-router'
 </script>
 
 <template>
-  <header>
-    <div class="wrapper">
-      <nav>
+  <header class="container mx-auto">
+    <nav class="flex justify-between">
+      <div class="flex gap-3">
         <RouterLink to="/">Home</RouterLink>
+      </div>
+      <div class="flex gap-3">
         <RouterLink :to="{ name: 'login' }">Login</RouterLink>
         <RouterLink :to="{ name: 'signup' }">Signup</RouterLink>
-      </nav>
-    </div>
+      </div>
+    </nav>
   </header>
-
-  <RouterView />
+  <main class="container mx-auto">
+    <RouterView />
+  </main>
 </template>
