@@ -171,3 +171,5 @@ export const app = new Elysia()
   .listen(8796)
 
 console.log('Listening on port 8796')
+
+export type App = typeof app
