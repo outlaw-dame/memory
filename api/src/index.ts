@@ -1,7 +1,15 @@
 import { Elysia, t } from 'elysia'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { _createPost, _selectposts, viablePodProviders, type PodProviderLoginResponse } from './types'
-import { posts, users } from './db/schema'
+import {
+  _createPost,
+  _selectposts,
+  viablePodProviders,
+  type PodProviderLoginResponse,
+  _selectUsers,
+  type SelectUsers,
+  loginResponse
+} from './types'
+import { users } from './db/schema'
 import { eq } from 'drizzle-orm'
 import jwt from '@elysiajs/jwt'
 import { AUTH_COOKIE_DURATION } from './config'
@@ -26,8 +34,8 @@ export const app = new Elysia()
       if (!enabled) return
 
       return {
-        async beforeHandle({ cookie: { auth }, jwt, error, user }) {
-          const authValue = await jwt.verify(auth.value)
+        async beforeHandle({ headers: { auth }, jwt, error, user }) {
+          const authValue = await jwt.verify(auth)
           if (!authValue) {
             return error(401, 'You must be signed in to do that')
           } else {
@@ -40,10 +48,10 @@ export const app = new Elysia()
   })
   .post(
     '/login',
-    async ({ body, jwt, cookie: { auth }, error }) => {
+    async ({ body, jwt, headers: { auth }, error }) => {
       // check if user is already logged in
-      if (auth.value && (await jwt.verify(auth.value))) {
-        return "You're already logged in"
+      if (auth && (await jwt.verify(auth))) {
+        return error(204, "You're already logged in")
       }
       const { username, password, endpoint } = body
 
@@ -61,26 +69,26 @@ export const app = new Elysia()
       if (providerResponse.token === undefined) {
         return error(400, 'Endpoint did not return a token')
       } else {
+        let dbUser: SelectUsers[] = []
         // the endpoint returned like expected now check if the user is already in the database
         try {
-          const user = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
-          if (user.length === 0) {
+          dbUser = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
+          if (dbUser.length === 0) {
             // the user is not in the database yet, so we need to create a new user
-            await db.insert(users).values({
-              name: username as string,
-              webId: providerResponse.webId
-            })
+            dbUser = await db
+              .insert(users)
+              .values({
+                name: username as string,
+                webId: providerResponse.webId
+              })
+              .returning()
           }
         } catch (e) {
           console.error('Error while checking if user is in the database: ', e)
           return error(500, 'Error while checking user')
         }
-        // set the auth cookie
-        auth.set({
-          value: await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token }),
-          maxAge: AUTH_COOKIE_DURATION,
-          httpOnly: true
-        })
+        // generate signed token for login
+        const token = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
 
         return 'Successfully logged in'
       }
@@ -170,6 +178,6 @@ export const app = new Elysia()
   .use(postsRoutes)
   .listen(8796)
 
-console.log('Listening on port 8796')
+console.info('Listening on port 8796')
 
 export type App = typeof app
