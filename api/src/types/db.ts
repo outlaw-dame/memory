@@ -1,24 +1,7 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox'
 import { t } from 'elysia'
-import { posts, users } from './db/schema'
-
-export const viablePodProviders = t.Enum({
-  'http://localhost:3000': 'http://localhost:3000'
-})
-
-export interface PodProviderLoginResponse {
-  token: string
-  webId: string
-  newUser: boolean
-}
-
-export interface NoteCreateRequest {
-  '@context': string
-  type: string
-  attributedTo: string
-  content: string
-  to: string[]
-}
+import { posts, users } from '@/db/schema'
+import { type Static } from '@sinclair/typebox'
 
 // Query types
 export const selectQueryObject = t.Object({
@@ -33,4 +16,5 @@ export const _selectposts = createSelectSchema(posts)
 
 // Users
 export const _createUser = createInsertSchema(users)
-export const _selectusers = createSelectSchema(users)
+export const _selectUsers = createSelectSchema(users)
+export interface SelectUsers extends Static<typeof _selectUsers> {}
