@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUserStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/authStore'
 import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
 
@@ -7,7 +7,7 @@ const username = ref('')
 const password = ref('')
 const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
 
-const authStore = useUserStore()
+const authStore = useAuthStore()
 
 function login() {
   authStore.login(username.value, password.value, endpoint.value)
