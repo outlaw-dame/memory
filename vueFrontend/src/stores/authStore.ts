@@ -32,6 +32,25 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Util Functions
   /**
+   * Check if there is a user in the local storage
+   */
+  function initStore() {
+    const localUser = localStorage.getItem('user')
+    if (localUser) {
+      user.value = JSON.parse(localUser)
+    }
+
+    const localLoggedIn = localStorage.getItem('loggedIn')
+    if (localLoggedIn) {
+      isLoggedIn.value = JSON.parse(localLoggedIn)
+    }
+
+    const localToken = localStorage.getItem('token')
+    if (localToken) {
+      token.value = localToken
+    }
+  }
+  /**
    * Trys to login the user with the given username and password and endpoint
    * @param username - username
    * @param password - password
@@ -70,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
     router.push({ name: 'login' })
   }
 
+  initStore()
   return {
     user,
     isLoggedIn,
