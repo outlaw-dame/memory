@@ -14,6 +14,23 @@ export const useAuthStore = defineStore('auth', () => {
   // Vue Hooks
   const router = useRouter()
 
+  // Setters
+  function setUser(newValue: User | undefined) {
+    user.value = newValue
+    localStorage.setItem('user', JSON.stringify(newValue))
+  }
+
+  function setLoggedIn(newValue: boolean) {
+    isLoggedIn.value = newValue
+    localStorage.setItem('loggedIn', newValue.toString())
+  }
+
+  function setToken(newValue: string) {
+    token.value = newValue
+    localStorage.setItem('token', newValue)
+  }
+
+  // Util Functions
   /**
    * Trys to login the user with the given username and password and endpoint
    * @param username - username
