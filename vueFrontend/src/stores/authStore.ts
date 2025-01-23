@@ -1,3 +1,4 @@
+import type { LoginBody, SignUpBody } from '#api/types'
 import type { App, LoginResponse, ProviderEndpoints, User } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
@@ -58,7 +59,8 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function login(username: string, password: string, providerEndpoint: ProviderEndpoints) {
     try {
-      const { data: response, status } = await client.login.post({ username, password, providerEndpoint })
+      const body: LoginBody = { username, password, providerEndpoint }
+      const { data: response, status } = await client.login.post(body)
       if (status === 200) {
         const loginResponse = response as LoginResponse
 

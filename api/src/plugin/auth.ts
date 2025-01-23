@@ -1,7 +1,7 @@
 import { AUTH_COOKIE_DURATION } from "@/config"
 import { users } from "@/db/schema"
 import ActivityPod from "@/services/ActivityPod"
-import { type PodProviderLoginResponse, type SelectUsers, viablePodProviders, loginResponse } from "@/types"
+import { type PodProviderLoginResponse, type SelectUsers, viablePodProviders, loginResponse, signUpBody, loginBody } from "@/types"
 import { eq } from "drizzle-orm"
 import Elysia, { t } from "elysia"
 import { db } from ".."
@@ -42,7 +42,8 @@ const authPlugin = new Elysia({name: 'auth'})
               .insert(users)
               .values({
                 name: username as string,
-                webId: providerResponse.webId
+                webId: providerResponse.webId,
+                providerEndpoint: providerEndpoint
               })
               .returning()
           }
@@ -60,11 +61,7 @@ const authPlugin = new Elysia({name: 'auth'})
       }
     },
     {
-      body: t.Object({
-        username: t.String(),
-        password: t.String(),
-        providerEndpoint: viablePodProviders
-      }),
+      body: loginBody,
       response: {
         200: loginResponse,
         204: t.String(),
@@ -95,7 +92,7 @@ const authPlugin = new Elysia({name: 'auth'})
 
       // try to sign up the user with the current provider
       try {
-        const providerResponse = await ActivityPod.signup(provider, username, password, email)
+        const providerResponse = await ActivityPod.signup(providerEndpoint, username, password, email)
         if (providerResponse.token === undefined) {
           return error(400, 'Provider did not return a token')
         } else {
@@ -106,7 +103,8 @@ const authPlugin = new Elysia({name: 'auth'})
               // the user is not in the database yet, so we need to create a new user
               await db.insert(users).values({
                 name: username as string,
-                webId: providerResponse.webId
+                webId: providerResponse.webId,
+                providerEndpoint: providerEndpoint
               })
             }
           } catch (e) {
@@ -134,12 +132,7 @@ const authPlugin = new Elysia({name: 'auth'})
     },
     {
       detail: 'Signs up a new user',
-      body: t.Object({
-        username: t.String(),
-        password: t.String(),
-        email: t.String(),
-        providerEndpoint: viablePodProviders
-      })
+      body: signUpBody
     }
   )
 
