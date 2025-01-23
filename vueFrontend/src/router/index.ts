@@ -27,7 +27,6 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  console.log('beforeEach: ', to, from)
   // if the user is not logged in, redirect to login page
   if (to.name !== 'login' && to.name !== 'signup') {
     const authStore = useAuthStore()
