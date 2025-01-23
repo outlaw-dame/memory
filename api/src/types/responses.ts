@@ -1,6 +1,6 @@
 import { t, type Static } from 'elysia'
 import { _selectUsers } from './db'
-import { viablePodProviders } from '.'
+import { viablePodProviders } from './enums'
 
 // Auth
 // Login

@@ -1,9 +1,3 @@
-import { t } from 'elysia'
-
-export const viablePodProviders = t.Enum({
-  'http://localhost:3000': 'http://localhost:3000'
-})
-
 export interface PodProviderLoginResponse {
   token: string
   webId: string
@@ -21,3 +15,4 @@ export interface NoteCreateRequest {
 // Export all Types from diffrent files
 export * from './responses'
 export * from './db'
+export * from './enums'
