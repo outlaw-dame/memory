@@ -16,6 +16,7 @@
   "dependencies": {
     "@elysiajs/eden": "^1.2.0",
     "@sinclair/typebox": "^0.34.14",
+    "ky": "^1.7.4",
     "pinia": "^2.3.1",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
