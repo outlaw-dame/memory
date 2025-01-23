@@ -1,4 +1,5 @@
 import type { LoginBody, SignUpBody } from '#api/types'
+import { ApiClient } from '@/controller/api'
 import type { App, LoginResponse, ProviderEndpoints, User } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
@@ -12,6 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>('')
   // API
   const client = treaty<App>(import.meta.env.VITE_API_URL)
+  const apiClient = new ApiClient()
   // Vue Hooks
   const router = useRouter()
 
@@ -73,6 +75,26 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('error when trying to login: ', error)
     }
   }
+  /**
+   * Signup a new user
+   * @param email - email
+   * @param username - username
+   * @param password - password
+   * @param providerEndpoint - provider
+   */
+  async function signup(email: string, username: string, password: string, providerEndpoint: ProviderEndpoints) {
+    const body: SignUpBody = { username, password, email, providerEndpoint }
+    const { data: response, status } = await apiClient.signup(body)
+    if (status === 200) {
+      const signupResponse = response as LoginResponse
+      setLoggedIn(true)
+      setToken(signupResponse.token)
+      setUser(signupResponse.user)
+      router.push({ name: 'home' })
+    } else if (status === 500) {
+      return response as string
+    }
+  }
 
   /**
    * Checks if user is Currently logged in
@@ -98,6 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     // functions
     login,
+    signup,
     logout,
     authenticateUser
   }
