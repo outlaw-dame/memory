@@ -16,13 +16,13 @@ const authPlugin = new Elysia({name: 'auth'})
       if (auth && (await jwt.verify(auth))) {
         return error(204, "You're already logged in")
       }
-      const { username, password, endpoint } = body
+      const { username, password, providerEndpoint } = body
 
       let providerResponse: PodProviderLoginResponse
 
       // try to login to the endpoint
       try {
-        providerResponse = await ActivityPod.login(endpoint, username, password)
+        providerResponse = await ActivityPod.login(providerEndpoint, username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
         return error(400, "Endpoint didn't respond with a 200 status code")
@@ -63,7 +63,7 @@ const authPlugin = new Elysia({name: 'auth'})
       body: t.Object({
         username: t.String(),
         password: t.String(),
-        endpoint: viablePodProviders
+        providerEndpoint: viablePodProviders
       }),
       response: {
         200: loginResponse,
@@ -91,7 +91,7 @@ const authPlugin = new Elysia({name: 'auth'})
       if (auth.value && (await jwt.verify(auth.value))) {
         return "You're already logged in"
       }
-      const { username, password, email, provider } = body
+      const { username, password, email, providerEndpoint } = body
 
       // try to sign up the user with the current provider
       try {
@@ -138,7 +138,7 @@ const authPlugin = new Elysia({name: 'auth'})
         username: t.String(),
         password: t.String(),
         email: t.String(),
-        provider: viablePodProviders
+        providerEndpoint: viablePodProviders
       })
     }
   )

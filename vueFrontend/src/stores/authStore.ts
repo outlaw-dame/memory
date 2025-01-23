@@ -54,11 +54,11 @@ export const useAuthStore = defineStore('auth', () => {
    * Trys to login the user with the given username and password and endpoint
    * @param username - username
    * @param password - password
-   * @param endpoint - endpoint
+   * @param providerEndpoint - endpoint
    */
-  async function login(username: string, password: string, endpoint: ProviderEndpoints) {
+  async function login(username: string, password: string, providerEndpoint: ProviderEndpoints) {
     try {
-      const { data: response, status } = await client.login.post({ username, password, endpoint })
+      const { data: response, status } = await client.login.post({ username, password, providerEndpoint })
       if (status === 200) {
         const loginResponse = response as LoginResponse
 
