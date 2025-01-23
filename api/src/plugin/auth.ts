@@ -83,9 +83,9 @@ const authPlugin = new Elysia({name: 'auth'})
   )
   .post(
     '/signup',
-    async ({ body, error, cookie: { auth }, jwt }) => {
+    async ({ body, error, headers: { auth }, jwt }) => {
       // check if user is already logged in
-      if (auth.value && (await jwt.verify(auth.value))) {
+      if (auth && (await jwt.verify(auth))) {
         return "You're already logged in"
       }
       const { username, password, email, providerEndpoint } = body
@@ -93,6 +93,8 @@ const authPlugin = new Elysia({name: 'auth'})
       // try to sign up the user with the current provider
       try {
         const providerResponse = await ActivityPod.signup(providerEndpoint, username, password, email)
+        let userResponse: SelectUsers[] = []
+
         if (providerResponse.token === undefined) {
           return error(400, 'Provider did not return a token')
         } else {
@@ -101,24 +103,22 @@ const authPlugin = new Elysia({name: 'auth'})
             const user = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
             if (user.length === 0) {
               // the user is not in the database yet, so we need to create a new user
-              await db.insert(users).values({
+              userResponse = await db.insert(users).values({
                 name: username as string,
                 webId: providerResponse.webId,
                 providerEndpoint: providerEndpoint
-              })
+              }).returning()
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)
             return error(500, 'Error while checking user')
           }
-          // set the auth cookie
-          auth.set({
-            value: await jwt.sign({ webId: providerResponse.webId }),
-            maxAge: AUTH_COOKIE_DURATION,
-            httpOnly: true
-          })
+          const authToken = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
 
-          return 'Successfully signed up'
+          return {
+            token: authToken,
+            user: userResponse[0]
+          }
         }
       } catch (e: any) {
         if (e.name === 'HTTPError') {
@@ -132,7 +132,12 @@ const authPlugin = new Elysia({name: 'auth'})
     },
     {
       detail: 'Signs up a new user',
-      body: signUpBody
+      body: signUpBody,
+      response: {
+        200: loginResponse,
+        400: t.String(),
+        500: t.String(),
+      }
     }
   )
 
