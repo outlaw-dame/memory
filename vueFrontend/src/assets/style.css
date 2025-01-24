@@ -1,1 +1,8 @@
 @import 'tailwindcss';
+@font-face {
+  font-family: 'Raleway';
+  src: url('./Raleway-VariableFont_wght.ttf');
+}
+* {
+  font-family: 'Raleway', sans-serif;
+}
