@@ -4,7 +4,7 @@ import LoginForm from '@/components/LoginForm.vue'
 
 <template>
   <div class="Login">
-    <h1 class="text-4xl">Login</h1>
+    <h1 class="text-siteHeader font-bold">Login</h1>
     <LoginForm />
   </div>
 </template>

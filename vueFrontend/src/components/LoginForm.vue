@@ -16,21 +16,13 @@ function login() {
 </script>
 
 <template>
-  <form @submit.prevent="login" class="flex flex-col gap-4">
-    <div class="flex flex-col gap-2">
-      <label for="username">Username</label>
-      <input type="text" id="username" v-model="username" />
+  <form @submit.prevent="login" class="flex h-full flex-col justify-between">
+    <div>
+      <vs-input class="w-full" v-model="username" label="Full Name" placeholder="Full Name" />
+      <vs-input class="w-full" v-model="password" label="Password" type="password" placeholder="Password" />
     </div>
-    <div class="flex flex-col gap-2">
-      <label for="password">Password</label>
-      <input type="password" id="password" v-model="password" />
+    <div>
+      <vs-button class="w-full" type="submit">Login</vs-button>
     </div>
-    <div class="flex flex-col gap-2">
-      <label for="endpoint">Endpoint</label>
-      <select id="endpoint" v-model="endpoint">
-        <option value="http://localhost:3000">Memory</option>
-      </select>
-    </div>
-    <MemoryButton type="submit">Login</MemoryButton>
   </form>
 </template>
