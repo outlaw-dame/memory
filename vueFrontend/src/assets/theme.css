@@ -29,6 +29,7 @@
 
 :root {
   --gap-default: 10px;
+  --gap-small: 5px;
   --padding-huge: 30px;
   --padding-large: 15px;
   --padding-main: 20px;
