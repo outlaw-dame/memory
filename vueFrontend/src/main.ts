@@ -6,7 +6,8 @@ import App from './App.vue'
 import router from './router'
 
 // Styles
-import './assets/style.css'
+import './assets/theme.css'
+import './assets/style.scss'
 
 const app = createApp(App).use(createPinia()).use(router).use(Vuesax)
 

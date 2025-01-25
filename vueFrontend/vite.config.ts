@@ -9,6 +9,7 @@ import { resolve } from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  css: { preprocessorOptions: { scss: { api: 'modern-compiler' } } },
   plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
   resolve: {
     alias: {
