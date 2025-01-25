@@ -3,7 +3,7 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <div class="px-6">
+  <div class="memoryContainer grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-6">
     <header></header>
     <main>
       <RouterView />

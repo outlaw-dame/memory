@@ -1,7 +1,18 @@
-@import 'tailwindcss';
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
-  --text-siteHeader: 34px;
+  --text-largeHeader: 34px;
+  --text-pageHeader: 28px;
+  --text-base: 17px;
+  --text-h1: 28px;
+  --text-h2: 22px;
+  --text-h3: 20px;
+  --text-subHeader: 15px;
+  --text-footnote: 13px;
+  --text-caption: 10px;
+  --text-caption2: 8px;
 }
 
 @font-face {
@@ -9,7 +20,7 @@
   src: url('./Raleway-VariableFont_wght.ttf');
 }
 
-@layer components {
+@layer base {
   @import 'vuesax-alpha/dist/index.css';
   @import './vusax-overrides.css';
 }

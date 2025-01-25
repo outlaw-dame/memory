@@ -2,7 +2,6 @@
 import { useAuthStore } from '@/stores/authStore'
 import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
-import MemoryButton from './MemoryButton.vue'
 
 const username = ref('')
 const password = ref('')
@@ -16,13 +15,13 @@ function login() {
 </script>
 
 <template>
-  <form @submit.prevent="login" class="flex h-full flex-col justify-between">
-    <div>
-      <vs-input class="w-full" v-model="username" label="Full Name" placeholder="Full Name" />
+  <form @submit.prevent class="flex flex-col justify-between">
+    <div class="flex flex-col gap-4">
+      <vs-input class="w-full" v-model="username" label="Email or Username" placeholder="Email or Username" />
       <vs-input class="w-full" v-model="password" label="Password" type="password" placeholder="Password" />
     </div>
-    <div>
-      <vs-button class="w-full" type="submit">Login</vs-button>
+    <div class="mb-4 flex flex-col gap-4">
+      <vs-button class="p w-full" success @click="login">Sign in</vs-button>
     </div>
   </form>
 </template>
