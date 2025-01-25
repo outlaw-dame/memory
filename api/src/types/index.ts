@@ -1,4 +1,4 @@
-export interface PodProviderLoginResponse {
+export interface PodProviderSignInResponse {
   token: string
   webId: string
   newUser: boolean

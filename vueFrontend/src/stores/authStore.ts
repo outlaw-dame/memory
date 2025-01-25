@@ -1,6 +1,6 @@
-import type { LoginBody, SignUpBody } from '#api/types'
+import type { SignInBody, SignUpBody, SignInResponse } from '#api/types'
 import { ApiClient } from '@/controller/api'
-import type { App, LoginResponse, ProviderEndpoints, User } from '@/types'
+import type { App, ProviderEndpoints, User } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -54,25 +54,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
   /**
-   * Trys to login the user with the given username and password and endpoint
+   * Trys to signIn the user with the given username and password and endpoint
    * @param username - username
    * @param password - password
    * @param providerEndpoint - endpoint
    */
-  async function login(username: string, password: string, providerEndpoint: ProviderEndpoints) {
+  async function signin(username: string, password: string, providerEndpoint: ProviderEndpoints) {
     try {
-      const body: LoginBody = { username, password, providerEndpoint }
-      const { data: response, status } = await client.login.post(body)
+      const body: SignInBody = { username, password, providerEndpoint }
+      const { data: response, status } = await client.signin.post(body)
       if (status === 200) {
-        const loginResponse = response as LoginResponse
+        const signInResponse = response as SignInResponse
 
         setLoggedIn(true)
-        setToken(loginResponse.token)
-        setUser(loginResponse.user)
+        setToken(signInResponse.token)
+        setUser(signInResponse.user)
         router.push({ name: 'home' })
       }
     } catch (error) {
-      console.log('error when trying to login: ', error)
+      console.log('error when trying to signIn: ', error)
     }
   }
   /**
@@ -86,7 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     const body: SignUpBody = { username, password, email, providerEndpoint }
     const { data: response, status } = await apiClient.signup(body)
     if (status === 200) {
-      const signupResponse = response as LoginResponse
+      const signupResponse = response as SignInResponse
       setLoggedIn(true)
       setToken(signupResponse.token)
       setUser(signupResponse.user)
@@ -110,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
     setLoggedIn(false)
     setToken('')
     setUser(undefined)
-    router.push({ name: 'login' })
+    router.push({ name: 'signIn' })
   }
 
   initStore()
@@ -119,7 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     token,
     // functions
-    login,
+    signin,
     signup,
     logout,
     authenticateUser

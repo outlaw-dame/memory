@@ -11,12 +11,12 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/login',
-      name: 'login',
+      path: '/signin',
+      name: 'signin',
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/LoginView.vue')
+      component: () => import('../views/SingInView.vue')
     },
     {
       path: '/signup',
@@ -26,12 +26,12 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
-  // if the user is not logged in, redirect to login page
-  if (to.name !== 'login' && to.name !== 'signup') {
+router.beforeEach((to, _, next) => {
+  // if the user is not logged in, redirect to signin page
+  if (to.name !== 'signin' && to.name !== 'signup') {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
-      next({ name: 'login' })
+      next({ name: 'signin' })
     }
   }
   next()

@@ -1,10 +1,10 @@
 import ky from 'ky'
-import type { NoteCreateRequest, PodProviderLoginResponse } from '../types'
+import type { NoteCreateRequest, PodProviderSignInResponse } from '../types'
 import type User from '../decorater/User'
 
 export default abstract class ActivityPod {
-  static async login(endpoint: string, username: string, password: string) {
-    const response: PodProviderLoginResponse = await ky
+  static async signIn(endpoint: string, username: string, password: string) {
+    const response: PodProviderSignInResponse = await ky
       .post(`${endpoint}/auth/login`, {
         json: {
           username,
@@ -16,7 +16,7 @@ export default abstract class ActivityPod {
   }
 
   static async signup(endpoint: string, username: string, password: string, email: string) {
-    const response: PodProviderLoginResponse = await ky
+    const response: PodProviderSignInResponse = await ky
       .post(`${endpoint}/auth/signup`, {
         json: {
           username,

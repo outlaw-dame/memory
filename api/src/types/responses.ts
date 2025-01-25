@@ -3,19 +3,19 @@ import { _selectUsers } from './db'
 import { viablePodProviders } from './enums'
 
 // Auth
-// Login
-export const loginBody = t.Object({
+// SignIn
+export const signinBody = t.Object({
   username: t.String(),
   password: t.String(),
   providerEndpoint: viablePodProviders
 })
-export type LoginBody = Static<typeof loginBody>
+export type SignInBody = Static<typeof signinBody>
 
-export const loginResponse = t.Object({
+export const signinResponse = t.Object({
   token: t.String(),
   user: _selectUsers
 })
-export type LoginResponse = Static<typeof loginResponse>
+export type SignInResponse = Static<typeof signinResponse>
 
 export const signUpBody = t.Object({
   username: t.String(),

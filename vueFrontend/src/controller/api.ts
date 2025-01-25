@@ -1,4 +1,4 @@
-import type { LoginResponse, SignUpBody } from '#api/types'
+import type { SignInResponse, SignUpBody } from '#api/types'
 import ky, { HTTPError } from 'ky'
 
 export interface ApiResponse<T> {
@@ -12,7 +12,7 @@ export class ApiClient {
     this.baseUrl = import.meta.env.VITE_API_URL
   }
 
-  async signup(body: SignUpBody): Promise<ApiResponse<LoginResponse | string>> {
+  async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string>> {
     try {
       const response = await ky.post(`${this.baseUrl}/signup`, { json: body })
       return {

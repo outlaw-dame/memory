@@ -15,7 +15,7 @@ const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
 // Validation
 const errorMessage = ref('')
 
-async function login() {
+async function signup() {
   const authResponse = await authStore.signup(email.value, username.value, password.value, endpoint.value)
   // if the response is a string, it means that there was an error
   if (typeof authResponse === 'string') {
@@ -28,7 +28,7 @@ async function login() {
   <div vif="errorMessage !== ''">
     <p class="text-red-500">{{ errorMessage }}</p>
   </div>
-  <form @submit.prevent="login" class="flex flex-col gap-4">
+  <form @submit.prevent="signup" class="flex flex-col gap-4">
     <div class="flex flex-col gap-2">
       <label for="username">Username</label>
       <input type="text" id="username" v-model="username" />

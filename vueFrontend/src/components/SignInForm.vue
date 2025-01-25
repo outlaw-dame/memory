@@ -9,8 +9,8 @@ const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
 
 const authStore = useAuthStore()
 
-function login() {
-  authStore.login(username.value, password.value, endpoint.value)
+function signin() {
+  authStore.signin(username.value, password.value, endpoint.value)
 }
 </script>
 
@@ -21,7 +21,7 @@ function login() {
       <vs-input class="w-full" v-model="password" label="Password" type="password" placeholder="Password" />
     </div>
     <div class="mb-4 flex flex-col gap-4">
-      <vs-button class="p w-full" success @click="login">Sign in</vs-button>
+      <vs-button class="p w-full" success @click="signin">Sign in</vs-button>
     </div>
   </form>
 </template>
