@@ -4,7 +4,7 @@
 
 @theme {
   --text-largeHeader: 34px;
-  --text-pageHeader: 28px;
+  --text-pageTitle: 28px;
   --text-base: 17px;
   --text-h1: 28px;
   --text-h2: 22px;
@@ -15,16 +15,14 @@
   --text-caption2: 8px;
 }
 
-@font-face {
-  font-family: 'Raleway';
-  src: url('./Raleway-VariableFont_wght.ttf');
+:root {
+  --vs-primary: 99, 100, 246;
+  --vs-success: 0, 209, 8;
+  --vs-warn: 246, 178, 99;
+  --vs-danger: 246, 99, 99;
+  --vs-dark: 36, 33, 69;
 }
 
 @layer base {
   @import 'vuesax-alpha/dist/index.css';
-  @import './vusax-overrides.css';
-}
-
-* {
-  font-family: 'Raleway', sans-serif;
 }
