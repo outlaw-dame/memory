@@ -16,11 +16,11 @@ function signin() {
 
 <template>
   <form @submit.prevent class="flex flex-col justify-between">
-    <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-2">
       <vs-input class="w-full" v-model="username" label="Email or Username" placeholder="Email or Username" />
       <vs-input class="w-full" v-model="password" label="Password" type="password" placeholder="Password" />
     </div>
-    <div class="mb-4 flex flex-col gap-4">
+    <div class="mb-4 flex flex-col gap-2">
       <vs-button class="p w-full" success @click="signin">Sign in</vs-button>
     </div>
   </form>
