@@ -22,16 +22,21 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: () => import('../views/SignupView.vue')
+    },
+    {
+      path: '/welcome',
+      name: 'welcome',
+      component: () => import('../views/WelcomeView.vue')
     }
   ]
 })
 
 router.beforeEach((to, _, next) => {
   // if the user is not logged in, redirect to signin page
-  if (to.name !== 'signin' && to.name !== 'signup') {
+  if (to.name !== 'signin' && to.name !== 'signup' && to.name !== 'welcome') {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
-      next({ name: 'signin' })
+      next({ name: 'welcome' })
     }
   }
   next()

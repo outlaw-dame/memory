@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/authStore'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // External
-const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 // When the route changes, update the title
@@ -23,8 +21,12 @@ function getHeader() {
 
 <template>
   <div class="flex justify-between pt-4">
-    <div></div>
+    <div class="w-[35px] self-end">
+      <vs-button v-if="route.name === 'signin' || route.name === 'signup'" class="bg-dark-10" icon>
+        <box-icon type="solid" name="left-arrow" @click="$router.push({ name: 'welcome' })"></box-icon>
+      </vs-button>
+    </div>
     <h1 class="text-pageTitle font-[Butler]">{{ title }}</h1>
-    <div></div>
+    <div class="w-[35px] self-end"></div>
   </div>
 </template>

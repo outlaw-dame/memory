@@ -1,0 +1,53 @@
+.welcome .background > div {
+  position: fixed;
+  height: 400px;
+  width: 400px;
+  border-radius: 280px;
+  filter: blur(250px);
+  z-index: -2;
+
+  &#topLeftCircle {
+    background: rgba(246, 99, 143, 1);
+    left: -156px;
+    width: 311px;
+    height: 314px;
+    bottom: 228px;
+  }
+  &#topRightCircle {
+    background: rgba(99, 246, 246, 1);
+    width: 305px;
+    height: 332px;
+    bottom: 260px;
+    left: 222px;
+    gap: 0px;
+    opacity: 0px;
+  }
+  &#bottomLeftCircle {
+    width: 577px;
+    height: 574px;
+    bottom: -189px;
+    left: -380px;
+    gap: 0px;
+    opacity: 0px;
+    background: rgba(199, 99, 246, 1);
+  }
+  &#bottomRightCircle {
+    width: 577px;
+    height: 574px;
+    left: 139px;
+    gap: 0px;
+    opacity: 0px;
+    bottom: -117px;
+    background: rgba(99, 175, 246, 1);
+  }
+  &#bottomCircle {
+    z-index: -1;
+    width: 577px;
+    height: 574px;
+    left: -138px;
+    gap: 0px;
+    opacity: 0px;
+    bottom: -444px;
+    background: rgba(99, 100, 246, 1);
+  }
+}

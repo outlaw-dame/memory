@@ -3,6 +3,18 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
+  --color-dark: rgba(55, 55, 55, 1);
+  --color-dark-50: rgba(55, 55, 55, 0.5);
+  --color-dark-20: rgba(55, 55, 55, 0.2);
+  --color-dark-10: rgba(55, 55, 55, 0.1);
+  --color-dark-5: rgba(55, 55, 55, 0.05);
+
+  --color-white: rgba(255, 255, 255, 1);
+  --color-white-50: rgba(255, 255, 255, 0.5);
+  --color-white-20: rgba(255, 255, 255, 0.2);
+  --color-white-10: rgba(255, 255, 255, 0.1);
+  --color-white-5: rgba(255, 255, 255, 0.05);
+
   --text-largeHeader: 34px;
   --text-pageTitle: 28px;
   --text-base: 17px;
@@ -16,6 +28,11 @@
 }
 
 :root {
+  --gap-default: 10px;
+  --padding-huge: 30px;
+  --padding-large: 15px;
+  --padding-main: 20px;
+
   --vs-primary: 99, 100, 246;
   --vs-success: 0, 209, 8;
   --vs-warn: 246, 178, 99;

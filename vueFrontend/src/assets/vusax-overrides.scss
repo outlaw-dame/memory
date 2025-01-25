@@ -24,6 +24,11 @@
 
 .vs-button {
   margin: 0;
+  &.vs-button--icon > div {
+    padding: 12px;
+    height: 35px;
+    width: 35px;
+  }
 }
 
 .memoryContainer [class^='vs'] {
