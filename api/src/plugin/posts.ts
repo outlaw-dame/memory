@@ -33,9 +33,9 @@ const postsRoutes = new Elysia({ name: 'posts' })
         await ActivityPod.createPost(user, post)
         // insert the post into the database
         const newPosts = await db.insert(posts).values({
+          authorId: user.userId,
           content,
           isPublic,
-
         }).returning()
         newPost = newPosts[0]
       } catch (e) {
