@@ -16,13 +16,13 @@ const postsRoutes = new Elysia({ name: 'posts' })
     async ({ error, body, user }) => {
       const { content, isPublic } = body
 
-      const addressats = [`${user.userName}/followers`]
+      const addressats = [`${user.endpoint}/${user.userName}/followers`]
       if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
 
       const post = {
         '@context': 'https://www.w3.org/ns/activitystreams',
         type: 'Note',
-        attributedTo: user.userName,
+        attributedTo: `${user.endpoint}/${user.userName}`,
         content: content,
         to: addressats
       }
@@ -46,7 +46,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
       return newPost
     },
     {
-      body: t.Omit(_createPost, ['id', 'created_at']),
+      body: t.Omit(_createPost, ['id', 'created_at', 'authorId']),
       response: {
         200: _selectposts,
         500: t.String()
