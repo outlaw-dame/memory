@@ -1,6 +1,6 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox'
 import { t } from 'elysia'
-import { posts, users } from '@/db/schema'
+import { posts, users } from '../db/schema'
 import { type Static } from '@sinclair/typebox'
 
 // Query types

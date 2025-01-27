@@ -1,4 +1,4 @@
-import type { SelectUsers } from "@/types"
+import type { SelectUsers } from "../types"
 
 export default class User {
   userId: number

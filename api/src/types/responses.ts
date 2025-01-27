@@ -2,7 +2,7 @@ import { t, type Static } from 'elysia'
 import { _selectUsers } from './db'
 import { viablePodProviders } from './enums'
 import { createSchemaFactory } from 'drizzle-typebox'
-import { posts, postsView, users } from '@/db/schema'
+import { posts, postsView, users } from '../db/schema'
 
 const {createSelectSchema} = createSchemaFactory({typeboxInstance: t})
 
@@ -35,14 +35,14 @@ export const selectUser = createSelectSchema(users)
 // Posts
 export const selectPost = createSelectSchema(postsView)
 export type SelectPost = {
+  id: number;
+  content: string;
+  isPublic: boolean;
+  createdAt: string;
+  authorId: number;
+  author: {
     id: number;
-    content: string;
-    isPublic: boolean;
-    createdAt: Date | null;
-    authorId: number;
-    author: {
-        id: number;
-        name: string;
-        webId: string;
-    };
+    name: string;
+    webId: string;
+  };
 }

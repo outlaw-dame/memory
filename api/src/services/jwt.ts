@@ -1,4 +1,4 @@
-import type User from "@/decorater/User"
+import type User from "../decorater/User"
 import type { JWTPayloadSpec } from "@elysiajs/jwt"
 
 export interface TokenObject {

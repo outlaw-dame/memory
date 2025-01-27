@@ -30,24 +30,23 @@ services:
     # See https://docs.docker.com/network/drivers/host/
     network_mode: 'host'
 
-  activitypods-frontend:
-    image: activitypods/frontend
-    depends_on:
-      - activitypods-backend
-    restart: always
-    ports:
-      - '5000:5000'
-    expose:
-      - '5000'
-    environment:
-      REACT_APP_CONFIG_URL: 'http://localhost:3000/.well-known/config.js'
-
-  mailcatcher:
-    image: dockage/mailcatcher:0.7.1
-    ports:
-      - '1080:1080'
-      - '1025:1025'
-    restart: on-failure
+  #activitypods-frontend:
+  #  image: activitypods/frontend
+  #  depends_on:
+  #    - activitypods-backend
+  #  restart: always
+  #  ports:
+  #    - '5000:5000'
+  #  expose:
+  #    - '5000'
+  #  environment:
+  #    REACT_APP_CONFIG_URL: 'http://localhost:3000/.well-known/config.js'
+  #mailcatcher:
+  #  image: dockage/mailcatcher:0.7.1
+  #  ports:
+  #    - '1080:1080'
+  #    - '1025:1025'
+  #  restart: on-failure
 
   redis:
     image: redis
@@ -59,19 +58,19 @@ services:
       - ./data/redis:/data:z
     command: ['redis-server', '--appendonly', 'yes']
 
-  arena:
-    image: activitypods/arena
-    restart: always
-    volumes:
-      - ./docker/arena-dev.json:/opt/arena/src/server/config/index.json:z
-    depends_on:
-      - redis
-    expose:
-      - '4567'
-    ports:
-      - '4567:4567'
-    environment:
-      REDIS_HOST: 'redis'
+  #arena:
+  #  image: activitypods/arena
+  #  restart: always
+  #  volumes:
+  #    - ./docker/arena-dev.json:/opt/arena/src/server/config/index.json:z
+  #  depends_on:
+  #    - redis
+  #  expose:
+  #    - '4567'
+  #  ports:
+  #    - '4567:4567'
+  #  environment:
+  #    REDIS_HOST: 'redis'
 
   pg:
     image: postgres:17

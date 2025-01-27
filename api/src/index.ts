@@ -1,11 +1,7 @@
 import { Elysia } from 'elysia'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import {
-  _createPost,
-  _selectposts,
-  _selectUsers,
-} from './types'
-import {postsPlugin, authPlugin, setupPlugin} from '@/plugin'
+import { _createPost, _selectUsers } from './types'
+import { postsPlugin, authPlugin, setupPlugin } from './routes'
 
 export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
@@ -29,8 +25,8 @@ export const app = new Elysia()
   })
   .use(authPlugin)
   .use(postsPlugin)
-  .listen(8796)
+  .listen(process.env.API_PORT || 8796)
 
-console.info('Listening on port 8796')
+console.info(`Listening on port ${process.env.API_PORT}`)
 
 export type App = typeof app
