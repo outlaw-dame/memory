@@ -29,6 +29,10 @@ export default class User {
     this.endpoint = oldUser.endpoint
   }
 
+  getWebId() {
+    return `${this.endpoint}/${this.userName}`
+  }
+
   setUser(userId: number, userName: string, token: string, endpoint: string) {
     this.userId = userId
     this.userName = userName
@@ -41,6 +45,7 @@ export default class User {
     this.userName = userName
     this.endpoint = userIdSplit[userIdSplit.length - 2]
   }
+
   setToken(token: string) {
     this.token = token
   }
