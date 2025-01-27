@@ -22,6 +22,13 @@ export default class User {
     }
   }
 
+  loadUser(oldUser: User) {
+    this.userId = oldUser.userId
+    this.userName = oldUser.userName
+    this.token = oldUser.token
+    this.endpoint = oldUser.endpoint
+  }
+
   setUser(userId: number, userName: string, token: string, endpoint: string) {
     this.userId = userId
     this.userName = userName

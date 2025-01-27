@@ -6,6 +6,7 @@ import {
   _selectUsers,
 } from './types'
 import {postsPlugin, authPlugin, setupPlugin} from '@/plugin'
+import type { TokenObject } from './services/jwt'
 
 export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 
@@ -21,8 +22,7 @@ export const app = new Elysia()
           if (!authValue) {
             return error(401, 'You must be signed in to do that')
           } else {
-            user.setUsername(authValue.webId as string)
-            user.setToken(authValue.token as string)
+            user.loadUser(JSON.parse(authValue.user as string))
           }
         }
       }
