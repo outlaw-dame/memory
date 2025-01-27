@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm"
 import Elysia, { t } from "elysia"
 import { db } from ".."
 import setupPlugin from "./setup"
+import { getTokenObject } from "@/services/jwt"
+import User from "@/decorater/User"
 
 const authPlugin = new Elysia({name: 'auth'})
   .use(setupPlugin)
@@ -52,7 +54,8 @@ const authPlugin = new Elysia({name: 'auth'})
           return error(500, 'Error while checking user')
         }
         // generate signed token for signIn
-        const token = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
+        const tokenObject = getTokenObject(new User(dbUser[0], providerResponse.token))
+        const token = await jwt.sign(tokenObject)
 
         return {
           token,
