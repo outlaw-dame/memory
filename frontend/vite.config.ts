@@ -1,22 +1,20 @@
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
-  return {
-    plugins: [react()],
-    define: {
-      'process.env': process.env
-    },
-    server: {
-      host: true,
-      open: true,
-      port: parseInt(env.VITE_PORT)
-    },
-    preview: {
-      port: 4004 // Use same port as dev mode, to avoid redirection problems when testing build
-    },
-    base: '/'
-  };
-});
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import { resolve } from 'node:path'
+
+// https://vite.dev/config/
+export default defineConfig({
+  css: { preprocessorOptions: { scss: { api: 'modern-compiler' } } },
+  plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '#api': resolve(__dirname, '../api/src')
+    }
+  }
+})

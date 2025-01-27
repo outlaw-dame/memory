@@ -1,18 +1,21 @@
 .DEFAULT_GOAL := help
 .PHONY: docker-build docker-up build start log stop restart
 
-DOCKER_COMPOSE_DEV=docker compose -f docker-compose-dev.yml  --env-file .env --env-file .env.local
-DOCKER_COMPOSE_ZROK=docker compose -f docker-compose-zrok.yml  --env-file .env.zrok --env-file .env.zrok.local
-DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file .env.production --env-file .env.production.local
+DOCKER_COMPOSE_DEV=docker compose -f docker-compose-dev.yml  --env-file .env
+DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file ./api/.env --env-file ./frontend/.env
 
 # Dev commands
 
+# Start relevant docker containers and run frontend and backend in separate screen
 start:
 	$(DOCKER_COMPOSE_DEV) up -d
+#	screen -d -m -S mastopod-frontend cd frontend && yarn run dev
+#	screen -d -m -S mastopod-backend cd backend && yarn run dev
 
 stop:
 	$(DOCKER_COMPOSE_DEV) kill
 	$(DOCKER_COMPOSE_DEV) rm -fv
+#	screen -
 
 config:
 	$(DOCKER_COMPOSE_DEV) config
@@ -34,8 +37,18 @@ build-prod:
 
 start-prod:
 	$(DOCKER_COMPOSE_PROD) up -d
+	$(DOCKER_COMPOSE_DEV) up -d
+
+start-prod-only:
+	$(DOCKER_COMPOSE_PROD) up -d
 
 stop-prod:
+	$(DOCKER_COMPOSE_PROD) kill
+	$(DOCKER_COMPOSE_PROD) rm -fv
+	$(DOCKER_COMPOSE_DEV) kill
+	$(DOCKER_COMPOSE_DEV) rm -fv
+
+stop-prod-only:
 	$(DOCKER_COMPOSE_PROD) kill
 	$(DOCKER_COMPOSE_PROD) rm -fv
 

@@ -1,0 +1,36 @@
+// Input
+.vs-input {
+  &.is-focus {
+    .vs-input__original {
+      padding-left: 20px;
+    }
+  }
+
+  .vs-input__label {
+    left: 8px;
+    font-size: var(--text-caption);
+    font-weight: 700;
+  }
+
+  .vs-input__placeholder {
+    font-size: var(--text-subHeader);
+  }
+
+  .vs-input__original {
+    font-size: var(--text-subHeader);
+    padding: var(--padding-large);
+  }
+}
+
+.vs-button {
+  margin: 0;
+  &.vs-button--icon > div {
+    padding: 12px;
+    height: 35px;
+    width: 35px;
+  }
+}
+
+.memoryContainer [class^='vs'] {
+  font-family: 'Raleway', sans-serif !important;
+}
