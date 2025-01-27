@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { validateEmail, validatePassword, validateUsername } from '@/controller/formValidation'
 import { useAuthStore } from '@/stores/authStore'
+import MemoryButton from '@/components/MemoryButton.vue'
 import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
 
@@ -81,6 +82,8 @@ function validateForm(): void {
         </vs-input>
       </div>
     </div>
-    <vs-button @click="submitForm" class="mb-(--padding-large) w-full" :disabled="!formIsValid">Sign up</vs-button>
+    <MemoryButton @click="submitForm" class="mb-(--padding-large) w-full" :disabled="!formIsValid"
+      >Sign up</MemoryButton
+    >
   </form>
 </template>

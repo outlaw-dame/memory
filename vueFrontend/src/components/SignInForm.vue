@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/authStore'
 import type { ProviderEndpoints } from '@/types/api'
+import MemoryButton from '@/components/MemoryButton.vue'
 import { ref } from 'vue'
 
 const username = ref('')
@@ -21,7 +22,7 @@ function signin() {
       <vs-input class="w-full" v-model="password" label="Password" type="password" placeholder="Password" />
     </div>
     <div class="mb-4 flex flex-col gap-2">
-      <vs-button class="p w-full" success @click="signin">Sign in</vs-button>
+      <MemoryButton class="p w-full" success @click="signin">Sign in</MemoryButton>
     </div>
   </form>
 </template>

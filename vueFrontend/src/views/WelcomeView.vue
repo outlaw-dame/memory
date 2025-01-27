@@ -1,4 +1,6 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import MemoryButton from '@/components/MemoryButton.vue'
+</script>
 
 <template>
   <div class="welcome grid h-full grid-rows-[fit-content(100%)_auto] items-stretch">
@@ -21,12 +23,12 @@
         </p>
       </div>
       <div class="gap-(--gap-default) flex flex-col">
-        <vs-button class="text-dark w-full bg-white" success @click="$router.push({ name: 'signin' })">
+        <MemoryButton class="text-dark w-full bg-white" success @click="$router.push({ name: 'signin' })">
           Sign in
-        </vs-button>
-        <vs-button class="bg-white-20 w-full text-white" success @click="$router.push({ name: 'signup' })">
+        </MemoryButton>
+        <MemoryButton class="bg-white-20 w-full text-white" success @click="$router.push({ name: 'signup' })">
           Sign up
-        </vs-button>
+        </MemoryButton>
       </div>
       <div class="py-(--padding-large) gap-(--gap-default) mb-6 flex justify-center">
         <p>Terms of Service</p>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MemoryButton from '@/components/MemoryButton.vue'
 
 // External
 const route = useRoute()
@@ -20,11 +21,11 @@ function getHeader() {
 </script>
 
 <template>
-  <div class="flex justify-between pt-4">
+  <div class="flex justify-between">
     <div class="w-[35px] self-end">
-      <vs-button v-if="route.name === 'signin' || route.name === 'signup'" class="bg-dark-10" icon>
+      <MemoryButton v-if="route.name === 'signin' || route.name === 'signup'" class="bg-dark-10" icon>
         <box-icon type="solid" name="left-arrow" @click="$router.push({ name: 'welcome' })"></box-icon>
-      </vs-button>
+      </MemoryButton>
     </div>
     <h1 class="text-pageTitle font-[Butler]">{{ title }}</h1>
     <div class="w-[35px] self-end"></div>
