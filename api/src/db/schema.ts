@@ -5,6 +5,7 @@ export const users = table('users', {
   id: serial().primaryKey(),
   name: text().notNull(),
   webId: text('web_id').notNull().unique(),
+  email: text('email').notNull().unique(),
   providerEndpoint: text('provider_endpoint').notNull(),
 })
 

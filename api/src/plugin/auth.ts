@@ -44,6 +44,7 @@ const authPlugin = new Elysia({name: 'auth'})
               .insert(users)
               .values({
                 name: username as string,
+                email: username as string,
                 webId: providerResponse.webId,
                 providerEndpoint: providerEndpoint
               })
@@ -108,6 +109,7 @@ const authPlugin = new Elysia({name: 'auth'})
               // the user is not in the database yet, so we need to create a new user
               userResponse = await db.insert(users).values({
                 name: username as string,
+                email,
                 webId: providerResponse.webId,
                 providerEndpoint: providerEndpoint
               }).returning()
