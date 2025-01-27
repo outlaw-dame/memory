@@ -6,7 +6,6 @@ import {
   _selectUsers,
 } from './types'
 import {postsPlugin, authPlugin, setupPlugin} from '@/plugin'
-import type { TokenObject } from './services/jwt'
 
 export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
 

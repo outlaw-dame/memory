@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm'
 import Elysia, { t } from 'elysia'
-import { posts } from '../db/schema'
+import { posts, postsView, users } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
-import { _createPost, _selectposts, selectQueryObject, type SelectPosts } from '../types'
+import { _createPost, selectPost, selectQueryObject, type SelectPost } from '../types'
 import { db } from '..'
 import setupPlugin from './setup'
 
@@ -26,7 +26,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
         content: content,
         to: addressats
       }
-      let newPost: SelectPosts
+      let newPost: SelectPost
 
       try {
         // create the post in the pod
@@ -37,7 +37,18 @@ const postsRoutes = new Elysia({ name: 'posts' })
           content,
           isPublic,
         }).returning()
-        newPost = newPosts[0]
+        newPost = {
+          id: newPosts[0].id,
+          content,
+          isPublic,
+          authorId: user.userId,
+          createdAt: newPosts[0].createdAt,
+          author: {
+            id: user.userId,
+            name: user.userName,
+            webId: user.getWebId()
+          }
+        }
       } catch (e) {
         console.error('Error while creating the post: ', e)
         return error(500, 'Error while creating the post')
@@ -47,10 +58,6 @@ const postsRoutes = new Elysia({ name: 'posts' })
     },
     {
       body: t.Omit(_createPost, ['id', 'created_at', 'authorId']),
-      response: {
-        200: _selectposts,
-        500: t.String()
-      },
       detail: 'Creates a new post',
       isSignedIn: true
     }
@@ -58,7 +65,21 @@ const postsRoutes = new Elysia({ name: 'posts' })
   .get(
     '/posts',
     async ({ query: { limit, offset } }) => {
-      const postsQuery = await db.select().from(posts).where(eq(posts.isPublic, true)).limit(limit).offset(offset)
+      const postsQuery = await db.select({
+        id: postsView.id,
+        content: postsView.content,
+        isPublic: postsView.isPublic,
+        createdAt: postsView.createdAt,
+        authorId: postsView.authorId,
+        author: {
+          id: postsView.authorId,
+          name: postsView.authorName,
+          webId: postsView.authorWebId
+        }
+      })
+        .from(postsView)
+        .limit(limit)
+        .offset(offset)
       return postsQuery
     },
     {
@@ -66,7 +87,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
       isSignedIn: true,
       query: selectQueryObject,
       response: {
-        200: t.Array(_selectposts)
+        200: t.Array(t.Any())
       }
     }
   )

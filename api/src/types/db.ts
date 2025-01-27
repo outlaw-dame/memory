@@ -12,10 +12,10 @@ export const selectQueryObject = t.Object({
 // DB types
 // Posts
 export const _createPost = createInsertSchema(posts)
-export const _selectposts = createSelectSchema(posts)
-export interface SelectPosts extends Static<typeof _selectposts> {}
+export type CreatePost = Static<typeof _createPost>
 
 // Users
 export const _createUser = createInsertSchema(users)
+export type CreateUser = Static<typeof _createUser>
 export const _selectUsers = createSelectSchema(users)
 export interface SelectUsers extends Static<typeof _selectUsers> {}
