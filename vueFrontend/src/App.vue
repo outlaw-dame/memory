@@ -4,8 +4,10 @@ import ControlBar from '@/components/ControlBar.vue'
 </script>
 
 <template>
-  <div class="memoryContainer grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-6">
-    <header>
+  <div
+    class="memoryContainer bg-pastel-dark grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-[var(--padding-main)]"
+  >
+    <header class="py-[var(--padding-main)]">
       <ControlBar />
     </header>
     <main>

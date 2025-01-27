@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePostsStore } from '@/stores/postsStore'
+import MemoryButton from '@/components/MemoryButton.vue'
 import { ref } from 'vue'
 
 const postsStore = usePostsStore()
@@ -14,10 +15,19 @@ function createPost() {
 
 <template>
   <form @submit.prevent="createPost">
-    <div class="flex flex-col gap-2">
-      <label for="content">Content</label>
-      <textarea type="text" id="content" v-model="content" />
+    <div class="bg-pastel-light rounded-default flex flex-col gap-[var(--gap-default)] p-[var(--padding-main)]">
+      <textarea
+        class="bg-pastel-light text-h3 w-full resize-none appearance-none border-none"
+        type="text"
+        id="content"
+        v-model="content"
+        placeholder="Whats on your mind today?"
+      />
+      <div class="grid w-full grid-cols-[auto_auto_auto_50%]">
+        <MemoryButton class="col-[4]">
+          Post <box-icon class="pl-[var(--gap-small)] text-white" type="solid" name="send"></box-icon>
+        </MemoryButton>
+      </div>
     </div>
-    <button class="rounded-md border border-black bg-green-500 p-2 text-black" type="submit">Create Post</button>
   </form>
 </template>

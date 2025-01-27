@@ -5,7 +5,6 @@ import PostList from '@/components/PostList.vue'
 
 <template>
   <div>
-    <h1 class="text-4xl">Home</h1>
     <CreatePostForm />
     <PostList />
   </div>

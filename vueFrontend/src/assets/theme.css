@@ -15,6 +15,12 @@
   --color-white-10: rgba(255, 255, 255, 0.1);
   --color-white-5: rgba(255, 255, 255, 0.05);
 
+  --color-pastel-light: rgba(250, 247, 243, 1);
+  --color-pastel-dark: rgba(237, 234, 231, 1);
+  --color-black: rgba(0, 0, 0, 1);
+
+  --radius-default: 25px;
+
   --text-largeHeader: 34px;
   --text-pageTitle: 28px;
   --text-base: 17px;
