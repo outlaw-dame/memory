@@ -1,4 +1,5 @@
 import type { SignInResponse, SignUpBody } from '#api/types'
+import { ApiErrorsGeneral, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
 export interface ApiResponse<T> {
@@ -12,7 +13,7 @@ export class ApiClient {
     this.baseUrl = import.meta.env.VITE_API_URL
   }
 
-  async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string>> {
+  async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string | ApiErrors>> {
     try {
       const response = await ky.post(`${this.baseUrl}/signup`, { json: body })
       return {
@@ -24,24 +25,30 @@ export class ApiClient {
     }
   }
 
-  async handleError(e: unknown): Promise<ApiResponse<string>> {
+  async handleError(e: unknown): Promise<ApiResponse<ApiErrors>> {
     if (e instanceof HTTPError) {
       if (e.response.status === 500) {
-        const errorMessage = (await e.response.text()).replaceAll('.', ' ')
+        const errorMessage = await e.response.text()
+        if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
+          return {
+            data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
+            status: 500
+          }
+        }
         return {
-          data: errorMessage,
+          data: ProviderSignUpErrors.providerSignUpDefault,
           status: 500
         }
       }
       console.log('error when requesting api: ', e)
       console.log(await e.response.text())
       return {
-        data: 'something went wrong',
+        data: ApiErrorsGeneral.default,
         status: e.response.status
       }
     }
     return {
-      data: 'something went wrong',
+      data: ApiErrorsGeneral.default,
       status: 0
     }
   }

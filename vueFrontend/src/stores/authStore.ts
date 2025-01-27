@@ -1,6 +1,6 @@
 import type { SignInBody, SignUpBody, SignInResponse } from '#api/types'
 import { ApiClient } from '@/controller/api'
-import type { App, ProviderEndpoints, User } from '@/types'
+import type { ApiErrors, App, ProviderEndpoints, User } from '@/types'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -82,7 +82,12 @@ export const useAuthStore = defineStore('auth', () => {
    * @param password - password
    * @param providerEndpoint - provider
    */
-  async function signup(email: string, username: string, password: string, providerEndpoint: ProviderEndpoints) {
+  async function signup(
+    email: string,
+    username: string,
+    password: string,
+    providerEndpoint: ProviderEndpoints
+  ): Promise<void | ApiErrors> {
     const body: SignUpBody = { username, password, email, providerEndpoint }
     const { data: response, status } = await apiClient.signup(body)
     if (status === 200) {
@@ -92,7 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
       setUser(signupResponse.user)
       router.push({ name: 'home' })
     } else if (status === 500) {
-      return response as string
+      return response as ApiErrors
     }
   }
 
