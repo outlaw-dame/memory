@@ -21,7 +21,7 @@ export const app = new Elysia()
           if (!authValue) {
             return error(401, 'You must be signed in to do that')
           } else {
-            user.setUserId(authValue.webId as string)
+            user.setUsername(authValue.webId as string)
             user.setToken(authValue.token as string)
           }
         }

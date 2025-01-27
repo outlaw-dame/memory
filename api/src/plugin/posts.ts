@@ -16,13 +16,13 @@ const postsRoutes = new Elysia({ name: 'posts' })
     async ({ error, body, user }) => {
       const { content, isPublic } = body
 
-      const addressats = [`${user.userId}/followers`]
+      const addressats = [`${user.userName}/followers`]
       if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
 
       const post = {
         '@context': 'https://www.w3.org/ns/activitystreams',
         type: 'Note',
-        attributedTo: user.userId,
+        attributedTo: user.userName,
         content: content,
         to: addressats
       }
@@ -34,7 +34,8 @@ const postsRoutes = new Elysia({ name: 'posts' })
         // insert the post into the database
         const newPosts = await db.insert(posts).values({
           content,
-          isPublic
+          isPublic,
+
         }).returning()
         newPost = newPosts[0]
       } catch (e) {

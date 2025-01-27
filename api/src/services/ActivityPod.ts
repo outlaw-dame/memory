@@ -30,7 +30,7 @@ export default abstract class ActivityPod {
 
   static async createPost(user: User, post: NoteCreateRequest) {
     const response = await ky
-      .post(`${user.userId}/outbox`, {
+      .post(`${user.userName}/outbox`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         },
