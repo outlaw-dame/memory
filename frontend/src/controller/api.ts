@@ -1,4 +1,4 @@
-import type { SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
+import type { CreatePost, SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
 import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
 import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
@@ -89,7 +89,24 @@ export class ApiClient {
    */
   async fetchPosts(query: SelectQueryObject): Promise<DetailedApiResponse<SelectPost[]>> {
     try {
-      const response = await ky.get<SelectPost[]>(`${this.baseUrl}/posts`, { searchParams: query })
+      const response = await this.authRequest.get<SelectPost[]>(`${this.baseUrl}/posts`, { searchParams: query })
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Creates a new post
+   * @param {CreatePost} body - body that is sent to the api
+   * @returns {DetailedApiResponse<SelectPost>}
+   */
+  async createPost(body: CreatePost): Promise<DetailedApiResponse<SelectPost>> {
+    try {
+      const response = await this.authRequest.post<SelectPost>(`${this.baseUrl}/posts`, { json: body })
       return {
         data: await response.json(),
         status: response.status
