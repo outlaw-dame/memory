@@ -27,6 +27,7 @@ export type DetailedApiResponse<T> = ApiResponse<ApiErrors, ResponseErrors> | Ap
 export class ApiClient {
   baseUrl: string
   authStore = useAuthStore()
+  authRequest = ky.extend({ hooks: { beforeRequest: [req => req.headers.set('auth', this.getAuth())] } })
 
   /**
    * Constructor
@@ -34,6 +35,15 @@ export class ApiClient {
    */
   constructor() {
     this.baseUrl = import.meta.env.VITE_API_URL
+  }
+
+  // Util functions
+  /**
+   * Get auth
+   * @returns {string} the auth token
+   */
+  getAuth(): string {
+    return this.authStore.token || ''
   }
 
   // Auth functions
