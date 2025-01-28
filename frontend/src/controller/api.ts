@@ -1,12 +1,25 @@
-import type { SignInBody, SignInResponse, SignUpBody } from '#api/types'
+import type { SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
 import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
 import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
-export interface ApiResponse<T> {
-  data: T
-  status: number
+export enum ResponseStatus {
+  OK = 200,
+  UNAUTHORIZED = 401,
+  BAD_REQUEST = 400,
+  SERVER_ERROR = 500
 }
+
+export type ResponseErrors = ResponseStatus.UNAUTHORIZED | ResponseStatus.BAD_REQUEST | ResponseStatus.SERVER_ERROR
+
+export type ResponseSuccess = ResponseStatus.OK
+
+export interface ApiResponse<T, S extends ResponseStatus = ResponseStatus> {
+  data: T
+  status: S
+}
+
+export type DetailedApiResponse<T> = ApiResponse<ApiErrors, ResponseErrors> | ApiResponse<T, ResponseSuccess>
 
 /**
  * ApiClient is a class that handles all requests to the api and handles non 200 responses
@@ -23,16 +36,17 @@ export class ApiClient {
     this.baseUrl = import.meta.env.VITE_API_URL
   }
 
+  // Auth functions
   /**
    * Sign up a new user
    * @param {SignUpBody} body - body that is sent to the api
-   * @returns ApiResponse<SignInResponse | ApiErrors>
+   * @returns {DetailedApiResponse<SignInResponse>}
    */
-  async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string | ApiErrors>> {
+  async signup(body: SignUpBody): Promise<DetailedApiResponse<SignInResponse>> {
     try {
-      const response = await ky.post(`${this.baseUrl}/signup`, { json: body })
+      const response = await ky.post<SignInResponse>(`${this.baseUrl}/signup`, { json: body })
       return {
-        data: 'Successfully signed up',
+        data: await response.json(),
         status: response.status
       }
     } catch (e) {
@@ -43,9 +57,9 @@ export class ApiClient {
   /**
    * Sign in a user
    * @param {SignInBody} body - body that is sent to the api
-   * @returns ApiResponse<SignInResponse | ApiErrors>
+   * @returns {DetailedApiResponse<SignInResponse>}
    */
-  async signin(body: SignInBody): Promise<ApiResponse<SignInResponse | ApiErrors>> {
+  async signin(body: SignInBody): Promise<DetailedApiResponse<SignInResponse>> {
     try {
       const response = await ky.post<SignInResponse>(`${this.baseUrl}/signin`, { json: body })
       return {
