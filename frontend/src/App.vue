@@ -14,5 +14,8 @@ import BottomBar from '@/components/BottomBar.vue'
     <main>
       <RouterView />
     </main>
+    <footer>
+      <BottomBar />
+    </footer>
   </div>
 </template>
