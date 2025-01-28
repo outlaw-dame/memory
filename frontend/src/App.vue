@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import ControlBar from '@/components/ControlBar.vue'
+import TopBar from '@/components/TopBar.vue'
+import BottomBar from '@/components/BottomBar.vue'
 </script>
 
 <template>
@@ -8,10 +9,13 @@ import ControlBar from '@/components/ControlBar.vue'
     class="memoryContainer bg-pastel-dark grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-[var(--padding-main)]"
   >
     <header class="py-[var(--padding-main)]">
-      <ControlBar />
+      <TopBar />
     </header>
     <main>
       <RouterView />
     </main>
+    <footer>
+      <BottomBar />
+    </footer>
   </div>
 </template>
