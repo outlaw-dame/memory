@@ -1,7 +1,6 @@
-import type { SignInBody, SignUpBody, SignInResponse } from '#api/types'
+import type { SignUpBody, SignInResponse } from '#api/types'
 import { ApiClient } from '@/controller/api'
 import type { ApiErrors, App, ProviderEndpoints, User } from '@/types'
-import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
