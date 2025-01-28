@@ -1,4 +1,5 @@
-import type { SignInResponse, SignUpBody } from '#api/types'
+import type { SignInBody, SignInResponse, SignUpBody } from '#api/types'
+import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
 import { ApiErrorsGeneral, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
@@ -9,6 +10,8 @@ export interface ApiResponse<T> {
 
 export class ApiClient {
   baseUrl: string
+  authStore = useAuthStore()
+
   constructor() {
     this.baseUrl = import.meta.env.VITE_API_URL
   }
@@ -38,6 +41,12 @@ export class ApiClient {
         return {
           data: ProviderSignUpErrors.providerSignUpDefault,
           status: 500
+        }
+      } else if (e.response.status === 401) {
+        this.authStore.logout()
+        return {
+          data: ApiErrorsGeneral.unauthorized,
+          status: 401
         }
       }
       console.log('error when requesting api: ', e)
