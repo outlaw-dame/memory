@@ -55,14 +55,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
   /**
    * Trys to signIn the user with the given username and password and endpoint
-   * @param username - username
-   * @param password - password
-   * @param providerEndpoint - endpoint
+   * @param {string} username - username
+   * @param {string} password - password
+   * @param {ProviderEndpoints} providerEndpoint - endpoint
+   * @returns {void | ApiErrors} - when successful it redirects to home, returns ApiErrors if error
    */
-  async function signin(username: string, password: string, providerEndpoint: ProviderEndpoints) {
+  async function signin(
+    username: string,
+    password: string,
+    providerEndpoint: ProviderEndpoints
+  ): Promise<void | ApiErrors> {
     try {
-      const body: SignInBody = { username, password, providerEndpoint }
-      const { data: response, status } = await client.signin.post(body)
+      const { data: response, status } = await apiClient.signin({ username, password, providerEndpoint })
       if (status === 200) {
         const signInResponse = response as SignInResponse
 
@@ -70,6 +74,8 @@ export const useAuthStore = defineStore('auth', () => {
         setToken(signInResponse.token)
         setUser(signInResponse.user)
         router.push({ name: 'home' })
+      } else if (status === 401) {
+        return response as ApiErrors
       }
     } catch (error) {
       console.log('error when trying to signIn: ', error)

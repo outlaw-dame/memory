@@ -1,6 +1,6 @@
 import type { SignInBody, SignInResponse, SignUpBody } from '#api/types'
 import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
-import { ApiErrorsGeneral, ProviderSignUpErrors, type ApiErrors } from '@/types'
+import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
 export interface ApiResponse<T> {
@@ -28,10 +28,27 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Sign in a user
+   * @param body - SignInBody
+   * @returns ApiResponse<SignInResponse | ApiErrors>
+   */
+  async signin(body: SignInBody): Promise<ApiResponse<SignInResponse | ApiErrors>> {
+    try {
+      const response = await ky.post<SignInResponse>(`${this.baseUrl}/signin`, { json: body })
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
   async handleError(e: unknown): Promise<ApiResponse<ApiErrors>> {
     if (e instanceof HTTPError) {
+      const errorMessage = await e.response.text()
       if (e.response.status === 500) {
-        const errorMessage = await e.response.text()
         if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
           return {
             data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
@@ -47,6 +64,13 @@ export class ApiClient {
         return {
           data: ApiErrorsGeneral.unauthorized,
           status: 401
+        }
+      } else if (e.response.status === 400) {
+        if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
+          return {
+            data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
+            status: 400
+          }
         }
       }
       console.log('error when requesting api: ', e)

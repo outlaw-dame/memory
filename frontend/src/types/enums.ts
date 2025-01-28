@@ -1,7 +1,8 @@
-export type ApiErrors = ProviderSignUpErrors | ApiErrorsGeneral
+export type ApiErrors = ProviderSignUpErrors | ApiErrorsGeneral | ProviderSignInErrors
 
 export enum ApiErrorsGeneral {
-  default = 'Something went wrong'
+  default = 'Something went wrong',
+  unauthorized = 'You are not authorized to perform this action'
 }
 
 export enum ProviderSignUpErrors {
@@ -10,4 +11,8 @@ export enum ProviderSignUpErrors {
   'username.already.exists' = 'Username is already taken',
   'email.invalid' = 'Email is invalid',
   'email.already.exists' = 'Email is already taken'
+}
+
+export enum ProviderSignInErrors {
+  "Endpoint didn't respond with a 200 status code" = 'Wrong credentials'
 }
