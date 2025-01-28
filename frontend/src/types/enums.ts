@@ -16,3 +16,7 @@ export enum ProviderSignUpErrors {
 export enum ProviderSignInErrors {
   "Endpoint didn't respond with a 200 status code" = 'Wrong credentials'
 }
+
+export enum IconNames {
+  'arrowLeft3' = 'arrow-left-3'
+}

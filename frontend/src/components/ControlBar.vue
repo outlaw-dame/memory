@@ -29,7 +29,7 @@ function getHeader() {
         icon
         @click="$router.push({ name: 'welcome' })"
       >
-        <box-icon type="solid" name="left-arrow"></box-icon>
+        <vs-icon iconName="ArrowLeft2" type="bold" />
       </MemoryButton>
     </div>
     <h1 class="text-pageTitle font-[Butler]">{{ title }}</h1>
