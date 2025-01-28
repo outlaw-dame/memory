@@ -12,8 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = ref<boolean>(false)
   const token = ref<string>('')
   // API
-  const client = treaty<App>(import.meta.env.VITE_API_URL)
-  const apiClient = new ApiClient()
+  const client = new ApiClient()
   // Vue Hooks
   const router = useRouter()
 
@@ -66,7 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
     providerEndpoint: ProviderEndpoints
   ): Promise<void | ApiErrors> {
     try {
-      const { data: response, status } = await apiClient.signin({ username, password, providerEndpoint })
+      const { data: response, status } = await client.signin({ username, password, providerEndpoint })
       if (status === 200) {
         const signInResponse = response as SignInResponse
 
@@ -95,7 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     providerEndpoint: ProviderEndpoints
   ): Promise<void | ApiErrors> {
     const body: SignUpBody = { username, password, email, providerEndpoint }
-    const { data: response, status } = await apiClient.signup(body)
+    const { data: response, status } = await client.signup(body)
     if (status === 200) {
       const signupResponse = response as SignInResponse
       setLoggedIn(true)
