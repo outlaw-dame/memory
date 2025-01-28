@@ -120,7 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
     setLoggedIn(false)
     setToken('')
     setUser(undefined)
-    router.push({ name: 'signIn' })
+    router.push({ name: 'welcome' })
   }
 
   initStore()
