@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "memory-api",
   "module": "src/index.ts",
   "scripts": {
     "dev": "bun --watch src/index.ts",

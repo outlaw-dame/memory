@@ -1,6 +1,6 @@
 {
-  "name": "vuefrontend",
-  "version": "0.0.0",
+  "name": "memory-frontend",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,9 +11,15 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "sync": "cap sync",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.1",
+    "@capacitor/core": "^7.0.1",
+    "@capacitor/ios": "^7.0.1",
     "@elysiajs/eden": "^1.2.0",
     "@sinclair/typebox": "^0.34.14",
     "@tailwindcss/vite": "^4.0.0",
@@ -27,6 +33,7 @@
     "vuesax-alpha": "^0.2.0-beta.80"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.0.1",
     "@tsconfig/node22": "^22.0.0",
     "@types/jsdom": "^21.1.7",
     "@types/luxon": "^3.4.2",

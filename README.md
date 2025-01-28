@@ -44,6 +44,35 @@ Currently optimised mobile devices are:
 - run `bun install` to install the dependencies
 - run `bun dev` to start the frontend
 
+### Building the app for android
+
+#### Prerequisites
+
+- [Android Studio](https://developer.android.com/studio)
+
+#### Running the app
+
+- make sure you are in the `frontend` directory
+- run `bun install` to install the dependencies
+- run `bun sync` to sync the ionic capacitor dependencies
+- run `bun open:android` to open the android project in android studio
+  - for more information on how to run the app, check out the [Capacitor Docs](https://capacitorjs.com/docsandroid#running-with-android-studio)
+
+### Building the app for ios
+
+#### Prerequisites
+
+- [Xcode](https://developer.apple.com/xcode/)
+- [CocoaPods](https://cocoapods.org/)
+
+#### Running the app
+
+- make sure you are in the `frontend` directory
+- run `bun install` to install the dependencies
+- run `bun sync` to sync the ionic capacitor dependencies
+- run `bun open:ios` to open the ios project in xcode
+  - for information on how to run the app, check out the [Capacitor Docs](https://capacitorjs.com/docs/getting-started/ios) (this is untested at the moment)
+
 ### Commands
 
 `make start` Starts the activitypods provider using a docker-compose file. This includes the activitypods backend, the fuskie db and a postgresql database for the api. 
