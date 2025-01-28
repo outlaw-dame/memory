@@ -59,7 +59,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
       return newPost
     },
     {
-      body: t.Omit(_createPost, ['id', 'created_at', 'authorId']),
+      body: _createPost,
       detail: 'Creates a new post',
       isSignedIn: true
     }

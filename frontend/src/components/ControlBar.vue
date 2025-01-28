@@ -23,8 +23,13 @@ function getHeader() {
 <template>
   <div class="flex justify-between">
     <div class="w-[35px] self-end">
-      <MemoryButton v-if="route.name === 'signin' || route.name === 'signup'" class="bg-dark-10" icon>
-        <box-icon type="solid" name="left-arrow" @click="$router.push({ name: 'welcome' })"></box-icon>
+      <MemoryButton
+        v-if="route.name === 'signin' || route.name === 'signup'"
+        class="bg-dark-10"
+        icon
+        @click="$router.push({ name: 'welcome' })"
+      >
+        <box-icon type="solid" name="left-arrow"></box-icon>
       </MemoryButton>
     </div>
     <h1 class="text-pageTitle font-[Butler]">{{ title }}</h1>

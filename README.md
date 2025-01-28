@@ -8,6 +8,7 @@ Built on the [ActivityPods](https://activitypods.org) framework.
 
 - Clone the repo `git clone https://github.com/activitypods/memory.git`
 - go into the directory `cd memory`
+- Copy the `.env.example` file to `.env` and fill in the values (This has to be done in the `api` directory)
 - run `make start-prod` to start the app
 - open the browser at `http://localhost:4000`
 

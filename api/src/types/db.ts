@@ -8,10 +8,12 @@ export const selectQueryObject = t.Object({
   limit: t.Integer({ default: 10, maximum: 50, minimum: 1 }),
   offset: t.Integer({ default: 0, minimum: 0 })
 })
+export type SelectQueryObject = Static<typeof selectQueryObject>
 
 // DB types
 // Posts
-export const _createPost = createInsertSchema(posts)
+export const _dbCreatePost = createInsertSchema(posts)
+export const _createPost = t.Omit(_dbCreatePost, ['id', 'created_at', 'authorId'])
 export type CreatePost = Static<typeof _createPost>
 
 // Users

@@ -1,39 +1,22 @@
-import type { App, CreatePost } from '@/types'
-import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
-import { useAuthStore } from './authStore'
 import { ref } from 'vue'
 import type { SelectPost } from '#api/types'
+import { ApiClient } from '@/controller/api'
 
 export const usePostsStore = defineStore('posts', () => {
   // Default state
   const posts = ref<SelectPost[]>([])
-  // Stores
-  const authStore = useAuthStore()
   // API
-  const client = treaty<App>(import.meta.env.VITE_API_URL, {
-    onRequest() {
-      return {
-        headers: {
-          auth: authStore.token || ''
-        }
-      }
-    }
-  })
+  const client = new ApiClient()
 
   // Util Functions
   /**
    * Fetches posts from the API
    */
   async function fetchPosts() {
-    const { data: postResponse, status } = (await client.posts.get({
-      query: { limit: 10, offset: 0 }
-    })) as unknown as { data: SelectPost[]; status: number }
-    if (status === 401) {
-      authStore.logout()
-    } else if (status === 200) {
-      const newPosts = postResponse as SelectPost[]
-      posts.value = newPosts
+    const { data: postResponse, status } = await client.fetchPosts({ limit: 10, offset: 0 })
+    if (status === 200) {
+      posts.value = postResponse
     }
   }
 
@@ -42,15 +25,11 @@ export const usePostsStore = defineStore('posts', () => {
    * @param content {string} - The content of the new post
    */
   async function createPost(content: string) {
-    const requestBody: CreatePost = {
+    const postResponse = await client.createPost({
       content,
       isPublic: true
-    }
-    const postResponse = await client.posts.post(requestBody)
-    if (postResponse.status === 200) {
-      const newPost = postResponse.data as SelectPost
-      posts.value.push(newPost)
-    }
+    })
+    if (postResponse.status === 200) posts.value.push(postResponse.data)
   }
 
   console.log('posts: ', posts)
