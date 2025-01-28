@@ -25,7 +25,8 @@
 .vs-button {
   margin: 0;
   &.vs-button--icon > div {
-    padding: 12px;
+    color: var(--color-black);
+    padding: 10px;
     height: 35px;
     width: 35px;
   }

@@ -14,7 +14,7 @@ const postsStore = usePostsStore()
       :key="post.id"
     >
       <div class="user flex flex-row gap-[var(--gap-default)]">
-        <box-icon class="h-[27px] w-[27px]" type="solid" name="user-circle"></box-icon>
+        <vs-icon class="h-[27px] w-[27px]" iconName="UserSquare" />
         <div class="w-full">
           <p class="text-footnote font-bold">{{ post.author.name }}</p>
           <p class="text-caption">{{ post.author.webId }} • {{ DateTime.fromISO(post.createdAt).toRelative() }}</p>

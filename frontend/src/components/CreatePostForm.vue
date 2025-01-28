@@ -25,7 +25,7 @@ function createPost() {
       />
       <div class="grid w-full grid-cols-[auto_auto_auto_50%]">
         <MemoryButton class="col-[4]">
-          Post <box-icon class="pl-[var(--gap-small)] text-white" type="solid" name="send"></box-icon>
+          Post <vs-icon class="pl-[var(--gap-small)] text-white" iconName="Send2" />
         </MemoryButton>
       </div>
     </div>
