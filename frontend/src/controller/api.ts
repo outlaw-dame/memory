@@ -71,6 +71,24 @@ export class ApiClient {
     }
   }
 
+  // Posts functions
+  /**
+   * Fetches posts from the API
+   * @param {SelectQueryObject} query - query parameters
+   * @returns {ApiResponse<SelectPost[]>}
+   */
+  async fetchPosts(query: SelectQueryObject): Promise<DetailedApiResponse<SelectPost[]>> {
+    try {
+      const response = await ky.get<SelectPost[]>(`${this.baseUrl}/posts`, { searchParams: query })
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
   /**
    * Handles errors that are thrown by ky (all responses that are not 200 are handled here)
    * @param {unknown} e - error that is thrown

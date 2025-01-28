@@ -8,6 +8,7 @@ export const selectQueryObject = t.Object({
   limit: t.Integer({ default: 10, maximum: 50, minimum: 1 }),
   offset: t.Integer({ default: 0, minimum: 0 })
 })
+export type SelectQueryObject = Static<typeof selectQueryObject>
 
 // DB types
 // Posts

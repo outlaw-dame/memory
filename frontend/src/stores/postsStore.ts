@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 import { useAuthStore } from './authStore'
 import { ref } from 'vue'
 import type { SelectPost } from '#api/types'
+import { ApiClient } from '@/controller/api'
 
 export const usePostsStore = defineStore('posts', () => {
   // Default state
@@ -20,20 +21,16 @@ export const usePostsStore = defineStore('posts', () => {
       }
     }
   })
+  const apiClient = new ApiClient()
 
   // Util Functions
   /**
    * Fetches posts from the API
    */
   async function fetchPosts() {
-    const { data: postResponse, status } = (await client.posts.get({
-      query: { limit: 10, offset: 0 }
-    })) as unknown as { data: SelectPost[]; status: number }
-    if (status === 401) {
-      authStore.logout()
-    } else if (status === 200) {
-      const newPosts = postResponse as SelectPost[]
-      posts.value = newPosts
+    const { data: postResponse, status } = await apiClient.fetchPosts({ limit: 10, offset: 0 })
+    if (status === 200) {
+      posts.value = postResponse
     }
   }
 
