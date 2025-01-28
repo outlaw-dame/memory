@@ -12,7 +12,8 @@ export type SelectQueryObject = Static<typeof selectQueryObject>
 
 // DB types
 // Posts
-export const _createPost = createInsertSchema(posts)
+export const _dbCreatePost = createInsertSchema(posts)
+export const _createPost = t.Omit(_dbCreatePost, ['id', 'created_at', 'authorId'])
 export type CreatePost = Static<typeof _createPost>
 
 // Users
