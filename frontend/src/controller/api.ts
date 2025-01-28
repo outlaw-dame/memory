@@ -76,19 +76,19 @@ export class ApiClient {
    * @param {unknown} e - error that is thrown
    * @returns ApiResponse<ApiErrors>
    */
-  async handleError(e: unknown): Promise<ApiResponse<ApiErrors>> {
+  async handleError(e: unknown): Promise<ApiResponse<ApiErrors, ResponseErrors>> {
     if (e instanceof HTTPError) {
       const errorMessage = await e.response.text()
       if (e.response.status === 500) {
         if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
           return {
             data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
-            status: 500
+            status: ResponseStatus.BAD_REQUEST
           }
         }
         return {
           data: ProviderSignUpErrors.providerSignUpDefault,
-          status: 500
+          status: ResponseStatus.BAD_REQUEST
         }
       } else if (e.response.status === 401) {
         this.authStore.logout()
@@ -113,7 +113,7 @@ export class ApiClient {
     }
     return {
       data: ApiErrorsGeneral.default,
-      status: 0
+      status: ResponseStatus.SERVER_ERROR
     }
   }
 }
