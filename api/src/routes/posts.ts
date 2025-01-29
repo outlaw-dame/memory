@@ -5,13 +5,13 @@ import { _createPost, selectQueryObject, type SelectPost } from '../types'
 import { db } from '..'
 import setupPlugin from './setup'
 
-const postsRoutes = new Elysia({ name: 'posts' })
+const postsRoutes = new Elysia({ name: 'posts', prefix: '/posts' })
   .use(setupPlugin)
   .guard({
     isSignedIn: true
   })
   .post(
-    '/posts',
+    '/',
     async ({ error, body, user }) => {
       const { content, isPublic } = body
 
@@ -65,7 +65,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
     }
   )
   .get(
-    '/posts',
+    '/',
     async ({ query: { limit, offset } }) => {
       const postsQuery = await db
         .select({
