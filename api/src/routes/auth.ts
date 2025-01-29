@@ -45,7 +45,8 @@ const authPlugin = new Elysia({ name: 'auth' })
         let dbUser: SelectUsers[] = []
         // the endpoint returned like expected now check if the user is already in the database
         try {
-          dbUser = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
+          const webId = encodeWebId(providerResponse.webId)
+          dbUser = await db.select().from(users).where(eq(users.webId, webId))
           if (dbUser.length === 0) {
             // the user is not in the database yet, so we need to create a new user
             dbUser = await db
@@ -54,7 +55,7 @@ const authPlugin = new Elysia({ name: 'auth' })
                 name: username as string,
                 displayName: username as string,
                 email: username as string,
-                webId: encodeWebId(providerResponse.webId),
+                webId: webId,
                 providerName
               })
               .returning()
@@ -103,7 +104,8 @@ const authPlugin = new Elysia({ name: 'auth' })
         } else {
           // the provider created a new user, so we need to create a new user in the database
           try {
-            const user = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
+            const webId = encodeWebId(providerResponse.webId)
+            const user = await db.select().from(users).where(eq(users.webId, webId))
             if (user.length === 0) {
               // the user is not in the database yet, so we need to create a new user
               userResponse = await db
@@ -112,7 +114,7 @@ const authPlugin = new Elysia({ name: 'auth' })
                   name: username as string,
                   displayName: username as string,
                   email,
-                  webId: encodeWebId(providerResponse.webId),
+                  webId: webId,
                   providerName
                 })
                 .returning()
