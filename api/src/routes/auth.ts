@@ -83,16 +83,6 @@ const authPlugin = new Elysia({ name: 'auth' })
       detail: 'Logs in a with a pod provider and sets an auth cookie for the user'
     }
   )
-  .get(
-    '/logout',
-    async ({ cookie: { auth } }) => {
-      auth.remove()
-      return 'You have been logged out'
-    },
-    {
-      detail: 'Removes the auth cookie'
-    }
-  )
   .post(
     '/signup',
     async ({ body, error, headers: { auth }, jwt }) => {
