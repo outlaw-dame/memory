@@ -10,9 +10,19 @@ export const users = table('users', {
   providerName: text('provider_name').notNull() // This is done so there is no import here. It crashes the drizzle:push command
 })
 
-export const usersRelations = relations(users, ({one}) => ({
-  posts: one(posts),
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts),
+  followers: many(users)
 }))
+
+export const followers = table('followers', {
+  followerId: integer('follower_id')
+    .notNull()
+    .references(() => users.id),
+  followedId: integer('followed_id')
+    .notNull()
+    .references(() => users.id)
+})
 
 export const posts = table('posts', {
   id: serial().primaryKey(),
