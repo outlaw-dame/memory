@@ -6,7 +6,7 @@ import {
   signinResponse,
   signUpBody,
   signinBody,
-  viablePodProviders
+  podProviderEndpoint
 } from '../types'
 import { eq } from 'drizzle-orm'
 import Elysia, { t } from 'elysia'
@@ -31,7 +31,7 @@ const authPlugin = new Elysia({ name: 'auth' })
 
       // try to signIn to the endpoint
       try {
-        providerResponse = await ActivityPod.signIn(viablePodProviders[providerName], username, password)
+        providerResponse = await ActivityPod.signIn(podProviderEndpoint[providerName], username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
         return error(400, "Endpoint didn't respond with a 200 status code")
@@ -104,7 +104,7 @@ const authPlugin = new Elysia({ name: 'auth' })
 
       // try to sign up the user with the current provider
       try {
-        const providerResponse = await ActivityPod.signup(viablePodProviders[providerName], username, password, email)
+        const providerResponse = await ActivityPod.signup(podProviderEndpoint[providerName], username, password, email)
         let userResponse: SelectUsers[] = []
 
         if (providerResponse.token === undefined) {
