@@ -1,6 +1,6 @@
 import type { SignUpBody, SignInResponse, ViablePodProvider } from '#api/types'
 import { ApiClient } from '@/controller/api'
-import type { ApiErrors, App, ProviderEndpoints, User } from '@/types'
+import type { ApiErrors, User } from '@/types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'

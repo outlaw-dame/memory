@@ -1,4 +1,4 @@
-import { relations, eq, sql } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import { boolean, text, serial, pgTable as table, timestamp, integer, pgView } from 'drizzle-orm/pg-core'
 
 export const users = table('users', {
