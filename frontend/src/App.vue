@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import TopBar from '@/components/TopBar.vue'
 import BottomBar from '@/components/BottomBar.vue'
+
+const route = useRoute()
 </script>
 
 <template>
@@ -14,7 +16,7 @@ import BottomBar from '@/components/BottomBar.vue'
     <main>
       <RouterView />
     </main>
-    <footer>
+    <footer v-if="route.name !== 'login' && route.name !== 'signup' && route.name !== 'welcome'">
       <BottomBar />
     </footer>
   </div>
