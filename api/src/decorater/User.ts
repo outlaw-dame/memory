@@ -7,6 +7,8 @@ export default class User {
   token: string = ''
   provider: string = ''
   endpoint: string = ''
+  webId: string = ''
+  providerWebId: string = ''
 
   constructor(dbUser?: SelectUsers, token?: string) {
     if (dbUser) {
@@ -31,6 +33,8 @@ export default class User {
 
   private computeValues() {
     this.endpoint = podProviderEndpoint[this.provider as ViablePodProvider]
+    this.webId = encodeWebId(this)
+    this.providerWebId = this.endpoint + '/' + this.username
   }
 
   getWebId() {
