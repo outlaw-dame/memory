@@ -39,7 +39,17 @@ export function encodeWebId(user_or_providerWebId: User | string): string {
         name = providerName
       }
     })
-    if (name === '') throw new Error('The provider is not a viable pod provider')
+    if (name === '') {
+      //check if provided webId is already a memory webId
+      const split = user_or_providerWebId.split('@')
+      if (split.length === 3) {
+        // check if provider is valid
+        if (!Object.keys(podProviderEndpoint).includes(split[2]))
+          throw new Error('The provider is not a viable pod provider')
+        return user_or_providerWebId
+      }
+      throw new Error('The provider is not a viable pod provider')
+    }
     return `@${username}@${name}`
   } else {
     if (!Object.keys(podProviderEndpoint).includes(user_or_providerWebId.provider))

@@ -29,6 +29,27 @@ describe('User Util', () => {
       expect(encoded).toBe(webId)
     })
 
+    test('encodeWebId - with a memory webId', () => {
+      const webId = '@test@memory.'
+      const encoded = encodeWebId(webId)
+
+      expect(encoded).toBe(webId)
+    })
+
+    test('encodeWebId - with a memory webId that has a invalid provider', () => {
+      const invalidMemoryWebId = '@test@test.'
+      expect(() => {
+        encodeWebId(invalidMemoryWebId)
+      }).toThrow('The provider is not a viable pod provider')
+    })
+
+    test('encodeWebId - with a corrupted memory webId', () => {
+      const corruptedWebId = 'test@memory'
+      expect(() => {
+        encodeWebId(corruptedWebId)
+      }).toThrow('The provider is not a viable pod provider')
+    })
+
     test('encodeWebId - with User object', () => {
       const webId = '@test@memory.'
 
