@@ -1,5 +1,5 @@
 import ky from 'ky'
-import type { NoteCreateRequest, PodProviderSignInResponse } from '../types'
+import type { FollowRequest, NoteCreateRequest, PodProviderSignInResponse } from '../types'
 import type User from '../decorater/User'
 
 export default abstract class ActivityPod {
@@ -35,6 +35,18 @@ export default abstract class ActivityPod {
           Authorization: `Bearer ${user.token}`
         },
         json: post
+      })
+      .json()
+    return response
+  }
+
+  static async follow(body: FollowRequest, user: User) {
+    const response = await ky
+      .post(`${user.endpoint}/${user.username}/outbox`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        },
+        json: body
       })
       .json()
     return response
