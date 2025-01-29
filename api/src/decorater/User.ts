@@ -36,5 +36,12 @@ export default class User {
     return `${this.endpoint}/${this.userName}`
   }
 
+  toString() {
+    return JSON.stringify({
+      userId: this.userId,
+      userName: this.userName,
+      token: this.token,
+      provider: this.provider
+    })
   }
 }
