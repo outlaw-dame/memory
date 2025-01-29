@@ -2,16 +2,16 @@ import { t, type Static } from 'elysia'
 import { _selectUsers } from './db'
 import { viablePodProviders } from './enums'
 import { createSchemaFactory } from 'drizzle-typebox'
-import { posts, postsView, users } from '../db/schema'
+import { postsView, users } from '../db/schema'
 
-const {createSelectSchema} = createSchemaFactory({typeboxInstance: t})
+const { createSelectSchema } = createSchemaFactory({ typeboxInstance: t })
 
 // Auth
 // SignIn
 export const signinBody = t.Object({
   username: t.String(),
   password: t.String(),
-  providerEndpoint: viablePodProviders
+  providerName: viablePodProviders
 })
 export type SignInBody = Static<typeof signinBody>
 
@@ -25,7 +25,7 @@ export const signUpBody = t.Object({
   username: t.String(),
   password: t.String(),
   email: t.String(),
-  providerEndpoint: viablePodProviders
+  providerName: viablePodProviders
 })
 export type SignUpBody = Static<typeof signUpBody>
 
@@ -35,14 +35,14 @@ export const selectUser = createSelectSchema(users)
 // Posts
 export const selectPost = createSelectSchema(postsView)
 export type SelectPost = {
-  id: number;
-  content: string;
-  isPublic: boolean;
-  createdAt: string;
-  authorId: number;
+  id: number
+  content: string
+  isPublic: boolean
+  createdAt: string
+  authorId: number
   author: {
-    id: number;
-    name: string;
-    webId: string;
-  };
+    id: number
+    name: string
+    webId: string
+  }
 }
