@@ -1,4 +1,4 @@
-import type { SelectUsers } from "../types"
+import { podProviderEndpoint, ViablePodProvider, type SelectUsers } from '../types'
 
 export default class User {
   userId: number = 0
@@ -11,24 +11,29 @@ export default class User {
     if (dbUser) {
       this.userId = dbUser.id
       this.userName = dbUser.name
-      this.endpoint = dbUser.providerEndpoint
+      this.provider = dbUser.providerName
+      this.computeValues()
     }
     if (token) {
       this.token = token
     }
   }
 
-  loadUser(oldUser: User) {
-    this.userId = oldUser.userId
-    this.userName = oldUser.userName
-    this.token = oldUser.token
-    this.endpoint = oldUser.endpoint
+  loadUser(oldUser: string) {
+    const newUser = JSON.parse(oldUser)
+    this.userId = newUser.userId
+    this.userName = newUser.userName
+    this.token = newUser.token
+    this.provider = newUser.provider
+    this.computeValues()
+  }
+
+  private computeValues() {
+    this.endpoint = podProviderEndpoint[this.provider as ViablePodProvider]
   }
 
   getWebId() {
     return `${this.endpoint}/${this.userName}`
-  }
-
   }
 
   }
