@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
 import setupPlugin from './setup'
 import { decodeWebId, encodeWebId } from '@/util/user'
-import { FollowErrors, PodRequestTypes } from '@/types'
+import { FollowErrors, followersResponse, PodRequestTypes, selectQueryObject, type FollowersResponse } from '@/types'
 import { db } from '..'
 import { eq, and } from 'drizzle-orm'
 import { users, followers } from '@/db/schema'
@@ -12,6 +12,54 @@ export default new Elysia({ name: 'user', prefix: '/user' })
   .guard({
     isSignedIn: true
   })
+  .get(
+    '/following',
+    async ({ user, query: { limit, offset } }) => {
+      const followingResponse = await db
+        .select({
+          id: users.id,
+          username: users.displayName,
+          webId: users.webId
+        })
+        .from(followers)
+        .leftJoin(users, eq(followers.followedId, users.id))
+        .where(eq(followers.followerId, user.userId))
+        .limit(limit)
+        .offset(offset)
+      return followingResponse as FollowersResponse[]
+    },
+    {
+      detail: 'Returns the users the user is following',
+      response: {
+        200: t.Array(followersResponse)
+      },
+      query: selectQueryObject
+    }
+  )
+  .get(
+    '/followers',
+    async ({ user, query: { limit, offset } }) => {
+      const followersResponse = await db
+        .select({
+          id: users.id,
+          username: users.displayName,
+          webId: users.webId
+        })
+        .from(followers)
+        .leftJoin(users, eq(followers.followerId, users.id))
+        .where(eq(followers.followedId, user.userId))
+        .limit(limit)
+        .offset(offset)
+      return followersResponse as FollowersResponse[]
+    },
+    {
+      detail: 'Returns the followers of the user',
+      query: selectQueryObject,
+      response: {
+        200: t.Array(followersResponse)
+      }
+    }
+  )
   .get(
     '/:followerWebId/follow',
     async ({ user, params: { followerWebId }, error }) => {
@@ -59,7 +107,6 @@ export default new Elysia({ name: 'user', prefix: '/user' })
       }
     },
     {
-      isSignedIn: true,
       detail: 'Follows a user',
       params: t.Object({
         followerWebId: t.String()
