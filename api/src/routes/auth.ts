@@ -15,6 +15,7 @@ import setupPlugin from './setup'
 import { getTokenObject } from '../services/jwt'
 import User from '../decorater/User'
 import { HTTPError } from 'ky'
+import { encodeWebId } from '@/util/user'
 
 const authPlugin = new Elysia({ name: 'auth' })
   .use(setupPlugin)
@@ -53,7 +54,7 @@ const authPlugin = new Elysia({ name: 'auth' })
                 name: username as string,
                 displayName: username as string,
                 email: username as string,
-                webId: providerResponse.webId,
+                webId: encodeWebId(providerResponse.webId),
                 providerName
               })
               .returning()
@@ -111,7 +112,7 @@ const authPlugin = new Elysia({ name: 'auth' })
                   name: username as string,
                   displayName: username as string,
                   email,
-                  webId: providerResponse.webId,
+                  webId: encodeWebId(providerResponse.webId),
                   providerName
                 })
                 .returning()
