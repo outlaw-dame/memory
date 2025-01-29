@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/authStore'
-import type { ProviderEndpoints } from '@/types/api'
 import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from './MemoryInput.vue'
 import { ref } from 'vue'
+import { ViablePodProvider } from '#api/types'
 
 // Form
 const username = ref('')
 const password = ref('')
-const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
+const endpoint = ref<ViablePodProvider>(ViablePodProvider['memory.'])
 // Validation
 const formIsValid = ref(true)
 const formLifeCheck = ref(false)

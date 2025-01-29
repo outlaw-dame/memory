@@ -3,9 +3,9 @@ import { validateEmail, validatePassword, validateUsername } from '@/controller/
 import { useAuthStore } from '@/stores/authStore'
 import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from '@/components/MemoryInput.vue'
-import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
 import { ProviderSignUpErrors } from '@/types'
+import { ViablePodProvider } from '#api/types'
 
 // Store
 const authStore = useAuthStore()
@@ -15,7 +15,7 @@ const username = ref('test')
 const email = ref('test@test.com')
 const password = ref('testtest')
 const confirmPassword = ref('testtest')
-const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
+const endpoint = ref<ViablePodProvider>(ViablePodProvider['memory.'])
 // Validation
 const formIsValid = ref(true)
 const formLifeCheck = ref(false)
