@@ -3,6 +3,13 @@ import type { FollowRequest, NoteCreateRequest, PodProviderSignInResponse } from
 import type User from '../decorater/User'
 
 export default abstract class ActivityPod {
+  /**
+   *
+   * @param endpoint - the url of the pod provider
+   * @param username - the username of the user
+   * @param password - the password of the user
+   * @returns
+   */
   static async signIn(endpoint: string, username: string, password: string) {
     const response: PodProviderSignInResponse = await ky
       .post(`${endpoint}/auth/login`, {
@@ -15,6 +22,14 @@ export default abstract class ActivityPod {
     return response
   }
 
+  /**
+   * Singup a user with the provided credentials on the provided pod provider
+   * @param endpoint - the url of the pod provider
+   * @param username - the username of the user
+   * @param password - the password of the user
+   * @param email - the email of the user
+   * @returns the response of the signup request when ther is an error it will throw an error
+   */
   static async signup(endpoint: string, username: string, password: string, email: string) {
     const response: PodProviderSignInResponse = await ky
       .post(`${endpoint}/auth/signup`, {
@@ -28,6 +43,12 @@ export default abstract class ActivityPod {
     return response
   }
 
+  /**
+   * Create a Post (Note)
+   * @param user - the user who is creating the post
+   * @param post - the post to create
+   * @returns the response of the post request when ther is an error it will throw an error
+   */
   static async createPost(user: User, post: NoteCreateRequest) {
     const response = await ky
       .post(`${user.endpoint}/${user.username}/outbox`, {
@@ -40,6 +61,12 @@ export default abstract class ActivityPod {
     return response
   }
 
+  /**
+   * Follows a user
+   * @param {FollowRequest} body - the body of the follow request
+   * @param {User} user - the user who is following
+   * @returns returns the response of the follow request when ther is an error it will throw an error
+   */
   static async follow(body: FollowRequest, user: User) {
     const response = await ky
       .post(`${user.endpoint}/${user.username}/outbox`, {
