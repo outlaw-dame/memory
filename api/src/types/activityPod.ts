@@ -1,19 +1,26 @@
 export enum PodRequestTypes {
   Follow = 'Follow',
-  Undo = 'Undo'
+  Undo = 'Undo',
+  Note = 'Note'
 }
 
-interface PodRequest<O, T = string> {
+interface BasePodRequest<T> {
   '@context': 'https://www.w3.org/ns/activitystreams'
   type: PodRequestTypes
+  to: T
+}
+
+interface PodRequest<O, T = string> extends BasePodRequest<T> {
   actor: string
   object: O
-  to: T
 }
 
 export type FollowRequest = PodRequest<string>
 export type UnfollowRequest = PodRequest<Omit<FollowRequest, '@context' | 'to'>>
-export type NoteCreateRequest = PodRequest<string, string[]>
+export interface NoteCreateRequest extends BasePodRequest<string[]> {
+  attributedTo: string
+  content: string
+}
 
 export interface PodProviderSignInResponse {
   token: string

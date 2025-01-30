@@ -1,7 +1,7 @@
 import Elysia, { t } from 'elysia'
 import { posts, postsView } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
-import { _createPost, selectQueryObject, type SelectPost } from '../types'
+import { _createPost, PodRequestTypes, selectQueryObject, type NoteCreateRequest, type SelectPost } from '../types'
 import { db } from '..'
 import setupPlugin from './setup'
 
@@ -18,9 +18,9 @@ const postsRoutes = new Elysia({ name: 'posts', prefix: '/posts' })
       const addressats = [`${user.endpoint}/${user.username}/followers`]
       if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
 
-      const post = {
+      const post: NoteCreateRequest = {
         '@context': 'https://www.w3.org/ns/activitystreams',
-        type: 'Note',
+        type: PodRequestTypes.Note,
         attributedTo: `${user.endpoint}/${user.username}`,
         content: content,
         to: addressats
