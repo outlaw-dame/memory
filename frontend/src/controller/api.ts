@@ -1,5 +1,5 @@
 import type { CreatePost, SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
-import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/authStore'
 import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
