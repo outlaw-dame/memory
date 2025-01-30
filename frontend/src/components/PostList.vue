@@ -13,13 +13,16 @@ const postsStore = usePostsStore()
       v-for="post in postsStore.posts"
       :key="post.id"
     >
-      <div class="user flex flex-row gap-[var(--gap-default)]">
-        <vs-icon class="h-[27px] w-[27px]" iconName="UserSquare" />
-        <div class="w-full">
+      <div class="user grid grid-cols-7 gap-[var(--gap-default)]">
+        <vs-icon class="col-span-1 h-[27px] w-[27px]" iconName="UserSquare" />
+        <div class="col-span-4">
           <p class="text-footnote font-bold">{{ post.author.name }}</p>
-          <p class="text-caption">{{ post.author.webId }} • {{ DateTime.fromISO(post.createdAt).toRelative() }}</p>
+          <p class="text-caption truncate text-ellipsis">
+            <span>{{ post.author.webId }}</span> •
+            {{ DateTime.fromISO(post.createdAt).toRelative() }}
+          </p>
         </div>
-        <MemoryButton> Follow </MemoryButton>
+        <MemoryButton class="col-span-2">Follow</MemoryButton>
       </div>
       <p>{{ post.content }}</p>
     </div>
