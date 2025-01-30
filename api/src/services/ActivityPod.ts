@@ -51,7 +51,7 @@ export default abstract class ActivityPod {
    */
   static async createPost(user: User, post: NoteCreateRequest) {
     const response = await ky
-      .post(`${user.endpoint}/${user.username}/outbox`, {
+      .post(`${user.providerWebId}/outbox`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         },
@@ -69,7 +69,7 @@ export default abstract class ActivityPod {
    */
   static async follow(user: User, body: FollowRequest) {
     const response = await ky
-      .post(`${user.endpoint}/${user.username}/outbox`, {
+      .post(`${user.providerWebId}/outbox`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         },
@@ -87,7 +87,7 @@ export default abstract class ActivityPod {
    */
   static async unfollow(user: User, body: UnfollowRequest) {
     const response = await ky
-      .post(`${user.endpoint}/${user.username}/outbox`, {
+      .post(`${user.providerWebId}/outbox`, {
         headers: {
           Authorization: `Bearer ${user.token}`
         },
