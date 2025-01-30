@@ -60,7 +60,7 @@ export default new Elysia({ name: 'user', prefix: '/user' })
       }
     }
   )
-  .get(
+  .post(
     '/:followerWebId/follow',
     async ({ user, params: { followerWebId }, error }) => {
       try {
