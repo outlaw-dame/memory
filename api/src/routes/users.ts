@@ -151,8 +151,8 @@ export default new Elysia({ name: 'user', prefix: '/user' })
           .where(and(eq(followers.followerId, user.userId), eq(followers.followedId, userToUnfollow.id)))
 
         return 'Success'
-      } catch (e) {
-        console.error(e)
+      } catch (_) {
+        // this only happens when the decodeWebId throws an error
         return error(400, FollowErrors.NotValidProvider)
       }
     },
