@@ -84,16 +84,13 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         // Follow the user
         const decodedFollowedWebId = decodeWebId(followerWebId)
         const followedPodProviderWebId = decodedFollowedWebId.endpoint + '/' + decodedFollowedWebId.username
-        await ActivityPod.follow(
-          {
-            '@context': 'https://www.w3.org/ns/activitystreams',
-            type: PodRequestTypes.Follow,
-            actor: user.providerWebId,
-            object: followedPodProviderWebId,
-            to: followedPodProviderWebId
-          },
-          user
-        )
+        await ActivityPod.follow(user, {
+          '@context': 'https://www.w3.org/ns/activitystreams',
+          type: PodRequestTypes.Follow,
+          actor: user.providerWebId,
+          object: followedPodProviderWebId,
+          to: followedPodProviderWebId
+        })
         // add the relationship to the database
         await db.insert(followers).values({
           followerId: user.userId,

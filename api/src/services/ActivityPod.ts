@@ -63,11 +63,11 @@ export default abstract class ActivityPod {
 
   /**
    * Follows a user
-   * @param {FollowRequest} body - the body of the follow request
    * @param {User} user - the user who is following
+   * @param {FollowRequest} body - the body of the follow request
    * @returns returns the response of the follow request when ther is an error it will throw an error
    */
-  static async follow(body: FollowRequest, user: User) {
+  static async follow(user: User, body: FollowRequest) {
     const response = await ky
       .post(`${user.endpoint}/${user.username}/outbox`, {
         headers: {
