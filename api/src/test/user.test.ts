@@ -11,6 +11,7 @@ describe('User Util', () => {
       expect(encoded.username).toBe('test')
       expect(encoded.provider).toBe('memory.')
       expect(encoded.endpoint).toBe('http://localhost:3000')
+      expect(encoded.endpointWebId).toBe('http://localhost:3000/test')
     })
 
     test('decodeWebId - with a not viably pod provider', () => {

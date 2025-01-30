@@ -1,5 +1,5 @@
 import ky from 'ky'
-import type { FollowRequest, NoteCreateRequest, PodProviderSignInResponse } from '../types'
+import type { FollowRequest, NoteCreateRequest, PodProviderSignInResponse, UnfollowRequest } from '../types'
 import type User from '../decorater/User'
 
 export default abstract class ActivityPod {
@@ -68,6 +68,24 @@ export default abstract class ActivityPod {
    * @returns returns the response of the follow request when ther is an error it will throw an error
    */
   static async follow(user: User, body: FollowRequest) {
+    const response = await ky
+      .post(`${user.endpoint}/${user.username}/outbox`, {
+        headers: {
+          Authorization: `Bearer ${user.token}`
+        },
+        json: body
+      })
+      .json()
+    return response
+  }
+
+  /**
+   * Unfollow a User
+   * @param {User} user - the user who is unfollowing
+   * @param {UnfollowRequest} body - the body of the unfollow request
+   * @returns returns the response of the unfollow request when ther is an error it will throw an error
+   */
+  static async unfollow(user: User, body: UnfollowRequest) {
     const response = await ky
       .post(`${user.endpoint}/${user.username}/outbox`, {
         headers: {

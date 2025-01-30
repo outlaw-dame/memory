@@ -10,6 +10,7 @@ export function decodeWebId(webId: string): {
   username: string
   provider: string
   endpoint: string
+  endpointWebId: string
 } {
   const [username, provider] = webId.split('@').slice(1)
 
@@ -18,7 +19,8 @@ export function decodeWebId(webId: string): {
   return {
     username: username,
     provider: provider,
-    endpoint: podProviderEndpoint[provider as ViablePodProvider]
+    endpoint: podProviderEndpoint[provider as ViablePodProvider],
+    endpointWebId: `${podProviderEndpoint[provider as ViablePodProvider]}/${username}`
   }
 }
 

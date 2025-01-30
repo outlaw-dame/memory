@@ -114,3 +114,56 @@ export default new Elysia({ name: 'user', prefix: '/user' })
       }
     }
   )
+  .delete(
+    '/:followerWebId/unfollow',
+    async ({ params: { followerWebId }, user, error }) => {
+      try {
+        // get the id of the user to unfollow
+        const toUnfollow = await db.select().from(users).where(eq(users.webId, followerWebId)).limit(1)
+        if (toUnfollow.length === 0) return error(400, FollowErrors.NotOnMemory)
+        const userToUnfollow = toUnfollow[0]
+        const webIdToUnfollow = decodeWebId(followerWebId)
+        // check if user is following the user
+        const isFollowing = await db
+          .select()
+          .from(followers)
+          .where(and(eq(followers.followerId, user.userId), eq(followers.followedId, userToUnfollow.id)))
+          .limit(1)
+        if (isFollowing.length === 0) {
+          return error(400, FollowErrors.NotFollowing)
+        }
+
+        // send unfollow request to the pod
+        await ActivityPod.unfollow(user, {
+          '@context': 'https://www.w3.org/ns/activitystreams',
+          type: PodRequestTypes.Undo,
+          actor: user.providerWebId,
+          object: {
+            actor: user.providerWebId,
+            type: PodRequestTypes.Follow,
+            object: webIdToUnfollow.endpointWebId
+          },
+          to: userToUnfollow.webId
+        })
+        // remove the follow from the database
+        await db
+          .delete(followers)
+          .where(and(eq(followers.followerId, user.userId), eq(followers.followedId, userToUnfollow.id)))
+
+        return 'Success'
+      } catch (e) {
+        console.error(e)
+        return error(400, FollowErrors.NotValidProvider)
+      }
+    },
+    {
+      summary: 'Unfollow a user',
+      params: t.Object({
+        followerWebId: t.String()
+      }),
+      response: {
+        200: t.String(),
+        400: t.Enum(FollowErrors)
+      }
+    }
+  )
