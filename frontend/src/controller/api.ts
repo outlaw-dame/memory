@@ -46,6 +46,52 @@ export class ApiClient {
     return this.authStore.token || ''
   }
 
+  /**
+   * Handles errors that are thrown by ky (all responses that are not 200 are handled here)
+   * @param {unknown} e - error that is thrown
+   * @returns ApiResponse<ApiErrors>
+   */
+  async handleError(e: unknown): Promise<ApiResponse<ApiErrors, ResponseErrors>> {
+    if (e instanceof HTTPError) {
+      const errorMessage = await e.response.text()
+      if (e.response.status === 500) {
+        if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
+          return {
+            data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
+            status: ResponseStatus.BAD_REQUEST
+          }
+        }
+        return {
+          data: ProviderSignUpErrors.providerSignUpDefault,
+          status: ResponseStatus.BAD_REQUEST
+        }
+      } else if (e.response.status === 401) {
+        this.authStore.logout()
+        return {
+          data: ApiErrorsGeneral.unauthorized,
+          status: 401
+        }
+      } else if (e.response.status === 400) {
+        if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
+          return {
+            data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
+            status: 400
+          }
+        }
+      }
+      console.log('error when requesting api: ', e)
+      console.log(await e.response.text())
+      return {
+        data: ApiErrorsGeneral.default,
+        status: e.response.status
+      }
+    }
+    return {
+      data: ApiErrorsGeneral.default,
+      status: ResponseStatus.SERVER_ERROR
+    }
+  }
+
   // Auth functions
   /**
    * Sign up a new user
@@ -113,52 +159,6 @@ export class ApiClient {
       }
     } catch (e) {
       return await this.handleError(e)
-    }
-  }
-
-  /**
-   * Handles errors that are thrown by ky (all responses that are not 200 are handled here)
-   * @param {unknown} e - error that is thrown
-   * @returns ApiResponse<ApiErrors>
-   */
-  async handleError(e: unknown): Promise<ApiResponse<ApiErrors, ResponseErrors>> {
-    if (e instanceof HTTPError) {
-      const errorMessage = await e.response.text()
-      if (e.response.status === 500) {
-        if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
-          return {
-            data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
-            status: ResponseStatus.BAD_REQUEST
-          }
-        }
-        return {
-          data: ProviderSignUpErrors.providerSignUpDefault,
-          status: ResponseStatus.BAD_REQUEST
-        }
-      } else if (e.response.status === 401) {
-        this.authStore.logout()
-        return {
-          data: ApiErrorsGeneral.unauthorized,
-          status: 401
-        }
-      } else if (e.response.status === 400) {
-        if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
-          return {
-            data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
-            status: 400
-          }
-        }
-      }
-      console.log('error when requesting api: ', e)
-      console.log(await e.response.text())
-      return {
-        data: ApiErrorsGeneral.default,
-        status: e.response.status
-      }
-    }
-    return {
-      data: ApiErrorsGeneral.default,
-      status: ResponseStatus.SERVER_ERROR
     }
   }
 }
