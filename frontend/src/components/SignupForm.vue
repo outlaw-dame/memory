@@ -30,7 +30,6 @@ async function submitForm() {
     const authResponse = await authStore.signup(email.value, username.value, password.value, endpoint.value)
     // if the response is a string, it means that there was an error
     if (authResponse) {
-      console.log(authResponse)
       switch (authResponse) {
         case ProviderSignUpErrors['username.already.exists']:
         case ProviderSignUpErrors['username.invalid']:

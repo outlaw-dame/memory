@@ -86,8 +86,8 @@ export class ApiClient {
           }
         }
       }
-      console.log('error when requesting api: ', e)
-      console.log(await e.response.text())
+      console.error('error when requesting api: ', e)
+      console.error(await e.response.text())
       return {
         data: ApiErrorsGeneral.default,
         status: e.response.status

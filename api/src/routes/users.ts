@@ -116,7 +116,6 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         }
         return returnObject
       } catch (_) {
-        console.log(_)
         return error(400, FollowErrors.NotValidProvider)
       }
     },

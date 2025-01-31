@@ -1,4 +1,4 @@
-import type { SignUpBody, SignInResponse, ViablePodProvider, SelectUsers } from '#api/types'
+import type { SignUpBody, ViablePodProvider, SelectUsers } from '#api/types'
 import { ApiClient } from '@/controller/api'
 import type { ApiErrors } from '@/types'
 import { defineStore } from 'pinia'
@@ -66,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data: response, status } = await client.signin({ username, password, providerName })
       if (status === 200) {
-        const signInResponse = response as SignInResponse
+        const signInResponse = response
 
         setLoggedIn(true)
         setToken(signInResponse.token)
@@ -76,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
         return response as ApiErrors
       }
     } catch (error) {
-      console.log('error when trying to signIn: ', error)
+      console.error('error when trying to signIn: ', error)
     }
   }
   /**
@@ -95,7 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
     const body: SignUpBody = { username, password, email, providerName }
     const { data: response, status } = await client.signup(body)
     if (status === 200) {
-      const signupResponse = response as SignInResponse
+      const signupResponse = response
       setLoggedIn(true)
       setToken(signupResponse.token)
       setUser(signupResponse.user)
