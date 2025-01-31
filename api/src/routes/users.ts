@@ -1,7 +1,14 @@
 import { Elysia, t } from 'elysia'
 import setupPlugin from './setup'
 import { decodeWebId, encodeWebId } from '@/util/user'
-import { FollowErrors, followersResponse, PodRequestTypes, selectQueryObject, type FollowersResponse } from '@/types'
+import {
+  FollowErrors,
+  followersResponse,
+  followUnfollowResponse,
+  PodRequestTypes,
+  selectQueryObject,
+  type FollowersResponse
+} from '@/types'
 import { db } from '..'
 import { eq, and } from 'drizzle-orm'
 import { users, followers } from '@/db/schema'
@@ -109,7 +116,7 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         followerWebId: t.String()
       }),
       response: {
-        200: t.String(),
+        200: followUnfollowResponse,
         400: t.Enum(FollowErrors)
       }
     }
@@ -162,7 +169,7 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         followerWebId: t.String()
       }),
       response: {
-        200: t.String(),
+        200: followUnfollowResponse,
         400: t.Enum(FollowErrors)
       }
     }

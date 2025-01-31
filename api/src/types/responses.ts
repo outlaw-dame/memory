@@ -39,6 +39,9 @@ export const followersResponse = t.Object({
 })
 export type FollowersResponse = Static<typeof followersResponse>
 
+export const followUnfollowResponse = t.String()
+export type FollowUnfollowResponse = Static<typeof followUnfollowResponse>
+
 // Posts
 export const selectPost = createSelectSchema(postsView)
 export type SelectPost = {
