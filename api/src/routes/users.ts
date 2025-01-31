@@ -3,11 +3,11 @@ import setupPlugin from './setup'
 import { decodeWebId, encodeWebId } from '@/util/user'
 import {
   FollowErrors,
-  followersResponse,
+  followersFollowedResponse,
   followUnfollowResponse,
   PodRequestTypes,
   selectQueryObject,
-  type FollowersResponse
+  type FollowersFollowedResponse
 } from '@/types'
 import { db } from '..'
 import { eq, and } from 'drizzle-orm'
@@ -25,20 +25,22 @@ export default new Elysia({ name: 'user', prefix: '/user' })
       const followingResponse = await db
         .select({
           id: users.id,
-          username: users.displayName,
-          webId: users.webId
+          name: users.name,
+          webId: users.webId,
+          displayName: users.displayName,
+          providerName: users.providerName
         })
         .from(followers)
         .leftJoin(users, eq(followers.followedId, users.id))
         .where(eq(followers.followerId, user.userId))
         .limit(limit)
         .offset(offset)
-      return followingResponse as FollowersResponse[]
+      return followingResponse as FollowersFollowedResponse[]
     },
     {
       detail: 'Returns the users the user is following',
       response: {
-        200: t.Array(followersResponse)
+        200: t.Array(followersFollowedResponse)
       },
       query: selectQueryObject
     }
@@ -49,21 +51,23 @@ export default new Elysia({ name: 'user', prefix: '/user' })
       const followersResponse = await db
         .select({
           id: users.id,
-          username: users.displayName,
-          webId: users.webId
+          name: users.name,
+          webId: users.webId,
+          displayName: users.displayName,
+          providerName: users.providerName
         })
         .from(followers)
         .leftJoin(users, eq(followers.followerId, users.id))
         .where(eq(followers.followedId, user.userId))
         .limit(limit)
         .offset(offset)
-      return followersResponse as FollowersResponse[]
+      return followersResponse as FollowersFollowedResponse[]
     },
     {
       detail: 'Returns the followers of the user',
       query: selectQueryObject,
       response: {
-        200: t.Array(followersResponse)
+        200: t.Array(followersFollowedResponse)
       }
     }
   )

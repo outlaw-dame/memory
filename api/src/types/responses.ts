@@ -32,12 +32,8 @@ export type SignUpBody = Static<typeof signUpBody>
 // Users
 export const selectUser = createSelectSchema(users)
 
-export const followersResponse = t.Object({
-  id: t.Number(),
-  username: t.String(),
-  webId: t.String()
-})
-export type FollowersResponse = Static<typeof followersResponse>
+export const followersFollowedResponse = t.Omit(selectUser, ['email'])
+export type FollowersFollowedResponse = Static<typeof followersFollowedResponse>
 
 export const followUnfollowResponse = t.String()
 export type FollowUnfollowResponse = Static<typeof followUnfollowResponse>
