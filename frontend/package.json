@@ -12,8 +12,8 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write src/",
-    "format:check": "prettier --check src/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "sync": "cap sync",
     "open:android": "cap open android",
     "open:ios": "cap open ios"
