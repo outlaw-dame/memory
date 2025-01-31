@@ -32,8 +32,6 @@ export const usePostsStore = defineStore('posts', () => {
     if (postResponse.status === 200) posts.value.push(postResponse.data)
   }
 
-  console.log('posts: ', posts)
-  console.log('posts: ', posts.value.length)
   // Init store
   if (posts.value.length === 0) {
     fetchPosts()

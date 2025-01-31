@@ -1,14 +1,23 @@
-import { users } from "../db/schema"
-import ActivityPod from "../services/ActivityPod"
-import { type PodProviderSignInResponse, type SelectUsers, viablePodProviders, signinResponse, signUpBody, signinBody } from "../types"
-import { eq } from "drizzle-orm"
-import Elysia, { t } from "elysia"
-import { db } from ".."
-import setupPlugin from "./setup"
-import { getTokenObject } from "../services/jwt"
-import User from "../decorater/User"
+import { users } from '../db/schema'
+import ActivityPod from '../services/ActivityPod'
+import {
+  type PodProviderSignInResponse,
+  type SelectUsers,
+  signinResponse,
+  signUpBody,
+  signinBody,
+  podProviderEndpoint
+} from '../types'
+import { eq } from 'drizzle-orm'
+import Elysia, { t } from 'elysia'
+import { db } from '..'
+import setupPlugin from './setup'
+import { getTokenObject } from '../services/jwt'
+import User from '../decorater/User'
+import { HTTPError } from 'ky'
+import { encodeWebId } from '@/util/user'
 
-const authPlugin = new Elysia({name: 'auth'})
+const authPlugin = new Elysia({ name: 'auth' })
   .use(setupPlugin)
   .post(
     '/signin',
@@ -17,13 +26,13 @@ const authPlugin = new Elysia({name: 'auth'})
       if (auth && (await jwt.verify(auth))) {
         return error(204, "You're already logged in")
       }
-      const { username, password, providerEndpoint } = body
+      const { username, password, providerName } = body
 
       let providerResponse: PodProviderSignInResponse
 
       // try to signIn to the endpoint
       try {
-        providerResponse = await ActivityPod.signIn(providerEndpoint, username, password)
+        providerResponse = await ActivityPod.signIn(podProviderEndpoint[providerName], username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
         return error(400, "Endpoint didn't respond with a 200 status code")
@@ -36,16 +45,18 @@ const authPlugin = new Elysia({name: 'auth'})
         let dbUser: SelectUsers[] = []
         // the endpoint returned like expected now check if the user is already in the database
         try {
-          dbUser = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
+          const webId = encodeWebId(providerResponse.webId)
+          dbUser = await db.select().from(users).where(eq(users.webId, webId))
           if (dbUser.length === 0) {
             // the user is not in the database yet, so we need to create a new user
             dbUser = await db
               .insert(users)
               .values({
                 name: username as string,
+                displayName: username as string,
                 email: username as string,
-                webId: providerResponse.webId,
-                providerEndpoint: providerEndpoint
+                webId: webId,
+                providerName
               })
               .returning()
           }
@@ -74,16 +85,6 @@ const authPlugin = new Elysia({name: 'auth'})
       detail: 'Logs in a with a pod provider and sets an auth cookie for the user'
     }
   )
-  .get(
-    '/logout',
-    async ({ cookie: { auth } }) => {
-      auth.remove()
-      return 'You have been logged out'
-    },
-    {
-      detail: 'Removes the auth cookie'
-    }
-  )
   .post(
     '/signup',
     async ({ body, error, headers: { auth }, jwt }) => {
@@ -91,11 +92,11 @@ const authPlugin = new Elysia({name: 'auth'})
       if (auth && (await jwt.verify(auth))) {
         return "You're already logged in"
       }
-      const { username, password, email, providerEndpoint } = body
+      const { username, password, email, providerName } = body
 
       // try to sign up the user with the current provider
       try {
-        const providerResponse = await ActivityPod.signup(providerEndpoint, username, password, email)
+        const providerResponse = await ActivityPod.signup(podProviderEndpoint[providerName], username, password, email)
         let userResponse: SelectUsers[] = []
 
         if (providerResponse.token === undefined) {
@@ -103,29 +104,35 @@ const authPlugin = new Elysia({name: 'auth'})
         } else {
           // the provider created a new user, so we need to create a new user in the database
           try {
-            const user = await db.select().from(users).where(eq(users.webId, providerResponse.webId))
+            const webId = encodeWebId(providerResponse.webId)
+            const user = await db.select().from(users).where(eq(users.webId, webId))
             if (user.length === 0) {
               // the user is not in the database yet, so we need to create a new user
-              userResponse = await db.insert(users).values({
-                name: username as string,
-                email,
-                webId: providerResponse.webId,
-                providerEndpoint: providerEndpoint
-              }).returning()
+              userResponse = await db
+                .insert(users)
+                .values({
+                  name: username as string,
+                  displayName: username as string,
+                  email,
+                  webId: webId,
+                  providerName
+                })
+                .returning()
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)
             return error(500, 'Error while checking user')
           }
-          const authToken = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
+          const tokenObject = getTokenObject(new User(userResponse[0], providerResponse.token))
+          const authToken = await jwt.sign(tokenObject)
 
           return {
             token: authToken,
             user: userResponse[0]
           }
         }
-      } catch (e: any) {
-        if (e.name === 'HTTPError') {
+      } catch (e: unknown) {
+        if (e instanceof HTTPError) {
           const errorJson = await e.response.json()
           console.error('Error while signing up the user', errorJson)
           return error(errorJson.code, errorJson.message)
@@ -140,7 +147,7 @@ const authPlugin = new Elysia({name: 'auth'})
       response: {
         200: signinResponse,
         400: t.String(),
-        500: t.String(),
+        500: t.String()
       }
     }
   )

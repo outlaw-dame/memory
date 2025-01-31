@@ -1,25 +1,23 @@
-import type { CreatePost, SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
-import { useAuthStore, type useAuthStore as AuthStore } from '@/stores/authStore'
-import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
+import type {
+  CreatePost,
+  FollowersFollowedResponse,
+  SelectPost,
+  SelectQueryObject,
+  SignInBody,
+  SignInResponse,
+  SignUpBody
+} from '#api/types'
+import { FollowErrors, ProviderSignInErrors, ProviderSignUpErrors } from '#api/types'
+import { useAuthStore } from '@/stores/authStore'
+import {
+  ApiErrorsGeneral,
+  ResponseStatus,
+  type ApiErrors,
+  type ApiResponse,
+  type DetailedApiResponse,
+  type ResponseErrors
+} from '@/types'
 import ky, { HTTPError } from 'ky'
-
-export enum ResponseStatus {
-  OK = 200,
-  UNAUTHORIZED = 401,
-  BAD_REQUEST = 400,
-  SERVER_ERROR = 500
-}
-
-export type ResponseErrors = ResponseStatus.UNAUTHORIZED | ResponseStatus.BAD_REQUEST | ResponseStatus.SERVER_ERROR
-
-export type ResponseSuccess = ResponseStatus.OK
-
-export interface ApiResponse<T, S extends ResponseStatus = ResponseStatus> {
-  data: T
-  status: S
-}
-
-export type DetailedApiResponse<T> = ApiResponse<ApiErrors, ResponseErrors> | ApiResponse<T, ResponseSuccess>
 
 /**
  * ApiClient is a class that handles all requests to the api and handles non 200 responses
@@ -44,6 +42,61 @@ export class ApiClient {
    */
   getAuth(): string {
     return this.authStore.token || ''
+  }
+
+  /**
+   * Handles errors that are thrown by ky (all responses that are not 200 are handled here)
+   * @param {unknown} e - error that is thrown
+   * @returns ApiResponse<ApiErrors>
+   */
+  async handleError(e: unknown): Promise<ApiResponse<ApiErrors, ResponseErrors>> {
+    if (e instanceof HTTPError) {
+      const errorMessage = await e.response.text()
+      if (e.response.status === 500) {
+        // SignUp Errors
+        if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
+          return {
+            data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
+            status: ResponseStatus.BAD_REQUEST
+          }
+        }
+        return {
+          data: ProviderSignUpErrors.providerSignUpDefault,
+          status: ResponseStatus.BAD_REQUEST
+        }
+      } else if (e.response.status === 401) {
+        this.authStore.logout()
+        return {
+          data: ApiErrorsGeneral.unauthorized,
+          status: 401
+        }
+      } else if (e.response.status === 400) {
+        // SignIn Errors
+        if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
+          return {
+            data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
+            status: 400
+          }
+        }
+        // Follow/UnfollowErrors
+        else if (FollowErrors[errorMessage as keyof typeof FollowErrors]) {
+          return {
+            data: FollowErrors[errorMessage as keyof typeof FollowErrors],
+            status: 400
+          }
+        }
+      }
+      console.log('error when requesting api: ', e)
+      console.log(await e.response.text())
+      return {
+        data: ApiErrorsGeneral.default,
+        status: e.response.status
+      }
+    }
+    return {
+      data: ApiErrorsGeneral.default,
+      status: ResponseStatus.SERVER_ERROR
+    }
   }
 
   // Auth functions
@@ -116,49 +169,70 @@ export class ApiClient {
     }
   }
 
+  // User functions
   /**
-   * Handles errors that are thrown by ky (all responses that are not 200 are handled here)
-   * @param {unknown} e - error that is thrown
-   * @returns ApiResponse<ApiErrors>
+   * Follows a user
+   * @param {string} userId - id of the user to follow
+   * @returns {Promise<ApiResponse>} - response of the request
    */
-  async handleError(e: unknown): Promise<ApiResponse<ApiErrors, ResponseErrors>> {
-    if (e instanceof HTTPError) {
-      const errorMessage = await e.response.text()
-      if (e.response.status === 500) {
-        if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
-          return {
-            data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
-            status: ResponseStatus.BAD_REQUEST
-          }
-        }
-        return {
-          data: ProviderSignUpErrors.providerSignUpDefault,
-          status: ResponseStatus.BAD_REQUEST
-        }
-      } else if (e.response.status === 401) {
-        this.authStore.logout()
-        return {
-          data: ApiErrorsGeneral.unauthorized,
-          status: 401
-        }
-      } else if (e.response.status === 400) {
-        if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
-          return {
-            data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
-            status: 400
-          }
-        }
-      }
-      console.log('error when requesting api: ', e)
-      console.log(await e.response.text())
+  async followUser(userId: string): Promise<DetailedApiResponse<FollowersFollowedResponse>> {
+    try {
+      const response = await this.authRequest.post<FollowersFollowedResponse>(`${this.baseUrl}/user/${userId}/follow`)
       return {
-        data: ApiErrorsGeneral.default,
-        status: e.response.status
+        data: await response.json(),
+        status: response.status
       }
+    } catch (e) {
+      return await this.handleError(e)
     }
-    return {
-      data: ApiErrorsGeneral.default,
-      status: ResponseStatus.SERVER_ERROR
+  }
+
+  /**
+   * Unfollow a user
+   * @param {string} userId - id of the user to unfollow
+   * @returns {Promise<DetailedApiResponse<string>>}
+   */
+  async unfollowUser(userId: string): Promise<DetailedApiResponse<FollowersFollowedResponse>> {
+    try {
+      const response = await this.authRequest.post<FollowersFollowedResponse>(`${this.baseUrl}/user/${userId}/unfollow`)
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Fetches the users that the user is following
+   * @returns {Promise<DetailedApiResponse<FollowersFollowedResponse[]>>}
+   */
+  async fetchFollowing(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
+    try {
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/user/following`)
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Fetches the users that the user is following
+   * @returns {Promise<DetailedApiResponse<FollowersFollowedResponse[]>>}
+   */
+  async fetchFollowers(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
+    try {
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/user/followers`)
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
     }
   }
 }

@@ -12,5 +12,21 @@ const setupPlugin = new Elysia({ name: 'setup' })
   )
   .use(cors())
   .decorate('user', new User())
+  .macro({
+    isSignedIn: enabled => {
+      if (!enabled) return
+
+      return {
+        async beforeHandle({ headers: { auth }, jwt, error, user }) {
+          const authValue = await jwt.verify(auth)
+          if (!authValue) {
+            return error(401, 'You must be signed in to do that')
+          } else {
+            user.loadUser(authValue.user as string)
+          }
+        }
+      }
+    }
+  })
 
 export default setupPlugin

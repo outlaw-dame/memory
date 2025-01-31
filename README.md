@@ -37,7 +37,9 @@ Currently optimised mobile devices are:
 
 #### Running the api
 - go into the directory `cd api`
+- copy the `.env.example` file to `.env` and fill in the values
 - run `bun install` to install the dependencies
+- run `bun drizzle:push` to push the database schema to the database
 - run `bun dev` to start the api
 
 #### Running the frontend

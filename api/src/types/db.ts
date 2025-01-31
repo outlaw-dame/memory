@@ -20,4 +20,4 @@ export type CreatePost = Static<typeof _createPost>
 export const _createUser = createInsertSchema(users)
 export type CreateUser = Static<typeof _createUser>
 export const _selectUsers = createSelectSchema(users)
-export interface SelectUsers extends Static<typeof _selectUsers> {}
+export type SelectUsers = Static<typeof _selectUsers>

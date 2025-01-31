@@ -6,6 +6,7 @@ COPY /api/package.json /api/bun.lock /api/.env /app/api
 
 RUN bun install --global pm2
 RUN bun install
+RUN bun drizzle:push
 
 ADD api /app/api
 RUN bun build \

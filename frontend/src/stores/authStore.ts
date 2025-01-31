@@ -1,13 +1,13 @@
-import type { SignUpBody, SignInResponse } from '#api/types'
+import type { SignUpBody, SignInResponse, ViablePodProvider, SelectUsers } from '#api/types'
 import { ApiClient } from '@/controller/api'
-import type { ApiErrors, App, ProviderEndpoints, User } from '@/types'
+import type { ApiErrors } from '@/types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', () => {
   // Default state
-  const user = ref<User>()
+  const user = ref<SelectUsers>()
   const isLoggedIn = ref<boolean>(false)
   const token = ref<string>('')
   // API
@@ -16,7 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const router = useRouter()
 
   // Setters
-  function setUser(newValue: User | undefined) {
+  function setUser(newValue: SelectUsers | undefined) {
     user.value = newValue
     localStorage.setItem('user', JSON.stringify(newValue))
   }
@@ -55,16 +55,16 @@ export const useAuthStore = defineStore('auth', () => {
    * Trys to signIn the user with the given username and password and endpoint
    * @param {string} username - username
    * @param {string} password - password
-   * @param {ProviderEndpoints} providerEndpoint - endpoint
+   * @param {ViablePodProvider} providerName - endpoint
    * @returns {void | ApiErrors} - when successful it redirects to home, returns ApiErrors if error
    */
   async function signin(
     username: string,
     password: string,
-    providerEndpoint: ProviderEndpoints
+    providerName: ViablePodProvider
   ): Promise<void | ApiErrors> {
     try {
-      const { data: response, status } = await client.signin({ username, password, providerEndpoint })
+      const { data: response, status } = await client.signin({ username, password, providerName })
       if (status === 200) {
         const signInResponse = response as SignInResponse
 
@@ -81,18 +81,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
   /**
    * Signup a new user
-   * @param email - email
-   * @param username - username
-   * @param password - password
-   * @param providerEndpoint - provider
+   * @param {string} email - email
+   * @param {string} username - username
+   * @param {string} password - password
+   * @param {ViablePodProvider} providerName - provider
    */
   async function signup(
     email: string,
     username: string,
     password: string,
-    providerEndpoint: ProviderEndpoints
+    providerName: ViablePodProvider
   ): Promise<void | ApiErrors> {
-    const body: SignUpBody = { username, password, email, providerEndpoint }
+    const body: SignUpBody = { username, password, email, providerName }
     const { data: response, status } = await client.signup(body)
     if (status === 200) {
       const signupResponse = response as SignInResponse

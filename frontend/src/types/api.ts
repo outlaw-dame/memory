@@ -1,16 +1,19 @@
-import type { App } from '#api/index.ts'
-import type { _createUser, _selectUsers, viablePodProviders } from '#api/types'
-import type { Static } from '@sinclair/typebox'
+import type { ApiErrors } from './enums'
 
-// Enums
-export type ProviderEndpoints = Static<typeof viablePodProviders>
+export enum ResponseStatus {
+  OK = 200,
+  UNAUTHORIZED = 401,
+  BAD_REQUEST = 400,
+  SERVER_ERROR = 500
+}
 
-// Table entries
-export type User = Static<typeof _selectUsers>
+export type ResponseErrors = ResponseStatus.UNAUTHORIZED | ResponseStatus.BAD_REQUEST | ResponseStatus.SERVER_ERROR
 
-// Create Objects
-export type CreateUser = Static<typeof _createUser>
+export type ResponseSuccess = ResponseStatus.OK
 
-// Route Responses
+export interface ApiResponse<T, S extends ResponseStatus = ResponseStatus> {
+  data: T
+  status: S
+}
 
-export type { App }
+export type DetailedApiResponse<T> = ApiResponse<ApiErrors, ResponseErrors> | ApiResponse<T, ResponseSuccess>

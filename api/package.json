@@ -8,7 +8,11 @@
     "test": "bun test",
     "drizzle:push": "drizzle-kit push",
     "drizzle:migrate": "drizzle-kit migrate",
-    "drizzle:generate": "drizzle-kit generate"
+    "drizzle:generate": "drizzle-kit generate",
+    "lint": "bunx eslint .",
+    "lint:fix": "bunx eslint --fix .",
+    "format": "bunx prettier . --write",
+    "format:check": "prettier --check ."
   },
   "type": "module",
   "devDependencies": {

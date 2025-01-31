@@ -1,27 +1,27 @@
 import Elysia, { t } from 'elysia'
 import { posts, postsView } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
-import { _createPost, selectQueryObject, type SelectPost } from '../types'
+import { _createPost, PodRequestTypes, selectQueryObject, type NoteCreateRequest, type SelectPost } from '../types'
 import { db } from '..'
 import setupPlugin from './setup'
 
-const postsRoutes = new Elysia({ name: 'posts' })
+const postsRoutes = new Elysia({ name: 'posts', prefix: '/posts' })
   .use(setupPlugin)
   .guard({
     isSignedIn: true
   })
   .post(
-    '/posts',
+    '/',
     async ({ error, body, user }) => {
       const { content, isPublic } = body
 
-      const addressats = [`${user.endpoint}/${user.userName}/followers`]
+      const addressats = [`${user.endpoint}/${user.username}/followers`]
       if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
 
-      const post = {
+      const post: NoteCreateRequest = {
         '@context': 'https://www.w3.org/ns/activitystreams',
-        type: 'Note',
-        attributedTo: `${user.endpoint}/${user.userName}`,
+        type: PodRequestTypes.Note,
+        attributedTo: `${user.endpoint}/${user.username}`,
         content: content,
         to: addressats
       }
@@ -47,7 +47,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           createdAt: newPosts[0].createdAt?.toString() || '',
           author: {
             id: user.userId,
-            name: user.userName,
+            name: user.username,
             webId: user.getWebId()
           }
         }
@@ -65,7 +65,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
     }
   )
   .get(
-    '/posts',
+    '/',
     async ({ query: { limit, offset } }) => {
       const postsQuery = await db
         .select({
