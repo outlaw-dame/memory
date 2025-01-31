@@ -99,6 +99,11 @@ const authPlugin = new Elysia({ name: 'auth' })
       if ((profanity.exists(username), profanity.exists(email))) {
         return error(400, ApiSignUpErrors.UsernameOrEmailContainsProfanity)
       }
+      // check if username contains unwanted characters
+      const unwantedChars = new RegExp(/[@#/\\$%^&*!?<>+~=]/g)
+      if (unwantedChars.test(username)) {
+        return error(400, ApiSignUpErrors.UsernameInvalid)
+      }
       // try to sign up the user with the current provider
       try {
         const providerResponse = await ActivityPod.signup(podProviderEndpoint[providerName], username, password, email)
