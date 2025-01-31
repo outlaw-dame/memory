@@ -1,3 +1,9 @@
+import { Profanity } from '@2toad/profanity'
+
+const profanity = new Profanity({
+  languages: ['en', 'de', 'fr', 'ja', 'pt', 'es', 'ru', 'ar', 'ko']
+})
+
 export function validateUsername(username: string, required = true): string | undefined {
   if (required && username === '') {
     return 'Username is Required'
@@ -7,6 +13,13 @@ export function validateUsername(username: string, required = true): string | un
   }
   if (username.includes(' ')) {
     return 'Username cannot contain spaces'
+  }
+  if (profanity.exists(username)) {
+    return 'Username contains profanity'
+  }
+  const unwantedChars = new RegExp(/[@#/\\$%^&*!?<>+~=]/g)
+  if (unwantedChars.test(username)) {
+    return 'Username cannot contain the following characters: @ # \\ $ % ^ & * ! ? < > + ~ ='
   }
   // TODO: check if username includes bad words
   return undefined
@@ -27,6 +40,9 @@ export function validateEmail(email: string, required = true): string | undefine
   }
   if (emailRegex.exec(email) === null) {
     return 'Invalid Email'
+  }
+  if (profanity.exists(email)) {
+    return 'Email contains profanity'
   }
   return undefined
 }
