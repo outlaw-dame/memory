@@ -6,6 +6,13 @@ export enum FollowErrors {
   IsSelf = 'Cannot follow yourself.'
 }
 
+export enum ApiSingUpErrors {
+  UsernameOrEmailContainsProfanity = 'Username or email contains profanity',
+  ProviderToken = 'Provider did not return a token',
+  DBError = 'Error while checking user',
+  ProviderDefault = 'Error with the provider'
+}
+
 // Errors that are thrown by the pod provider
 export enum ProviderSignUpErrors {
   providerSignUpDefault = 'Error while signing up the user',

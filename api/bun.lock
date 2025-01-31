@@ -4,6 +4,7 @@
     "": {
       "name": "api",
       "dependencies": {
+        "@2toad/profanity": "^3.1.1",
         "@elysiajs/cors": "^1.2.0",
         "@elysiajs/jwt": "^1.2.0",
         "@sinclair/typebox": "^0.34.14",
@@ -31,6 +32,8 @@
     },
   },
   "packages": {
+    "@2toad/profanity": ["@2toad/profanity@3.1.1", "", {}, "sha512-07ny4pCSa4gDrcJ4vZ/WWmiM90+8kv/clXfnDvThf9IJq0GldpjRVdzHCfMwGDs2Y/8eClmTGzKb5tEfUWy/uA=="],
+
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, ""],
 
     "@elysiajs/cors": ["@elysiajs/cors@1.2.0", "", { "peerDependencies": { "elysia": ">= 1.2.0" } }, ""],

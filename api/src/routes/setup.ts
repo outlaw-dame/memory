@@ -1,3 +1,4 @@
+import { Profanity } from '@2toad/profanity'
 import User from '../decorater/User'
 import cors from '@elysiajs/cors'
 import jwt from '@elysiajs/jwt'
@@ -12,6 +13,12 @@ const setupPlugin = new Elysia({ name: 'setup' })
   )
   .use(cors())
   .decorate('user', new User())
+  .decorate(
+    'profanity',
+    new Profanity({
+      languages: ['en', 'de', 'fr', 'ja', 'pt', 'es', 'ru', 'ar', 'ko']
+    })
+  )
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return
