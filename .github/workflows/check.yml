@@ -20,7 +20,7 @@ jobs:
       # run eslint and prettier on the frontend and api
       - run: bun install && bun lint && bun format:check
         working-directory: ./frontend
-      - run: bun install && bunx format:check
+      - run: bun install && bun format:check
         working-directory: ./api
   testing:
     name: testing
