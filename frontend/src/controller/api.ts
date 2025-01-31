@@ -1,6 +1,15 @@
-import type { CreatePost, SelectPost, SelectQueryObject, SignInBody, SignInResponse, SignUpBody } from '#api/types'
+import type {
+  CreatePost,
+  FollowUnfollowResponse,
+  SelectPost,
+  SelectQueryObject,
+  SignInBody,
+  SignInResponse,
+  SignUpBody
+} from '#api/types'
+import { FollowErrors, ProviderSignInErrors, ProviderSignUpErrors } from '#api/types'
 import { useAuthStore } from '@/stores/authStore'
-import { ApiErrorsGeneral, ProviderSignInErrors, ProviderSignUpErrors, type ApiErrors } from '@/types'
+import { ApiErrorsGeneral, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
 export enum ResponseStatus {

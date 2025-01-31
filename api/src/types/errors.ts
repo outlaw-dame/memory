@@ -5,3 +5,16 @@ export enum FollowErrors {
   AlreadyFollowing = 'User already follows the user.',
   IsSelf = 'Cannot follow yourself.'
 }
+
+// Errors that are thrown by the pod provider
+export enum ProviderSignUpErrors {
+  providerSignUpDefault = 'Error while signing up the user',
+  'username.invalid' = 'Username is invalid',
+  'username.already.exists' = 'Username is already taken',
+  'email.invalid' = 'Email is invalid',
+  'email.already.exists' = 'Email is already taken'
+}
+
+export enum ProviderSignInErrors {
+  "Endpoint didn't respond with a 200 status code" = 'Wrong credentials'
+}
