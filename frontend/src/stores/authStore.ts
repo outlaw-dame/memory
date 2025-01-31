@@ -1,13 +1,13 @@
-import type { SignUpBody, SignInResponse, ViablePodProvider } from '#api/types'
+import type { SignUpBody, SignInResponse, ViablePodProvider, SelectUsers } from '#api/types'
 import { ApiClient } from '@/controller/api'
-import type { ApiErrors, User } from '@/types'
+import type { ApiErrors } from '@/types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 export const useAuthStore = defineStore('auth', () => {
   // Default state
-  const user = ref<User>()
+  const user = ref<SelectUsers>()
   const isLoggedIn = ref<boolean>(false)
   const token = ref<string>('')
   // API
@@ -16,7 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const router = useRouter()
 
   // Setters
-  function setUser(newValue: User | undefined) {
+  function setUser(newValue: SelectUsers | undefined) {
     user.value = newValue
     localStorage.setItem('user', JSON.stringify(newValue))
   }
