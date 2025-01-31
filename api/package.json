@@ -8,7 +8,10 @@
     "test": "bun test",
     "drizzle:push": "drizzle-kit push",
     "drizzle:migrate": "drizzle-kit migrate",
-    "drizzle:generate": "drizzle-kit generate"
+    "drizzle:generate": "drizzle-kit generate",
+    "lint": "bunx eslint src",
+    "lint:fix": "bunx eslint --fix src",
+    "format": "bunx prettier src --write"
   },
   "type": "module",
   "devDependencies": {
