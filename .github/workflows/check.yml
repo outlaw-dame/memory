@@ -18,9 +18,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       # run eslint and prettier on the frontend and api
-      - run: bun install && bun lint && bun format --check
+      - run: bun install && bun lint && bun format:check
         working-directory: ./frontend
-      - run: bun install && bunx eslint .
+      - run: bun install && bunx format:check
         working-directory: ./api
   testing:
     name: testing
