@@ -1,7 +1,6 @@
 import type {
   CreatePost,
   FollowersFollowedResponse,
-  FollowUnfollowResponse,
   SelectPost,
   SelectQueryObject,
   SignInBody,
@@ -176,11 +175,11 @@ export class ApiClient {
    * @param {string} userId - id of the user to follow
    * @returns {Promise<ApiResponse>} - response of the request
    */
-  async followUser(userId: string): Promise<DetailedApiResponse<string>> {
+  async followUser(userId: string): Promise<DetailedApiResponse<FollowersFollowedResponse>> {
     try {
-      const response = await this.authRequest.post<FollowUnfollowResponse>(`${this.baseUrl}/users/${userId}/follow`)
+      const response = await this.authRequest.post<FollowersFollowedResponse>(`${this.baseUrl}/user/${userId}/follow`)
       return {
-        data: await response.text(),
+        data: await response.json(),
         status: response.status
       }
     } catch (e) {
@@ -193,11 +192,11 @@ export class ApiClient {
    * @param {string} userId - id of the user to unfollow
    * @returns {Promise<DetailedApiResponse<string>>}
    */
-  async unfollowUser(userId: string): Promise<DetailedApiResponse<string>> {
+  async unfollowUser(userId: string): Promise<DetailedApiResponse<FollowersFollowedResponse>> {
     try {
-      const response = await this.authRequest.post<string>(`${this.baseUrl}/users/${userId}/unfollow`)
+      const response = await this.authRequest.post<FollowersFollowedResponse>(`${this.baseUrl}/user/${userId}/unfollow`)
       return {
-        data: await response.text(),
+        data: await response.json(),
         status: response.status
       }
     } catch (e) {
@@ -211,7 +210,7 @@ export class ApiClient {
    */
   async fetchFollowing(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
     try {
-      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/users/following`)
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/user/following`)
       return {
         data: await response.json(),
         status: response.status
@@ -227,7 +226,7 @@ export class ApiClient {
    */
   async fetchFollowers(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
     try {
-      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/users/followers`)
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/user/followers`)
       return {
         data: await response.json(),
         status: response.status
