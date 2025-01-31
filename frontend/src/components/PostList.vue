@@ -2,8 +2,10 @@
 import { usePostsStore } from '@/stores/postsStore'
 import { DateTime } from 'luxon'
 import MemoryButton from './MemoryButton.vue'
+import { useUserStore } from '@/stores/userStore'
 
 const postsStore = usePostsStore()
+const userStore = useUserStore()
 </script>
 
 <template>
@@ -22,7 +24,9 @@ const postsStore = usePostsStore()
             {{ DateTime.fromISO(post.createdAt).toRelative() }}
           </p>
         </div>
-        <MemoryButton class="col-span-2">Follow</MemoryButton>
+        <div class="col-span-2" v-if="userStore.canFollow(post.author.webId)">
+          <MemoryButton @click="userStore.followUser(post.author.webId)">Follow</MemoryButton>
+        </div>
       </div>
       <p>{{ post.content }}</p>
     </div>

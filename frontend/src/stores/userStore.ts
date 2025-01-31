@@ -3,12 +3,15 @@ import { ApiClient } from '@/controller/api'
 import { ResponseStatus } from '@/types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useAuthStore } from './authStore'
+import { VsNotification } from 'vuesax-alpha'
 
 /**
  * Store handeling all things user related
  */
-export const useUserStore = defineStore('user', async () => {
+export const useUserStore = defineStore('user', () => {
   const client = new ApiClient()
+  const authStore = useAuthStore()
 
   // store vars
   const following = ref<FollowersFollowedResponse[]>([])
@@ -19,7 +22,22 @@ export const useUserStore = defineStore('user', async () => {
    * @param userWebId - webId of the user to follow
    */
   async function followUser(userWebId: string) {
-    await client.followUser(userWebId)
+    const response = await client.followUser(userWebId)
+    if (response.status === ResponseStatus.OK) {
+      following.value.push(response.data)
+      VsNotification({
+        title: `You are now following ${response.data.name}`,
+        content: '',
+        color: 'success'
+      })
+    } else {
+      console.error('Error when following user: ', response.data)
+      VsNotification({
+        title: 'Error while following user',
+        content: response.data,
+        color: 'danger'
+      })
+    }
   }
 
   async function unfollowUser(userWebId: string) {
@@ -53,9 +71,21 @@ export const useUserStore = defineStore('user', async () => {
     }
   }
 
+  /**
+   * Check if the current user can follow the user
+   * @param {string} userWebId - webId of the user to check
+   * @returns {boolean} - true if the user can follow the user, false if not
+   */
+  function canFollow(userWebId: string): boolean {
+    // check if the user is the current user
+    if (userWebId === authStore.user?.webId) return false
+    // check if the user is already following the user
+    return following.value.find(user => user.webId === userWebId) === undefined
+  }
+
   // Init
-  await getFollowing()
-  await getFollowers()
+  getFollowing()
+  getFollowers()
 
   return {
     following,
@@ -63,6 +93,7 @@ export const useUserStore = defineStore('user', async () => {
     getFollowing,
     getFollowers,
     followUser,
+    canFollow,
     unfollowUser
   }
 })
