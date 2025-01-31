@@ -30,6 +30,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@2toad/profanity": "^3.1.1",
     "@elysiajs/cors": "^1.2.0",
     "@elysiajs/jwt": "^1.2.0",
     "@sinclair/typebox": "^0.34.14",
@@ -38,6 +39,7 @@
     "elysia": "^1.2.10",
     "ky": "^1.7.4",
     "luxon": "^3.5.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "the-big-username-blacklist": "^1.5.2"
   }
 }

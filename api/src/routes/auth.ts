@@ -6,7 +6,8 @@ import {
   signinResponse,
   signUpBody,
   signinBody,
-  podProviderEndpoint
+  podProviderEndpoint,
+  ApiSignUpErrors
 } from '../types'
 import { eq } from 'drizzle-orm'
 import Elysia, { t } from 'elysia'
@@ -87,20 +88,29 @@ const authPlugin = new Elysia({ name: 'auth' })
   )
   .post(
     '/signup',
-    async ({ body, error, headers: { auth }, jwt }) => {
+    async ({ body, error, headers: { auth }, jwt, profanity }) => {
       // check if user is already logged in
       if (auth && (await jwt.verify(auth))) {
         return "You're already logged in"
       }
       const { username, password, email, providerName } = body
 
+      // check if username or email is profane
+      if ((profanity.exists(username), profanity.exists(email))) {
+        return error(400, ApiSignUpErrors.UsernameOrEmailContainsProfanity)
+      }
+      // check if username contains unwanted characters
+      const unwantedChars = new RegExp(/[@#/\\$%^&*!?<>+~=]/g)
+      if (unwantedChars.test(username)) {
+        return error(400, ApiSignUpErrors.UsernameInvalid)
+      }
       // try to sign up the user with the current provider
       try {
         const providerResponse = await ActivityPod.signup(podProviderEndpoint[providerName], username, password, email)
         let userResponse: SelectUsers[] = []
 
         if (providerResponse.token === undefined) {
-          return error(400, 'Provider did not return a token')
+          return error(400, ApiSignUpErrors.ProviderToken)
         } else {
           // the provider created a new user, so we need to create a new user in the database
           try {
@@ -121,7 +131,7 @@ const authPlugin = new Elysia({ name: 'auth' })
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)
-            return error(500, 'Error while checking user')
+            return error(500, ApiSignUpErrors.DBError)
           }
           const tokenObject = getTokenObject(new User(userResponse[0], providerResponse.token))
           const authToken = await jwt.sign(tokenObject)
@@ -138,7 +148,7 @@ const authPlugin = new Elysia({ name: 'auth' })
           return error(errorJson.code, errorJson.message)
         }
         console.error('Error while signing up the user', e)
-        return error(400, 'Error with the provider')
+        return error(400, ApiSignUpErrors.ProviderDefault)
       }
     },
     {
@@ -146,7 +156,7 @@ const authPlugin = new Elysia({ name: 'auth' })
       body: signUpBody,
       response: {
         200: signinResponse,
-        400: t.String(),
+        400: t.Enum(ApiSignUpErrors),
         500: t.String()
       }
     }

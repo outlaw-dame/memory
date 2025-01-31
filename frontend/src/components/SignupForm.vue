@@ -4,8 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from '@/components/MemoryInput.vue'
 import { ref } from 'vue'
-import { ProviderSignUpErrors } from '@/types'
-import { ViablePodProvider } from '#api/types'
+import { ViablePodProvider, ProviderSignUpErrors, ApiSignUpErrors } from '#api/types'
 
 // Store
 const authStore = useAuthStore()
@@ -31,7 +30,6 @@ async function submitForm() {
     const authResponse = await authStore.signup(email.value, username.value, password.value, endpoint.value)
     // if the response is a string, it means that there was an error
     if (authResponse) {
-      console.log(authResponse)
       switch (authResponse) {
         case ProviderSignUpErrors['username.already.exists']:
         case ProviderSignUpErrors['username.invalid']:
@@ -40,6 +38,10 @@ async function submitForm() {
         case ProviderSignUpErrors['email.already.exists']:
         case ProviderSignUpErrors['email.invalid']:
           errorMessages.value.email = authResponse
+          break
+        case ApiSignUpErrors.UsernameOrEmailContainsProfanity:
+        case ApiSignUpErrors.UsernameInvalid:
+          errorMessages.value.username = authResponse
           break
         default:
           errorMessages.value.default = authResponse

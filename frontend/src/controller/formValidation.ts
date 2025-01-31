@@ -1,3 +1,7 @@
+import { getProfanity } from '#api/util'
+
+const profanity = getProfanity()
+
 export function validateUsername(username: string, required = true): string | undefined {
   if (required && username === '') {
     return 'Username is Required'
@@ -8,7 +12,13 @@ export function validateUsername(username: string, required = true): string | un
   if (username.includes(' ')) {
     return 'Username cannot contain spaces'
   }
-  // TODO: check if username includes bad words
+  if (profanity.exists(username)) {
+    return 'Username is blacklisted'
+  }
+  const unwantedChars = new RegExp(/[@#/\\$%^&*!?<>+~=]/g)
+  if (unwantedChars.test(username)) {
+    return 'Username cannot contain the following characters: @ # \\ $ % ^ & * ! ? < > + ~ ='
+  }
   return undefined
 }
 
@@ -25,7 +35,7 @@ export function validateEmail(email: string, required = true): string | undefine
   if (required && email === '') {
     return 'Email is required'
   }
-  if (emailRegex.exec(email) === null) {
+  if (!emailRegex.test(email)) {
     return 'Invalid Email'
   }
   return undefined
