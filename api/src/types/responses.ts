@@ -35,9 +35,6 @@ export const selectUser = createSelectSchema(users)
 export const followersFollowedResponse = t.Omit(selectUser, ['email'])
 export type FollowersFollowedResponse = Static<typeof followersFollowedResponse>
 
-export const followUnfollowResponse = t.String()
-export type FollowUnfollowResponse = Static<typeof followUnfollowResponse>
-
 // Posts
 export const selectPost = createSelectSchema(postsView)
 export type SelectPost = {

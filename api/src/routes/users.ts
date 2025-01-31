@@ -4,7 +4,6 @@ import { decodeWebId, encodeWebId } from '@/util/user'
 import {
   FollowErrors,
   followersFollowedResponse,
-  followUnfollowResponse,
   PodRequestTypes,
   selectQueryObject,
   type FollowersFollowedResponse
@@ -108,7 +107,14 @@ export default new Elysia({ name: 'user', prefix: '/user' })
           followedId: userToFollow.id
         })
 
-        return 'Success'
+        const returnObject: FollowersFollowedResponse = {
+          id: userToFollow.id,
+          name: userToFollow.name,
+          webId: userToFollow.webId,
+          displayName: userToFollow.displayName,
+          providerName: userToFollow.providerName
+        }
+        return returnObject
       } catch (_) {
         console.log(_)
         return error(400, FollowErrors.NotValidProvider)
@@ -120,7 +126,7 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         followerWebId: t.String()
       }),
       response: {
-        200: followUnfollowResponse,
+        200: followersFollowedResponse,
         400: t.Enum(FollowErrors)
       }
     }
@@ -161,7 +167,14 @@ export default new Elysia({ name: 'user', prefix: '/user' })
           .delete(followers)
           .where(and(eq(followers.followerId, user.userId), eq(followers.followedId, userToUnfollow.id)))
 
-        return 'Success'
+        const returnObject: FollowersFollowedResponse = {
+          id: userToUnfollow.id,
+          name: userToUnfollow.name,
+          webId: userToUnfollow.webId,
+          displayName: userToUnfollow.displayName,
+          providerName: userToUnfollow.providerName
+        }
+        return returnObject
       } catch (_) {
         // this only happens when the decodeWebId throws an error
         return error(400, FollowErrors.NotValidProvider)
@@ -173,7 +186,7 @@ export default new Elysia({ name: 'user', prefix: '/user' })
         followerWebId: t.String()
       }),
       response: {
-        200: followUnfollowResponse,
+        200: followersFollowedResponse,
         400: t.Enum(FollowErrors)
       }
     }
