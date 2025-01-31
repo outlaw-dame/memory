@@ -1,5 +1,6 @@
 import type {
   CreatePost,
+  FollowersFollowedResponse,
   FollowUnfollowResponse,
   SelectPost,
   SelectQueryObject,
@@ -53,6 +54,7 @@ export class ApiClient {
     if (e instanceof HTTPError) {
       const errorMessage = await e.response.text()
       if (e.response.status === 500) {
+        // SignUp Errors
         if (ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors]) {
           return {
             data: ProviderSignUpErrors[errorMessage as keyof typeof ProviderSignUpErrors],
@@ -70,9 +72,17 @@ export class ApiClient {
           status: 401
         }
       } else if (e.response.status === 400) {
+        // SignIn Errors
         if (ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors]) {
           return {
             data: ProviderSignInErrors[errorMessage as keyof typeof ProviderSignInErrors],
+            status: 400
+          }
+        }
+        // Follow/UnfollowErrors
+        else if (FollowErrors[errorMessage as keyof typeof FollowErrors]) {
+          return {
+            data: FollowErrors[errorMessage as keyof typeof FollowErrors],
             status: 400
           }
         }
@@ -151,6 +161,73 @@ export class ApiClient {
   async createPost(body: CreatePost): Promise<DetailedApiResponse<SelectPost>> {
     try {
       const response = await this.authRequest.post<SelectPost>(`${this.baseUrl}/posts`, { json: body })
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  // User functions
+  /**
+   * Follows a user
+   * @param {string} userId - id of the user to follow
+   * @returns {Promise<ApiResponse>} - response of the request
+   */
+  async followUser(userId: string): Promise<DetailedApiResponse<string>> {
+    try {
+      const response = await this.authRequest.post<FollowUnfollowResponse>(`${this.baseUrl}/users/${userId}/follow`)
+      return {
+        data: await response.text(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Unfollow a user
+   * @param {string} userId - id of the user to unfollow
+   * @returns {Promise<DetailedApiResponse<string>>}
+   */
+  async unfollowUser(userId: string): Promise<DetailedApiResponse<string>> {
+    try {
+      const response = await this.authRequest.post<string>(`${this.baseUrl}/users/${userId}/unfollow`)
+      return {
+        data: await response.text(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Fetches the users that the user is following
+   * @returns {Promise<DetailedApiResponse<FollowersFollowedResponse[]>>}
+   */
+  async fetchFollowing(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
+    try {
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/users/following`)
+      return {
+        data: await response.json(),
+        status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  /**
+   * Fetches the users that the user is following
+   * @returns {Promise<DetailedApiResponse<FollowersFollowedResponse[]>>}
+   */
+  async fetchFollowers(): Promise<DetailedApiResponse<FollowersFollowedResponse[]>> {
+    try {
+      const response = await this.authRequest.get<FollowersFollowedResponse[]>(`${this.baseUrl}/users/followers`)
       return {
         data: await response.json(),
         status: response.status
