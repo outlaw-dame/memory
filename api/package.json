@@ -11,7 +11,8 @@
     "drizzle:generate": "drizzle-kit generate",
     "lint": "bunx eslint src",
     "lint:fix": "bunx eslint --fix src",
-    "format": "bunx prettier src --write"
+    "format": "bunx prettier src/ --write",
+    "format:check": "prettier --check src/"
   },
   "type": "module",
   "devDependencies": {
