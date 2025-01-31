@@ -9,6 +9,10 @@ export default [
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    name: 'app/files-to-ignore',
+    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**', 'pm2.config.js']
+  },
+  {
     rules: {
       'no-unused-vars': ['off'],
       '@typescript-eslint/no-unused-vars': [
