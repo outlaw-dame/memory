@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/authStore'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+
+const authStore = useAuthStore()
 </script>
 
 <template>
@@ -23,7 +26,7 @@ const router = useRouter()
       <vs-icon iconName="Messages2" />
     </div>
     <div>
-      <vs-icon iconName="UserSquare" />
+      <vs-icon iconName="UserSquare" @click="authStore.logout()" />
     </div>
   </div>
 </template>
