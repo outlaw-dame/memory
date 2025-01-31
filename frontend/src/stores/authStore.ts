@@ -4,6 +4,7 @@ import type { ApiErrors } from '@/types'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { VsNotification } from 'vuesax-alpha'
 
 export const useAuthStore = defineStore('auth', () => {
   // Default state
@@ -72,8 +73,13 @@ export const useAuthStore = defineStore('auth', () => {
         setToken(signInResponse.token)
         setUser(signInResponse.user)
         router.push({ name: 'home' })
-      } else if (status === 401) {
-        return response as ApiErrors
+      } else if (status === 401 || status === 400) {
+        VsNotification({
+          title: 'Wrong Credentials',
+          content: 'Please check your credentials',
+          color: 'danger'
+        })
+        return response
       }
     } catch (error) {
       console.error('error when trying to signIn: ', error)
@@ -101,7 +107,12 @@ export const useAuthStore = defineStore('auth', () => {
       setUser(signupResponse.user)
       router.push({ name: 'home' })
     } else if (status === 500) {
-      return response as ApiErrors
+      VsNotification({
+        title: 'Error',
+        content: 'Something went wrong',
+        color: 'danger'
+      })
+      return response
     }
   }
 
