@@ -3,6 +3,7 @@ import User from '../decorater/User'
 import cors from '@elysiajs/cors'
 import jwt from '@elysiajs/jwt'
 import Elysia from 'elysia'
+import { list } from 'the-big-username-blacklist'
 
 const setupPlugin = new Elysia({ name: 'setup' })
   .use(
@@ -13,12 +14,14 @@ const setupPlugin = new Elysia({ name: 'setup' })
   )
   .use(cors())
   .decorate('user', new User())
-  .decorate(
-    'profanity',
-    new Profanity({
-      languages: ['en', 'de', 'fr', 'ja', 'pt', 'es', 'ru', 'ar', 'ko']
+  .decorate('profanity', () => {
+    const profanity = new Profanity({
+      languages: ['en', 'de', 'fr', 'ja', 'pt', 'es', 'ru', 'ar', 'ko'],
+      wholeWord: false
     })
-  )
+    profanity.addWords(list)
+    return profanity
+  })
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return
