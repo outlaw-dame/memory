@@ -6,7 +6,8 @@ export enum FollowErrors {
   IsSelf = 'Cannot follow yourself.'
 }
 
-export enum ApiSingUpErrors {
+export enum ApiSignUpErrors {
+  UsernameInvalid = 'Username is invalid',
   UsernameOrEmailContainsProfanity = 'Username or email contains profanity',
   ProviderToken = 'Provider did not return a token',
   DBError = 'Error while checking user',
