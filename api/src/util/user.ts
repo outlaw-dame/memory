@@ -1,5 +1,5 @@
-import type User from '@/decorater/User'
-import { podProviderEndpoint, ViablePodProvider } from '@/types'
+import type User from '../decorater/User'
+import { podProviderEndpoint, ViablePodProvider } from '../types'
 
 /**
  * Encodes a webId to a partial User object
