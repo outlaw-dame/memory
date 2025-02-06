@@ -32,11 +32,21 @@ export const posts = table('posts', {
   authorId: integer('author_id').notNull()
 })
 
-export const postsRelations = relations(posts, ({ one }) => ({
+export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, {
     fields: [posts.authorId],
     references: [users.id]
-  })
+  }),
+  hashtags: many(hashtags)
+}))
+
+export const hashtags = table('hashtags', {
+  id: serial().primaryKey(),
+  name: text().notNull()
+})
+
+export const hashtagsRelations = relations(hashtags, ({ many }) => ({
+  posts: many(posts)
 }))
 
 // Views
