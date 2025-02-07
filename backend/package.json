@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@activitypods/app": "2.0.4",
+    "@opensearch-project/opensearch": "^3.2.0",
     "@semapps/auth": "1.0.6",
     "@semapps/core": "1.0.6",
     "@semapps/crypto": "1.0.6",
