@@ -49,56 +49,5 @@ module.exports = {
       }
     },
     queueServiceUrl: CONFIG.QUEUE_SERVICE_URL
-  }
-  /*actions: {
-    async fetchPostsByHashtag(ctx) {
-      const { tag } = ctx.params;
-      const query = `
-        SELECT ?activity WHERE {
-          ?activity as:tag <${CONFIG.HOME_URL}/tags/${tag}> ;
-                    as:published ?published .
-          FILTER NOT EXISTS {
-            ?activity as:actor ?blockedActor .
-            ?blockedActor <acl:denied> ?requestingUser .
-          }
-          FILTER NOT EXISTS {
-            ?activity <app:blockedServer> ?blockedServer .
-            ?blockedServer <acl:denied> ?requestingServer .
-          }
-        }
-        ORDER BY DESC(?published)
-      `;
-      const results = await ctx.call("triplestore.query", { query });
-      return results.map(row => row.activity);
-    },
   },
-  actions: {
-    async fetchPostsByHashtag(ctx) {
-
-      const tagUris = await Promise.all(
-        hashtags.map(async (name) => {
-          //const tagUri = `${triplestore.baseUrl}/tags/${name}`;
-          const tagUri = `${process.env.SEMAPPS_HOME_URL}/tags/${name}`;
-          await triplestore.insertOrUpdate(tagUri, {
-            "@context": "http://www.w3.org/ns/activitystreams#tag",
-            type: "Hashtag",
-            name,
-          });
-          return tagUri;
-        })
-      );
-
-      return tagUris;
-    },
-  },
-  api: {
-    routes: [
-      {
-        path: "/tag/:tag/posts",
-        aliases: {
-          "GET /": "core.fetchPostsByHashtag",
-        },
-      },
-    ],
-  },*/
 };
