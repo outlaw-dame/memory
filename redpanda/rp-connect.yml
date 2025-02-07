@@ -1,0 +1,71 @@
+# Configuration file for Redpanda Connect
+
+http:
+  enabled: true
+  address: 0.0.0.0:4195
+  #root_path: /public
+  debug_endpoints: true
+  cert_file: ""
+  key_file: ""
+
+input:
+  handle_new_post:
+    http_server:
+      address: ""
+      timeout: 5s
+      rate_limit: ""
+      path: /new-post
+      allowed_verbs: [ POST ]
+  serve_posts:
+    dynamic:
+      inputs: {
+        hashtag_input: {
+          http: {
+            path: /hashtags/{hashtag},
+            method: GET,
+            parameters: {
+              hashtag: {hashtag}
+            }
+          },
+          output: {
+            topic: hashtags-{hashtag}
+          }
+        }
+      }
+      prefix: /api
+
+#buffer:
+#  sqlite:
+#    path: ./buffer.db
+
+pipeline:
+  threads: 2
+  processors:
+    handle_new_post:
+      - mapping: |
+          root = this
+          root.id = uuid_v4()
+
+output:
+  handle_new_post:
+    kafka_franz:
+      topic: "public-topic"
+      metadata:
+        exclude_prefixes:
+          - topic
+    elasticsearch:
+      urls: [ localhost:9200 ]
+      index: "public-topic"
+      id: ${!timestamp_unix()}-${!counter()}
+      type: ""
+      max_in_flight: 64
+  serve_posts:
+
+redpanda:
+  seed_brokers: [ "redpanda-0:9092" ]
+  tls:
+    enabled: true
+  sasl:
+    - mechanism: SCRAM-SHA-256
+      password: secretpassword
+      username: superuser
