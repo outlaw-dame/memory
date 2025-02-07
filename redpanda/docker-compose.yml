@@ -1,11 +1,14 @@
-name: redpanda-console-quickstart
+name: redpanda-opensearch
 networks:
   redpanda_network:
     driver: bridge
+  opensearch-net:
 volumes:
   redpanda-0: null
   redpanda-1: null
   redpanda-2: null
+  opensearch-data-0:
+  opensearch-data-1:
 services:
   ##################
   # Redpanda Brokers #
@@ -183,36 +186,24 @@ services:
       # Output:
       #  - kafka_franz output to write the messages to the Redpanda brokers.
       CONNECT_CFG_FILE: |
+        http:
+          enabled: true
+          address: 0.0.0.0:4195
+          debug_endpoints: true
+          cert_file: ""
+          key_file: ""
         input:
-          generate:
-            interval: 1s
-            mapping: |
-              let first_name = fake("first_name")
-              let last_name  = fake("last_name")
-
-              root.user_id    = counter()
-              root.name       = $$first_name + " " + $$last_name
-              root.email      = ($$first_name.slice(0,1) + $$last_name + "@" + fake("domain_name")).lowercase()
-              root.login_time = now()
+          http_server:
+            address: ""
+            timeout: 5s
+            rate_limit: ""
+            path: /new-post
+            allowed_verbs: [ POST ]
         pipeline:
           processors:
             - mapping: |
-                root = range(0, random_int(min:2, max:4)).map_each(cust -> this)
-            - unarchive:
-                format: "json_array"
-            - mapping: |
-                if batch_index() == 0 {
-                  meta topic = "logins"
-                  root = this
-                } else {
-                  meta topic       = "transactions"
-                  root.user_id     = this.user_id
-                  root.email       = this.email
-                  root.index       = batch_index() - 1
-                  root.product_url = fake("url")
-                  root.price       = fake("amount_with_currency")
-                  root.timestamp   = now()
-                }
+                root = this
+                root.id = uuid_v4()
         output:
           kafka_franz:
             seed_brokers: [ "redpanda-0:9092" ]
@@ -221,6 +212,12 @@ services:
               - mechanism: SCRAM-SHA-256
                 password: secretpassword
                 username: superuser
+          opensearch:
+            urls: [ "http://localhost:9200" ]
+            index: $${! metadata("topic") }
+            id: '${!timestamp_unix()}-${!counter()}'
+            action: update
+            max_in_flight: 128
   ####################
   # rpk #
   ####################
@@ -244,3 +241,67 @@ services:
     depends_on:
       redpanda-0:
         condition: service_healthy
+
+  # Opensearch
+  opensearch-0:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-0
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-0
+      - discovery.seed_hosts=opensearch-0,opensearch-1
+      - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
+      - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m  # min and max java heap size, recommended 50% system RAM
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # max num of open files for opensearch user
+        hard: 65536
+    volumes:
+      - opensearch-data-0:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for performance analyzer
+    networks:
+      - opensearch-net
+  opensearch-1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-1
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-1
+      - discovery.seed_hosts=opensearch-0,opensearch-1
+      - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
+      - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m  # min and max java heap size, recommended 50% system RAM
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # max num of open files for opensearch user
+        hard: 65536
+    volumes:
+      - opensearch-data-1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for performance analyzer
+    networks:
+      - opensearch-net
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - '5601'
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch-0:9200","https://opensearch-1:9200"]'
+    networks:
+      - opensearch-net
+volumes:
