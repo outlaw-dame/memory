@@ -10,14 +10,11 @@ TODO:
     as well as on create/update/delete of a post
 */
 
-import path from 'path';
 //import { PodActivitiesWatcher } from '@activitypods/app';
 import { PodResourcesHandlerMixin } from '@activitypods/app';
-import { apods, notify, interop, oidc } from '@semapps/ontologies';
 import { Client } from '@opensearch-project/opensearch';
 import { OBJECT_TYPES } from '@semapps/activitypub';
 //import fs from 'fs';
-import CONFIG from '../config/config';
 
 const opensearchAddress = 'http://localhost:9200';
 const indexName = 'public-posts';
@@ -40,7 +37,7 @@ module.exports = {
   },
   methods: {
     // Automatically create post in opensearch on activity creation
-    async onCreate(ctx, resource, actorUri) {
+    async onCreate(_, resource, actorUri) {
       try {
         console.log('Posting to OpenSearch...');
         return await this.client.index({
@@ -61,7 +58,7 @@ module.exports = {
       }
     },
     // Automatically update post in opensearch on activity update
-    async onUpdate(ctx, resource, actorUri) {
+    async onUpdate(_, resource, actorUri) {
       try {
         // Handle post-update actions
         if (
@@ -90,7 +87,7 @@ module.exports = {
       }
     },
     // Automatically delete post in opensearch on activity deletion
-    async onDelete(ctx, resource, actorUri) {
+    async onDelete(_, resource, actorUri) {
       try {
         // Handle post-delete actions
         if (

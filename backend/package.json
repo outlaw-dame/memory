@@ -1,5 +1,12 @@
 {
   "name": "app-backend",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/outlaw-dame/memory"
+  },
+  "homepage": "https://github.com/outlaw-dame/memory",
+  "type": "module",
   "scripts": {
     "dev": "moleculer-runner --repl services/*.service.ts services/**/*.service.ts",
     "start": "moleculer-runner services/*.service.ts services/**/*.service.ts",

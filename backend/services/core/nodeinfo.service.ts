@@ -9,9 +9,9 @@ module.exports = {
     baseUrl: CONFIG.HOME_URL,
     software: {
       name: 'activitypods',
-      version: (packageJson as any).version,
-      repository: (packageJson as any).repository?.url,
-      homepage: (packageJson as any).homepage
+      version: packageJson.version,
+      repository: packageJson.repository?.url,
+      homepage: packageJson.homepage
     },
     protocols: ['activitypub'],
     metadata: {
