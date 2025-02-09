@@ -1,7 +1,7 @@
-const urlJoin = require('url-join');
-const { NodeinfoService } = require('@semapps/nodeinfo');
-const CONFIG = require('../../config/config');
-const package = require('../../package.json');
+import urlJoin from 'url-join';
+import { NodeinfoService } from '@semapps/nodeinfo';
+import CONFIG from '../../config/config';
+import packageJson from '../../package.json';
 
 module.exports = {
   mixins: [NodeinfoService],
@@ -9,9 +9,9 @@ module.exports = {
     baseUrl: CONFIG.HOME_URL,
     software: {
       name: 'activitypods',
-      version: package.version,
-      repository: package.repository?.url,
-      homepage: package.homepage
+      version: (packageJson as any).version,
+      repository: (packageJson as any).repository?.url,
+      homepage: (packageJson as any).homepage
     },
     protocols: ['activitypub'],
     metadata: {

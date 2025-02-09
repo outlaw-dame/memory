@@ -1,6 +1,6 @@
-const urlJoin = require('url-join');
-const { AppService } = require('@activitypods/app');
-const CONFIG = require('../config/config');
+import urlJoin from 'url-join';
+import { AppService } from '@activitypods/app';
+import CONFIG from '../config/config';
 
 // For documentation, see: https://docs.activitypods.org/app-framework/backend/application-registration/
 module.exports = {
@@ -49,5 +49,5 @@ module.exports = {
       }
     },
     queueServiceUrl: CONFIG.QUEUE_SERVICE_URL
-  },
+  }
 };

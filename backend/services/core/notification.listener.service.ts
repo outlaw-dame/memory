@@ -1,6 +1,6 @@
-const { TripleStoreAdapter } = require('@semapps/triplestore');
-const { NotificationsListenerService } = require('@semapps/solid');
-const CONFIG = require('../../config/config');
+import { TripleStoreAdapter } from '@semapps/triplestore';
+import { NotificationsListenerService } from '@semapps/solid';
+import CONFIG from '../../config/config';
 
 module.exports = {
   mixins: [NotificationsListenerService],

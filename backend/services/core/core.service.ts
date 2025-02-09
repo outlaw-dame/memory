@@ -1,7 +1,7 @@
-const path = require('path');
-const { CoreService } = require('@semapps/core');
-const { apods, notify, interop, oidc } = require('@semapps/ontologies');
-const CONFIG = require('../../config/config');
+import path from 'path';
+import { CoreService } from '@semapps/core';
+import { apods, notify, interop, oidc } from '@semapps/ontologies';
+import CONFIG from '../../config/config';
 
 module.exports = {
   mixins: [CoreService],
@@ -26,5 +26,5 @@ module.exports = {
     },
     void: false,
     webid: false
-  },
+  }
 };

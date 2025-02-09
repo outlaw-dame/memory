@@ -1,5 +1,5 @@
-const { WebAclMiddleware, CacherMiddleware } = require('@semapps/webacl');
-const CONFIG = require('./config/config');
+import { WebAclMiddleware, CacherMiddleware } from '@semapps/webacl';
+import CONFIG from './config/config';
 
 Error.stackTraceLimit = Infinity;
 

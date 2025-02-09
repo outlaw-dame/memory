@@ -1,6 +1,6 @@
-const { AuthAccountService } = require('@semapps/auth');
-const { TripleStoreAdapter } = require('@semapps/triplestore');
-const CONFIG = require('../../config/config');
+import { AuthAccountService } from '@semapps/auth';
+import { TripleStoreAdapter } from '@semapps/triplestore';
+import CONFIG from '../../config/config';
 
 // We import only this sub-service as we need it for the bot
 // The WebFinger service currently relies on this service to identify unique users
