@@ -19,7 +19,7 @@ import { OBJECT_TYPES } from '@semapps/activitypub';
 const opensearchAddress = 'http://localhost:9200';
 const indexName = 'public-posts';
 
-module.exports = {
+export default {
   name: 'public-posts',
   mixins: [PodResourcesHandlerMixin],
   settings: {

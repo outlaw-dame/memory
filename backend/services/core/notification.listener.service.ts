@@ -2,7 +2,7 @@ import { TripleStoreAdapter } from '@semapps/triplestore';
 import { NotificationsListenerService } from '@semapps/solid';
 import CONFIG from '../../config/config';
 
-module.exports = {
+export default {
   mixins: [NotificationsListenerService],
   adapter: new TripleStoreAdapter({
     type: 'WebhookChannelListener',

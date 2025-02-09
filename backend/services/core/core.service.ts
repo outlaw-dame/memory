@@ -3,7 +3,7 @@ import { CoreService } from '@semapps/core';
 import { apods, notify, interop, oidc } from '@semapps/ontologies';
 import CONFIG from '../../config/config';
 
-module.exports = {
+export default {
   mixins: [CoreService],
   settings: {
     baseUrl: CONFIG.HOME_URL,

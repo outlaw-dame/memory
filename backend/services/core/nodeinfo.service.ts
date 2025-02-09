@@ -3,7 +3,7 @@ import { NodeinfoService } from '@semapps/nodeinfo';
 import CONFIG from '../../config/config';
 import packageJson from '../../package.json';
 
-module.exports = {
+export default {
   mixins: [NodeinfoService],
   settings: {
     baseUrl: CONFIG.HOME_URL,
