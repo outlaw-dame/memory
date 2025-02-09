@@ -6,5 +6,9 @@ import CONFIG from '../../config/config';
 // The WebFinger service currently relies on this service to identify unique users
 module.exports = {
   mixins: [AuthAccountService],
-  adapter: new TripleStoreAdapter({ type: 'AuthAccount', dataset: CONFIG.AUTH_ACCOUNTS_DATASET_NAME })
+  adapter: new TripleStoreAdapter({
+    type: 'AuthAccount',
+    dataset: CONFIG.AUTH_ACCOUNTS_DATASET_NAME,
+    baseUri: `urn:WebhookChannelListener:`
+  })
 };
