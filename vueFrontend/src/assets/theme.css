@@ -1,0 +1,95 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-primary: rgba(99, 100, 246, 1);
+  --color-primary-50: rgba(99, 100, 246, 0.5);
+  --color-primary-20: rgba(99, 100, 246, 0.2);
+  --color-primary-10: rgba(99, 100, 246, 0.1);
+  --color-primary-5: rgba(99, 100, 246, 0.05);
+
+  --color-success: rgba(0, 209, 8, 1);
+  --color-success-50: rgba(0, 209, 8, 0.5);
+  --color-success-20: rgba(0, 209, 8, 0.2);
+  --color-success-10: rgba(0, 209, 8, 0.1);
+  --color-success-5: rgba(0, 209, 8, 0.05);
+
+  --color-warn: rgba(246, 178, 99, 1);
+  --color-warn-50: rgba(246, 178, 99, 0.5);
+  --color-warn-20: rgba(246, 178, 99, 0.2);
+  --color-warn-10: rgba(246, 178, 99, 0.1);
+  --color-warn-5: rgba(246, 178, 99, 0.05);
+
+  --color-danger: rgba(246, 99, 99, 1);
+  --color-danger-50: rgba(246, 99, 99, 0.5);
+  --color-danger-20: rgba(246, 99, 99, 0.2);
+  --color-danger-10: rgba(246, 99, 99, 0.1);
+  --color-danger-5: rgba(246, 99, 99, 0.05);
+
+  --color-accent: rgba(199, 99, 246, 1);
+  --color-accent-50: rgba(199, 99, 246, 0.5);
+  --color-accent-20: rgba(199, 99, 246, 0.2);
+  --color-accent-10: rgba(199, 99, 246, 0.1);
+  --color-accent-5: rgba(199, 99, 246, 0.05);
+
+  --color-accent-2: rgba(99, 149, 246, 1);
+  --color-accent-2-50: rgba(99, 149, 246, 0.5);
+  --color-accent-2-20: rgba(99, 149, 246, 0.2);
+  --color-accent-2-10: rgba(99, 149, 246, 0.1);
+  --color-accent-2-5: rgba(99, 149, 246, 0.05);
+
+  --color-accent-3: rgba(99, 193, 246, 1);
+  --color-accent-3-50: rgba(99, 193, 246, 0.5);
+  --color-accent-3-20: rgba(99, 193, 246, 0.2);
+  --color-accent-3-10: rgba(99, 193, 246, 0.1);
+  --color-accent-3-5: rgba(99, 193, 246, 0.05);
+
+  --color-dark: rgba(55, 55, 55, 1);
+  --color-dark-50: rgba(55, 55, 55, 0.5);
+  --color-dark-20: rgba(55, 55, 55, 0.2);
+  --color-dark-10: rgba(55, 55, 55, 0.1);
+  --color-dark-5: rgba(55, 55, 55, 0.05);
+
+  --color-white: rgba(255, 255, 255, 1);
+  --color-white-50: rgba(255, 255, 255, 0.5);
+  --color-white-20: rgba(255, 255, 255, 0.2);
+  --color-white-10: rgba(255, 255, 255, 0.1);
+  --color-white-5: rgba(255, 255, 255, 0.05);
+
+  --color-pastel-light: rgba(250, 247, 243, 1);
+  --color-pastel-dark: rgba(237, 234, 231, 1);
+  --color-black: rgba(0, 0, 0, 1);
+
+  --radius-default: 25px;
+  --radius-large: 15px;
+
+  --text-largeHeader: 34px;
+  --text-pageTitle: 28px;
+  --text-base: 17px;
+  --text-h1: 28px;
+  --text-h2: 22px;
+  --text-h3: 20px;
+  --text-subHeader: 15px;
+  --text-footnote: 13px;
+  --text-caption: 10px;
+  --text-caption2: 8px;
+}
+
+:root {
+  --gap-default: 10px;
+  --gap-small: 5px;
+  --padding-huge: 30px;
+  --padding-large: 15px;
+  --padding-main: 20px;
+
+  --vs-primary: 99, 100, 246;
+  --vs-success: 0, 209, 8;
+  --vs-warn: 246, 178, 99;
+  --vs-danger: 246, 99, 99;
+  --vs-dark: 36, 33, 69;
+}
+
+@layer base {
+  @import 'vuesax-alpha/dist/index.css';
+}
