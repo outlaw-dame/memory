@@ -2,6 +2,7 @@
   "name": "app-backend",
   "scripts": {
     "dev": "moleculer-runner --repl services/*.service.js services/**/*.service.js",
+    "dev:watch": "nodemon ./index.ts",
     "start": "moleculer-runner services/*.service.js services/**/*.service.js",
     "link-packages": "yarn link @activitypods/app @semapps/activitypub @semapps/auth @semapps/backup @semapps/core @semapps/crypto @semapps/importer @semapps/inference @semapps/jsonld @semapps/ldp @semapps/middlewares @semapps/migration @semapps/mime-types @semapps/ontologies @semapps/sync @semapps/nodeinfo @semapps/notifications @semapps/solid @semapps/sparql-endpoint @semapps/triplestore @semapps/void @semapps/webacl @semapps/webfinger @semapps/webhooks @semapps/webid",
     "unlink-packages": "yarn unlink @activitypods/app @semapps/activitypub @semapps/auth @semapps/backup @semapps/core @semapps/crypto @semapps/importer @semapps/inference @semapps/jsonld @semapps/ldp @semapps/middlewares @semapps/migration @semapps/mime-types @semapps/ontologies @semapps/sync @semapps/nodeinfo @semapps/notifications @semapps/solid @semapps/sparql-endpoint @semapps/triplestore @semapps/void @semapps/webacl @semapps/webfinger @semapps/webhooks @semapps/webid"
@@ -19,6 +20,7 @@
     "ioredis": "^4.17.3",
     "kafkajs": "^2.2.4",
     "moleculer-repl": "^0.6.6",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.51.0",
     "url-join": "^4.0.1"
   },
   "engines": {
@@ -28,6 +30,9 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
     "eslint": "^9.20.0",
-    "globals": "^15.14.0"
+    "globals": "^15.14.0",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   }
 }
