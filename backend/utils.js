@@ -3,6 +3,7 @@
 
 import CONFIG from 'config/config';
 import Client from '@opensearch-project/opensearch';
+import { convertHashtags } from '../frontend/src/utils';
 
 
 // Return an account object formatted as per the Mastodon API,
@@ -72,7 +73,7 @@ export async function getPublicPosts(initTime, tag) {
             // When given a tag, search for all which include at least one instance of the given tag
             terms_set: {
                 tag: {
-                    terms: [ tag ],
+                    terms: convertHashtags( [ tag ] ),
                     minimum_should_match_script: {
                         source: "1"
                     }
