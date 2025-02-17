@@ -1,11 +1,268 @@
 name: redpanda-opensearch
 networks:
+  redpanda_network:
+    driver: bridge
   opensearch-net:
     driver: bridge
 volumes:
+  redpanda-0: null
+  redpanda-1: null
+  redpanda-2: null
   opensearch-data-0:
   opensearch-data-1:
 services:
+  ##################
+  # Redpanda Brokers #
+  ##################
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers'
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers'
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode dev-container
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp 1
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
+    container_name: redpanda-0
+    # Sets the username and password of the SCRAM superuser
+    environment:
+      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    healthcheck:
+      #test: ["CMD", "rpk", "cluster", "info", "-X", "user=$${REDPANDA_ADMIN_USER:superuser}", "-X", "pass=$${REDPANDA_ADMIN_PASS:secretpassword}"]
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redpanda-1:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:29092
+      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:29092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:28082
+      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:28082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:28081
+      - --rpc-addr redpanda-1:33145
+      - --advertise-rpc-addr redpanda-1:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --seeds redpanda-0:33145
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
+    container_name: redpanda-1
+    environment:
+      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+    volumes:
+      - redpanda-1:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - 28081:28081
+      - 28082:28082
+      - 29092:29092
+      - 29644:9644
+    depends_on:
+      - redpanda-0
+  redpanda-2:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:39092
+      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:39092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:38082
+      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:38082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:38081
+      - --rpc-addr redpanda-2:33145
+      - --advertise-rpc-addr redpanda-2:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --seeds redpanda-0:33145
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
+    container_name: redpanda-2
+    environment:
+      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+    volumes:
+      - redpanda-2:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - 38081:38081
+      - 38082:38082
+      - 39092:39092
+      - 39644:9644
+    depends_on:
+      - redpanda-0
+  ####################
+  # Redpanda Console #
+  ####################
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.8.2
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console -config.filepath=${CONFIG_FILEPATH:-/tmp/config.yml}'
+    volumes:
+      - ./config:/tmp/config/
+    environment:
+      CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+          sasl:
+            enabled: false
+            username: superuser
+            password: secretpassword
+            mechanism: SCRAM-SHA-256
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+        console:
+          topicDocumentation:
+            enabled: true
+            git:
+              enabled: true
+              repository:
+                url: https://github.com/redpanda-data/docs
+                branch: main
+                baseDirectory: modules/console/test-resources
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda-0
+  ####################
+  # Redpanda Connect #
+  ####################
+  connect:
+    container_name: redpanda-connect
+    image: docker.redpanda.com/redpandadata/connect
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    depends_on:
+      - redpanda-0
+    command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
+    environment:
+      CONNECT_CFG_FILE: |
+        http:
+          enabled: true
+          address: "$${REDPANDA_HTTP_BASE_URL:0.0.0.0:4195}"
+          #root_path: /public
+          debug_endpoints: true
+          cert_file: "$${REDPANDA_HTTPS_CERT_FILE:\"\"}"
+          key_file: "$${REDPANDA_HTTPS_KEY_FILE:\"\"}"
+
+        input:
+          http_server:
+            timeout: 10s
+            rate_limit: ""
+            path: "$${REDPANDA_NEW_POST_API_PATH:/upstream}"
+            allowed_verbs: [ POST ]
+
+        buffer:
+          sqlite:
+            path: ./buffer.db
+
+        pipeline:
+          threads: 2
+          processors:
+            - mapping: |
+                root = this
+
+                meta id = this.data.updateTime$${!counter()}
+                meta action = this.action
+
+                root.id = this.id
+                root.doc = this.body
+
+        output:
+          opensearch:
+            urls: [ "$${OPENSEARCH_HTTP_API_BASE_URL:localhost:9200}" ]
+            index: "$${OPENSEARCH_PUBLIC_INDEX_NAME:public-index}"
+            action: $${! @action }
+            id: $${! @id }
+            type: ""
+            max_in_flight: 64
+            batching:
+              count: 0
+              byte_size: 0
+              period: ""
+              check: ""
+            basic_auth:
+              enabled: false
+              username: ""
+              password: ""
+
+        redpanda:
+          seed_brokers: [ "redpanda-0:9092" ]
+  ####################
+  # rpk #
+  ####################
+  redpandarpk:
+    command:
+      - registry
+      - schema
+      - create
+      - activities
+      - --schema
+      - /etc/redpanda/activities-schema.json
+      #- -X user=$${REDPANDA_ADMIN_USER:superuser}
+      #- -X pass=$${REDPANDA_ADMIN_PASS:secretpassword}
+      - -X user=superuser
+      - -X pass=secretpassword
+      - -X registry.hosts=redpanda-0:8081
+      - --set retention.ms=1000;
+      #- topic alter-config ${REDPANDA_PUBLIC_TOPIC_NAME:public-topic};
+      - connect streams /etc/redpanda/streams/*.yml;
+      #- curl "${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/upstream" -o POST --data-binary @${REDPANDA_UPSTREAM_CONFIG};
+      #- curl ${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/downstream -X POST --data-binary @${REDPANDA_DOWNSTREAM_CONFIG};
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
+    # mount the local directory that contains your schema to the container.
+    volumes:
+      - ./activities-schema.json:/etc/redpanda/activities-schema.json
+      - ./rpc-upstream-config.yml:/etc/redpanda/streams/rpc-upstream-config.yml
+      #- ./$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}:/etc/redpanda/streams/$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}
+    networks:
+      - redpanda_network
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+
   # Opensearch
   opensearch-0:
     image: opensearchproject/opensearch:latest
