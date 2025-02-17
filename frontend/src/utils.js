@@ -1,4 +1,3 @@
-import { Link } from "react-admin";
 
 export const formatUsername = (uri) => {
   const url = new URL(uri);
@@ -31,7 +30,7 @@ export const convertHashtags = (hashtags) => {
   return hashtags.map(tag => ({
     type: "Hashtag",
     id: `/tags/${tag.substring(1)}`,
-    name: tag,
+    name: tag.substring(1),
   }));
 };
 
