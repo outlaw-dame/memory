@@ -4,7 +4,7 @@ import { ServiceBroker } from 'moleculer';
 import ApiGateway from './moleculer-web-uws/index.js';
 import Moleculer from 'moleculer';
 
-Error.stackTraceLimit = Infinity;
+// Error.stackTraceLimit = Infinity;
 
 // Use the cacher only if Redis is configured
 const cacherConfig = CONFIG.REDIS_CACHE_URL
@@ -34,20 +34,8 @@ let broker = new ServiceBroker({
 // Load all services from the services folder
 /* broker.loadServices('./services'); */
 
-broker.createService({
-  name: 'memoryapi',
-
-  actions: {
-    hello: {
-      rest: 'GET /hello',
-
-      handler(ctx: Moleculer.Context<any, any, Moleculer.GenericObject>) {
-        console.log(ctx);
-        return 'Hello API Gateway!';
-      }
-    }
-  }
-});
+// Load only the backend services for development
+broker.loadService('./services/memory-api.service.ts');
 
 // @ts-ignore
 broker.createService(ApiGateway);
