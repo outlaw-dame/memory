@@ -16,6 +16,7 @@
     "@semapps/ontologies": "1.0.6",
     "@semapps/solid": "1.0.6",
     "@semapps/triplestore": "1.0.6",
+    "@sinclair/typebox": "^0.34.25",
     "dotenv-flow": "^3.2.0",
     "ioredis": "^4.17.3",
     "kafkajs": "^2.2.4",
