@@ -13,10 +13,14 @@ declare module '@semapps/webacl' {
     created(): Promise<void>;
     started(): Promise<void>;
   };
-  export const WebAclMiddleware: any;
-  export const CacherMiddleware: (opts: any) => {
+  export const WebAclMiddleware: (opts: {
+    baseUrl: string;
+    podProvider?: boolean;
+    graphName?: string;
+  }) => import('moleculer').Middleware;
+  export const CacherMiddleware: (opts: any) => import('moleculer').Middleware; /* {
     name: string;
     created(broker: any): void;
     localAction(next: any, action: any): any;
-  };
+  } */
 }
