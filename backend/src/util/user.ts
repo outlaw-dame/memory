@@ -1,9 +1,8 @@
-export * from './user';
 import { Profanity } from '@2toad/profanity';
 import { List } from '@2toad/profanity/dist/models';
 import { list } from 'the-big-username-blacklist';
 
-export function checkProfanity() {
+export function checkProfanity(username: string): boolean {
   const whiteList = new List(() => true);
   const profanity = new Profanity({
     languages: ['en', 'de', 'fr', 'ja', 'pt', 'es', 'ru', 'ar', 'ko'],
@@ -11,6 +10,5 @@ export function checkProfanity() {
   });
   profanity.addWords(list);
   profanity.whitelist = whiteList;
-
-  return profanity;
+  return profanity.exists(username);
 }
