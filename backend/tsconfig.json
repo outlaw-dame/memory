@@ -2,6 +2,9 @@
   "include": ["./services/**/*", "./src/**/*", "eslint.config.*", "../eslint.config.ts"],
   "exclude": ["node_modules", "**/node_modules/*"],
   "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "module": "NodeNext",
