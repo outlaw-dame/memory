@@ -6,22 +6,24 @@ import { viablePodProviders } from './enums';
 // SignIn
 export const signinBody = Type.Object({
   username: Type.String(),
-  password: Type.String(),
-  providerName: viablePodProviders
+  password: Type.String()
 });
 export type SignInBody = Static<typeof signinBody>;
 
-/* export const signinResponse = Type.Object({
+export const signinResponse = Type.Object({
   token: Type.String(),
-  user: _selectUsers
+  user: Type.Object({
+    username: Type.String(),
+    uuid: Type.String(),
+    webId: Type.String()
+  })
 });
-export type SignInResponse = Static<typeof signinResponse>; */
+export type SignInResponse = Static<typeof signinResponse>;
 
 export const signUpBody = Type.Object({
   username: Type.String(),
-  password: Type.String(),
-  email: Type.String(),
-  providerName: viablePodProviders
+  password: Type.String()
+  /* providerName: viablePodProviders */
 });
 export type SignUpBody = Static<typeof signUpBody>;
 
