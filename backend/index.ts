@@ -19,6 +19,7 @@ const cacherConfig = CONFIG.REDIS_CACHE_URL
     }
   : undefined;
 let broker = new ServiceBroker({
+  hotReload: true,
   middlewares: [
     // @ts-expect-error
     WebAcl.WebAclMiddleware({ baseUrl: CONFIG.HOME_URL as string }), // Set the cacher before the WebAcl middleware
