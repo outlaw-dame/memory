@@ -9,3 +9,8 @@ export const podProviderEndpoint: { [key in ViablePodProvider]: string } = {
   'memory.': 'http://localhost:3000'
 };
 export const viablePodProviders = Type.Enum(ViablePodProvider);
+
+export enum ErrorMessages {
+  'accountNotFound' = 'account.not-found',
+  'usernameContainsProfanity' = 'username.contains.profanity'
+}
