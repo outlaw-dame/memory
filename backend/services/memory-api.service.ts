@@ -1,4 +1,5 @@
 import Moleculer from 'moleculer';
+import molecularWeb from 'moleculer-web';
 import {
   SignInBody,
   signinBody,
@@ -7,17 +8,31 @@ import {
   SignInResponse,
   AuthAccountVerifyResponse,
   AuthAccountCreateBody,
-  AuthAccountVerifyBody
+  AuthAccountVerifyBody,
+  User
 } from '../src/types';
-import { AssertError, Value } from '@sinclair/typebox/value';
+import { Value } from '@sinclair/typebox/value';
 import { v4 as uuidv4 } from 'uuid';
 import CONFIG from '../config/config.js';
-import { getErrorMessage } from '../src/utility';
+import { generateJWT, getErrorMessage, verifyJWT } from '../src/utility';
 
 export default {
   name: 'memoryapi',
 
   actions: {
+    /**
+     * Authorize the request throws an unauthorized error if no token or wrong token is provided
+     * @returns {User} the user object
+     */
+    async authorize(ctx: Moleculer.Context<any, any, Moleculer.GenericObject>) {
+      const { req, res } = ctx.params;
+
+      if (!req.headers.authorization) {
+        throw new molecularWeb.Errors.UnAuthorizedError('No token provided', {});
+      }
+      const user = verifyJWT(req.headers.authorization);
+      return user;
+    },
     signup: {
       rest: 'POST /signup',
 
@@ -60,14 +75,15 @@ export default {
             'auth.account.verify',
             ctx.params
           );
+          const user: User = {
+            username: callRet.username,
+            uuid: callRet.uuid,
+            webId: callRet.webId
+          };
 
           const response: SignInResponse = {
-            token: '',
-            user: {
-              username: callRet.username,
-              uuid: callRet.uuid,
-              webId: callRet.webId
-            }
+            token: generateJWT(user),
+            user
           };
           return response;
         } catch (e) {
