@@ -10,13 +10,16 @@ export const signinBody = Type.Object({
 });
 export type SignInBody = Static<typeof signinBody>;
 
+export const user = Type.Object({
+  username: Type.String(),
+  uuid: Type.String(),
+  webId: Type.String()
+});
+export type User = Static<typeof user>;
+
 export const signinResponse = Type.Object({
   token: Type.String(),
-  user: Type.Object({
-    username: Type.String(),
-    uuid: Type.String(),
-    webId: Type.String()
-  })
+  user: user
 });
 export type SignInResponse = Static<typeof signinResponse>;
 
