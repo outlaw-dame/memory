@@ -8,7 +8,7 @@ module.exports = {
   APP_LANG: process.env.SEMAPPS_APP_LANG,
   HOME_URL: process.env.SEMAPPS_HOME_URL,
   FRONT_URL: process.env.SEMAPPS_FRONT_URL,
-  PORT: process.env.SEMAPPS_PORT,
+  PORT: Number(process.env.SEMAPPS_PORT),
   SPARQL_ENDPOINT: process.env.SEMAPPS_SPARQL_ENDPOINT,
   MAIN_DATASET: process.env.SEMAPPS_MAIN_DATASET,
   JENA_USER: process.env.SEMAPPS_JENA_USER,
@@ -18,5 +18,5 @@ module.exports = {
   AUTH_ACCOUNTS_DATASET_NAME: process.env.SEMAPPS_AUTH_ACCOUNTS_DATASET_NAME,
   REDPANDA_BROKERS: process.env.REDPANDA_BROKERS,
   JWT_SECRET: process.env.JWT_SECRET,
-  JWT_EXPIRATION_TIME: process.env.JWT_EXPIRATION_TIME
+  JWT_EXPIRATION_TIME: Number(process.env.JWT_EXPIRATION_TIME)
 };
