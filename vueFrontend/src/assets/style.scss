@@ -1,0 +1,19 @@
+@layer theme, base, components, utilities;
+
+@layer base {
+  @import './vusax-overrides.scss';
+  @import './welcome.scss';
+}
+
+@font-face {
+  font-family: 'Raleway';
+  src: url('./fonts/Raleway-VariableFont_wght.ttf');
+}
+
+@import './fonts/Butler/index.css';
+
+@layer utilities {
+  * {
+    font-family: 'Raleway', sans-serif;
+  }
+}

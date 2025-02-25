@@ -1,0 +1,45 @@
+{
+  "name": "memory-api",
+  "module": "src/index.ts",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --target bun --outdir ./dist",
+    "start": "NODE_ENV=production bun dist/index.js",
+    "test": "bun test",
+    "drizzle:push": "drizzle-kit push",
+    "drizzle:migrate": "drizzle-kit migrate",
+    "drizzle:generate": "drizzle-kit generate",
+    "lint": "bunx eslint .",
+    "lint:fix": "bunx eslint --fix .",
+    "format": "bunx prettier . --write",
+    "format:check": "prettier --check ."
+  },
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "@types/bun": "^1.2.1",
+    "@types/luxon": "^3.4.2",
+    "@types/pg": "^8.11.11",
+    "drizzle-kit": "^0.30.3",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "typescript-eslint": "^8.22.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@2toad/profanity": "^3.1.1",
+    "@elysiajs/cors": "^1.2.0",
+    "@elysiajs/jwt": "^1.2.0",
+    "@sinclair/typebox": "^0.34.14",
+    "drizzle-orm": "^0.38.4",
+    "drizzle-typebox": "^0.2.1",
+    "elysia": "^1.2.10",
+    "ky": "^1.7.4",
+    "luxon": "^3.5.0",
+    "pg": "^8.13.1",
+    "the-big-username-blacklist": "^1.5.2"
+  }
+}

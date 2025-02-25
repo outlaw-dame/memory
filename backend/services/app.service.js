@@ -49,5 +49,5 @@ module.exports = {
       }
     },
     queueServiceUrl: CONFIG.QUEUE_SERVICE_URL
-  },
+  }
 };

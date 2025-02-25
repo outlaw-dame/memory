@@ -2,11 +2,13 @@
   "name": "app-backend",
   "scripts": {
     "dev": "moleculer-runner --repl services/*.service.js services/**/*.service.js",
+    "dev:watch": "ts-node ./index.ts",
     "start": "moleculer-runner services/*.service.js services/**/*.service.js",
     "link-packages": "yarn link @activitypods/app @semapps/activitypub @semapps/auth @semapps/backup @semapps/core @semapps/crypto @semapps/importer @semapps/inference @semapps/jsonld @semapps/ldp @semapps/middlewares @semapps/migration @semapps/mime-types @semapps/ontologies @semapps/sync @semapps/nodeinfo @semapps/notifications @semapps/solid @semapps/sparql-endpoint @semapps/triplestore @semapps/void @semapps/webacl @semapps/webfinger @semapps/webhooks @semapps/webid",
     "unlink-packages": "yarn unlink @activitypods/app @semapps/activitypub @semapps/auth @semapps/backup @semapps/core @semapps/crypto @semapps/importer @semapps/inference @semapps/jsonld @semapps/ldp @semapps/middlewares @semapps/migration @semapps/mime-types @semapps/ontologies @semapps/sync @semapps/nodeinfo @semapps/notifications @semapps/solid @semapps/sparql-endpoint @semapps/triplestore @semapps/void @semapps/webacl @semapps/webfinger @semapps/webhooks @semapps/webid"
   },
   "dependencies": {
+    "@2toad/profanity": "^3.1.1",
     "@activitypods/app": "2.0.4",
     "@opensearch-project/opensearch": "^3.2.0",
     "@semapps/auth": "1.0.6",
@@ -15,11 +17,16 @@
     "@semapps/ontologies": "1.0.6",
     "@semapps/solid": "1.0.6",
     "@semapps/triplestore": "1.0.6",
+    "@sinclair/typebox": "^0.34.25",
     "dotenv-flow": "^3.2.0",
     "ioredis": "^4.17.3",
+    "jsonwebtoken": "^9.0.2",
     "kafkajs": "^2.2.4",
-    "moleculer-repl": "^0.6.6",
-    "url-join": "^4.0.1"
+    "moleculer-repl": "^0.7.4",
+    "the-big-username-blacklist": "^1.5.2",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.51.0",
+    "url-join": "^4.0.1",
+    "uuid": "^11.1.0"
   },
   "engines": {
     "node": ">=20"
@@ -27,7 +34,11 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
+    "@types/node": "^22.13.5",
     "eslint": "^9.20.0",
-    "globals": "^15.14.0"
+    "globals": "^15.14.0",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   }
 }

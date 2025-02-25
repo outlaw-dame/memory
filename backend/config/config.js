@@ -8,7 +8,7 @@ module.exports = {
   APP_LANG: process.env.SEMAPPS_APP_LANG,
   HOME_URL: process.env.SEMAPPS_HOME_URL,
   FRONT_URL: process.env.SEMAPPS_FRONT_URL,
-  PORT: process.env.SEMAPPS_PORT,
+  PORT: Number(process.env.SEMAPPS_PORT),
   SPARQL_ENDPOINT: process.env.SEMAPPS_SPARQL_ENDPOINT,
   MAIN_DATASET: process.env.SEMAPPS_MAIN_DATASET,
   JENA_USER: process.env.SEMAPPS_JENA_USER,
@@ -22,4 +22,6 @@ module.exports = {
   REDPANDA_OPENSEARCH_DOWNSTREAM_SUFFIX: "/downstream",
   OPENSEARCH_HTTP_API_BASE_URL: process.env.OPENSEARCH_BASE_URL,
   OPENSEARCH_PUBLIC_INDEX: process.env.OPENSEARCH_PUBLIC_INDEX,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRATION_TIME: Number(process.env.JWT_EXPIRATION_TIME)
 };
