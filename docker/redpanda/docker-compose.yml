@@ -3,6 +3,7 @@ networks:
   redpanda_network:
     driver: bridge
   opensearch-net:
+    driver: bridge
 volumes:
   redpanda-0: null
   redpanda-1: null
@@ -41,6 +42,7 @@ services:
     # Sets the username and password of the SCRAM superuser
     environment:
       RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
     volumes:
       - redpanda-0:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -52,6 +54,7 @@ services:
       - 19092:19092
       - 19644:9644
     healthcheck:
+      #test: ["CMD", "rpk", "cluster", "info", "-X", "user=$${REDPANDA_ADMIN_USER:superuser}", "-X", "pass=$${REDPANDA_ADMIN_PASS:secretpassword}"]
       test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
       interval: 10s
       timeout: 5s
@@ -75,6 +78,7 @@ services:
     container_name: redpanda-1
     environment:
       RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
     volumes:
       - redpanda-1:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -106,6 +110,7 @@ services:
     container_name: redpanda-2
     environment:
       RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
     volumes:
       - redpanda-2:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -139,7 +144,7 @@ services:
             enabled: true
             urls: ["http://redpanda-0:8081"]
           sasl:
-            enabled: true
+            enabled: false
             username: superuser
             password: secretpassword
             mechanism: SCRAM-SHA-256
@@ -173,57 +178,58 @@ services:
       - redpanda-0
     command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
     environment:
-      # This is a Redpanda Connect configuration that creates fake data,
-      # process it, and it writes the output to a set of topics randomly.
-      #
-      # Input:
-      #  - Uses Redpanda Connect's generate input to generate fake data.
-      # Pipeline:
-      #  - Bloblang mapping to batch each input and map 1 message to 'logins'
-      #    topic, and a random number (1-3) of messages to 'transaction' topic
-      #  - Unarchive processor to parse the JSON array and extract each
-      #    element into its own message.
-      # Output:
-      #  - kafka_franz output to write the messages to the Redpanda brokers.
       CONNECT_CFG_FILE: |
-        input:
-          generate:
-            interval: 1s
-            mapping: |
-              let first_name = fake("first_name")
-              let last_name  = fake("last_name")
+        http:
+          enabled: true
+          address: "$${REDPANDA_HTTP_BASE_URL:0.0.0.0:4195}"
+          #root_path: /public
+          debug_endpoints: true
+          cert_file: "$${REDPANDA_HTTPS_CERT_FILE:\"\"}"
+          key_file: "$${REDPANDA_HTTPS_KEY_FILE:\"\"}"
 
-              root.user_id    = counter()
-              root.name       = $$first_name + " " + $$last_name
-              root.email      = ($$first_name.slice(0,1) + $$last_name + "@" + fake("domain_name")).lowercase()
-              root.login_time = now()
+        input:
+          http_server:
+            timeout: 10s
+            rate_limit: ""
+            path: "$${REDPANDA_NEW_POST_API_PATH:/upstream}"
+            allowed_verbs: [ POST ]
+
+        buffer:
+          sqlite:
+            path: ./buffer.db
+
         pipeline:
+          threads: 2
           processors:
             - mapping: |
-                root = range(0, random_int(min:2, max:4)).map_each(cust -> this)
-            - unarchive:
-                format: "json_array"
-            - mapping: |
-                if batch_index() == 0 {
-                  meta topic = "logins"
-                  root = this
-                } else {
-                  meta topic       = "transactions"
-                  root.user_id     = this.user_id
-                  root.email       = this.email
-                  root.index       = batch_index() - 1
-                  root.product_url = fake("url")
-                  root.price       = fake("amount_with_currency")
-                  root.timestamp   = now()
-                }
+                root = this
+
+                meta id = this.data.updateTime$${!counter()}
+                meta action = this.action
+
+                root.id = this.id
+                root.doc = this.body
+
         output:
-          kafka_franz:
-            seed_brokers: [ "redpanda-0:9092" ]
-            topic: $${! metadata("topic") }
-            sasl:
-              - mechanism: SCRAM-SHA-256
-                password: secretpassword
-                username: superuser
+          opensearch:
+            urls: [ "$${OPENSEARCH_HTTP_API_BASE_URL:localhost:9200}" ]
+            index: "$${OPENSEARCH_PUBLIC_INDEX_NAME:public-index}"
+            action: $${! @action }
+            id: $${! @id }
+            type: ""
+            max_in_flight: 64
+            batching:
+              count: 0
+              byte_size: 0
+              period: ""
+              check: ""
+            basic_auth:
+              enabled: false
+              username: ""
+              password: ""
+
+        redpanda:
+          seed_brokers: [ "redpanda-0:9092" ]
   ####################
   # rpk #
   ####################
@@ -232,16 +238,25 @@ services:
       - registry
       - schema
       - create
-      - transactions
+      - activities
       - --schema
-      - /etc/redpanda/transactions-schema.json
+      - /etc/redpanda/activities-schema.json
+      #- -X user=$${REDPANDA_ADMIN_USER:superuser}
+      #- -X pass=$${REDPANDA_ADMIN_PASS:secretpassword}
       - -X user=superuser
       - -X pass=secretpassword
       - -X registry.hosts=redpanda-0:8081
+      - --set retention.ms=1000;
+      #- topic alter-config ${REDPANDA_PUBLIC_TOPIC_NAME:public-topic};
+      - connect streams /etc/redpanda/streams/*.yml;
+      #- curl "${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/upstream" -o POST --data-binary @${REDPANDA_UPSTREAM_CONFIG};
+      #- curl ${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/downstream -X POST --data-binary @${REDPANDA_DOWNSTREAM_CONFIG};
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
     # mount the local directory that contains your schema to the container.
     volumes:
-      - ./transactions-schema.json:/etc/redpanda/transactions-schema.json
+      - ./activities-schema.json:/etc/redpanda/activities-schema.json
+      - ./rpc-upstream-config.yml:/etc/redpanda/streams/rpc-upstream-config.yml
+      #- ./$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}:/etc/redpanda/streams/$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}
     networks:
       - redpanda_network
     depends_on:
@@ -258,8 +273,9 @@ services:
       - discovery.seed_hosts=opensearch-0,opensearch-1
       - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
       - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
-      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m  # min and max java heap size, recommended 50% system RAM
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"  # min and max java heap size, recommended 50% system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true"          # disable security plugin, for testing purposes
     ulimits:
       memlock:
         soft: -1
@@ -283,8 +299,9 @@ services:
       - discovery.seed_hosts=opensearch-0,opensearch-1
       - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
       - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
-      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m  # min and max java heap size, recommended 50% system RAM
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"  # min and max java heap size, recommended 50% system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true"          # disable security plugin, for testing purposes
     ulimits:
       memlock:
         soft: -1
@@ -294,9 +311,6 @@ services:
         hard: 65536
     volumes:
       - opensearch-data-1:/usr/share/opensearch/data
-    ports:
-      - 9200:9200
-      - 9600:9600 # required for performance analyzer
     networks:
       - opensearch-net
   opensearch-dashboards:
@@ -307,6 +321,7 @@ services:
     expose:
       - '5601'
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch-0:9200","https://opensearch-1:9200"]'
+      - 'OPENSEARCH_HOSTS=["http://opensearch-0:9200","http://opensearch-1:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"          # disable security plugin, for testing purposes
     networks:
       - opensearch-net

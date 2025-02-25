@@ -1,3 +1,5 @@
+## TEMP FILE KEPT FOR REFERENCE IN DEVELOPMENT
+
 # Configuration file for Redpanda Connect
 
 http:
@@ -21,7 +23,7 @@ input:
       inputs: {
         hashtag_input: {
           http: {
-            path: /hashtags/{hashtag},
+            path: /tags/{hashtag},
             method: GET,
             parameters: {
               hashtag: {hashtag}
@@ -34,9 +36,9 @@ input:
       }
       prefix: /api
 
-#buffer:
-#  sqlite:
-#    path: ./buffer.db
+buffer:
+  sqlite:
+    path: ./buffer.db
 
 pipeline:
   threads: 2
@@ -53,7 +55,7 @@ output:
       metadata:
         exclude_prefixes:
           - topic
-    elasticsearch:
+    opensearch:
       urls: [ localhost:9200 ]
       index: "public-topic"
       id: ${!timestamp_unix()}-${!counter()}
@@ -102,3 +104,8 @@ output:
     id: $${!timestamp_unix()}-${!counter()}
     action: update
     max_in_flight: 128
+
+logger:
+  level: INFO
+  static_fields:
+    '@service': benthos

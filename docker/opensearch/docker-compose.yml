@@ -1,4 +1,4 @@
-name: redpanda-opensearch
+name: opensearch
 networks:
   opensearch-net:
     driver: bridge

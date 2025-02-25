@@ -2,6 +2,6 @@
 # Allow topics to be created on first access
 superusers:
   - superuser
-enable_sasl: true
+enable_sasl: false
 auto_create_topics_enabled: true
 data_transforms_enabled: true

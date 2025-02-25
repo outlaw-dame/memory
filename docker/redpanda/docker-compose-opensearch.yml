@@ -1,0 +1,70 @@
+name: opensearch
+networks:
+  opensearch-net:
+    driver: bridge
+volumes:
+  opensearch-data-0:
+  opensearch-data-1:
+services:
+  # Opensearch
+  opensearch-0:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-0
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-0
+      - discovery.seed_hosts=opensearch-0,opensearch-1
+      - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
+      - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"  # min and max java heap size, recommended 50% system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true"          # disable security plugin, for testing purposes
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # max num of open files for opensearch user
+        hard: 65536
+    volumes:
+      - opensearch-data-0:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for performance analyzer
+    networks:
+      - opensearch-net
+  opensearch-1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-1
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-1
+      - discovery.seed_hosts=opensearch-0,opensearch-1
+      - cluster.initial_cluster_manager_nodes=opensearch-0,opensearch-1
+      - bootstrap.memory_lock=true  # along w/ memlock settings below, disables swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"  # min and max java heap size, recommended 50% system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true"          # disable security plugin, for testing purposes
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # max num of open files for opensearch user
+        hard: 65536
+    volumes:
+      - opensearch-data-1:/usr/share/opensearch/data
+    networks:
+      - opensearch-net
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - '5601'
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch-0:9200","http://opensearch-1:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"          # disable security plugin, for testing purposes
+    networks:
+      - opensearch-net
