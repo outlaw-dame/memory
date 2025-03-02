@@ -41,8 +41,8 @@ services:
     container_name: redpanda-0
     # Sets the username and password of the SCRAM superuser
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
-      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+      #RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_ADMIN_USER}:${REDPANDA_ADMIN_PASS}"
     volumes:
       - redpanda-0:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -54,8 +54,8 @@ services:
       - 19092:19092
       - 19644:9644
     healthcheck:
-      #test: ["CMD", "rpk", "cluster", "info", "-X", "user=$${REDPANDA_ADMIN_USER:superuser}", "-X", "pass=$${REDPANDA_ADMIN_PASS:secretpassword}"]
       test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      #test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -77,8 +77,8 @@ services:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
     container_name: redpanda-1
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
-      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+      #RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_ADMIN_USER}:${REDPANDA_ADMIN_PASS}"
     volumes:
       - redpanda-1:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -109,8 +109,8 @@ services:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
     container_name: redpanda-2
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
-      #RP_BOOTSTRAP_USER: "$${REDPANDA_ADMIN_USER:superuser}:$${REDPANDA_ADMIN_PASS:secretpassword}"
+      #RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_ADMIN_USER}:${REDPANDA_ADMIN_PASS}"
     volumes:
       - redpanda-2:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
@@ -144,7 +144,7 @@ services:
             enabled: true
             urls: ["http://redpanda-0:8081"]
           sasl:
-            enabled: false
+            enabled: true
             username: superuser
             password: secretpassword
             mechanism: SCRAM-SHA-256
@@ -154,9 +154,9 @@ services:
             urls: ["http://redpanda-0:9644"]
         console:
           topicDocumentation:
-            enabled: true
+            enabled: false
             git:
-              enabled: true
+              enabled: false
               repository:
                 url: https://github.com/redpanda-data/docs
                 branch: main
@@ -176,60 +176,28 @@ services:
     entrypoint: /bin/sh
     depends_on:
       - redpanda-0
-    command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
+    #command: -c 'cat ${REDPANDA_UPSTREAM_CONFIG} > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
+    command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml && /redpanda-connect -c /tmp/connect.yml; /redpanda-connect streams -o /tmp/connect.yml /etc/redpanda/streams/*.yml;'
     environment:
+      REDPANDA_HTTP_BASE_URL: ${REDPANDA_HTTP_BASE_URL}
+      REDPANDA_HTTPS_CERT_FILE: ${REDPANDA_HTTPS_CERT_FILE}
+      REDPANDA_HTTPS_KEY_FILE: ${REDPANDA_HTTPS_KEY_FILE}
+      REDPANDA_NEW_POST_API_PATH: ${REDPANDA_NEW_POST_API_PATH}
+      REDPANDA_QUERY_OPENSEARCH_API_PATH: ${REDPANDA_QUERY_OPENSEARCH_API_PATH}
+      REDPANDA_DYNAMIC_HTTP_API_PREFIX: ${REDPANDA_DYNAMIC_HTTP_API_PREFIX}
+      REDPANDA_PUBLIC_TOPIC_NAME: ${REDPANDA_PUBLIC_TOPIC_NAME}
+      # Enable streams mode
+      STREAMS_ENABLED: true
+      # Set default config to essentially do nothing, since we're using streams mode
       CONNECT_CFG_FILE: |
-        http:
-          enabled: true
-          address: "$${REDPANDA_HTTP_BASE_URL:0.0.0.0:4195}"
-          #root_path: /public
-          debug_endpoints: true
-          cert_file: "$${REDPANDA_HTTPS_CERT_FILE:\"\"}"
-          key_file: "$${REDPANDA_HTTPS_KEY_FILE:\"\"}"
-
         input:
-          http_server:
-            timeout: 10s
-            rate_limit: ""
-            path: "$${REDPANDA_NEW_POST_API_PATH:/upstream}"
-            allowed_verbs: [ POST ]
-
-        buffer:
-          sqlite:
-            path: ./buffer.db
-
-        pipeline:
-          threads: 2
-          processors:
-            - mapping: |
-                root = this
-
-                meta id = this.data.updateTime$${!counter()}
-                meta action = this.action
-
-                root.id = this.id
-                root.doc = this.body
-
+          generate:
+            mapping: 'root = ""'
+            interval: "1h"
         output:
-          opensearch:
-            urls: [ "$${OPENSEARCH_HTTP_API_BASE_URL:localhost:9200}" ]
-            index: "$${OPENSEARCH_PUBLIC_INDEX_NAME:public-index}"
-            action: $${! @action }
-            id: $${! @id }
-            type: ""
-            max_in_flight: 64
-            batching:
-              count: 0
-              byte_size: 0
-              period: ""
-              check: ""
-            basic_auth:
-              enabled: false
-              username: ""
-              password: ""
-
-        redpanda:
-          seed_brokers: [ "redpanda-0:9092" ]
+          drop: {}
+    volumes:
+      - ${REDPANDA_STREAMS_DIR}:/etc/redpanda/streams
   ####################
   # rpk #
   ####################
@@ -243,25 +211,28 @@ services:
       - /etc/redpanda/activities-schema.json
       #- -X user=$${REDPANDA_ADMIN_USER:superuser}
       #- -X pass=$${REDPANDA_ADMIN_PASS:secretpassword}
-      - -X user=superuser
-      - -X pass=secretpassword
+      - -X user=${REDPANDA_ADMIN_USER}
+      - -X pass=${REDPANDA_ADMIN_PASS}
       - -X registry.hosts=redpanda-0:8081
-      - --set retention.ms=1000;
-      #- topic alter-config ${REDPANDA_PUBLIC_TOPIC_NAME:public-topic};
-      - connect streams /etc/redpanda/streams/*.yml;
+      # set retention to be a small amount of time, so as to delete after sending to opensearch
+      #- cluster
+      #- config
+      #- set
+      #- retention.ms=1000;
       #- curl "${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/upstream" -o POST --data-binary @${REDPANDA_UPSTREAM_CONFIG};
       #- curl ${REDPANDA_HTTP_BASE_URL:http://0.0.0.0:4195}/streams/downstream -X POST --data-binary @${REDPANDA_DOWNSTREAM_CONFIG};
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.3
     # mount the local directory that contains your schema to the container.
     volumes:
-      - ./activities-schema.json:/etc/redpanda/activities-schema.json
-      - ./rpc-upstream-config.yml:/etc/redpanda/streams/rpc-upstream-config.yml
+      - ${REDPANDA_ACTIVITIES_SCHEMA}:/etc/redpanda/activities-schema.json
       #- ./$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}:/etc/redpanda/streams/$${REDPANDA_UPSTREAM_CONFIG:rpc-upstream-config.yml}
     networks:
       - redpanda_network
     depends_on:
       redpanda-0:
         condition: service_healthy
+
+
 
   # Opensearch
   opensearch-0:
