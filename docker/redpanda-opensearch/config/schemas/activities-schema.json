@@ -1,48 +1,62 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Activities",
   "type": "object",
-  "properties": {
-    "@context": {
+  "name": "activities",
+  "fields": [
+    {
+      "name": "@context",
       "type": "string",
       "format": "uri",
       "description": "Context for formatting of object (e.g. \"https://www.w3.org/ns/activitystreams\")"
     },
-    "type": {
+    {
+      "name": "type",
       "type": "string",
       "description": "Type of activity"
     },
-    "id": {
+    {
+      "name": "id",
       "type": "string",
       "format": "uri",
       "description": "URI of the activity described by this object"
     },
-    "actor": {
+    {
+      "name": "actor",
       "type": "string",
       "format": "uri",
       "description": "URI of the actor of whom created this object"
     },
-    "content": {
+    {
+      "name": "content",
       "type": "string",
       "description": "Content of the activity"
     },
-    "tag": {
-      "type": "array",
+    {
+      "name": "tag",
+      "type": "object",
       "description": "Array of tags associated with this object",
-      "properties": {
-        "type": {
-          "type": "string"
-        },
-        "id": {
+      "fields": [
+        {
+          "name": "type",
           "type": "string",
-          "format": "uri"
+          "default": ""
         },
-        "name": {
-          "type": "string"
+        {
+          "name": "id",
+          "type": "string",
+          "format": "uri",
+          "default": ""
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "default": ""
         }
-      }
+      ],
+      "default": [
+        "",
+        "",
+        ""
+      ]
     }
-  },
-  "required": ["@context", "type", "id", "actor"],
-  "additionalProperties": false
+  ]
 }
