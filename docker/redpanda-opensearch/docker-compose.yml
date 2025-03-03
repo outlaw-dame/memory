@@ -177,7 +177,8 @@ services:
     depends_on:
       - redpanda-0
     #command: -c 'cat ${REDPANDA_UPSTREAM_CONFIG} > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
-    command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml && /redpanda-connect -c /tmp/connect.yml; /redpanda-connect streams -o /tmp/connect.yml /etc/redpanda/streams/*.yml;'
+    command: -c 'echo "$$CONNECT_CFG_FILE" > /tmp/connect.yml; /redpanda-connect -c /tmp/connect.yml'
+    #streams -r /etc/redpanda/streams/*.yml -o /tmp/connect.yml
     environment:
       REDPANDA_HTTP_BASE_URL: ${REDPANDA_HTTP_BASE_URL}
       REDPANDA_HTTPS_CERT_FILE: ${REDPANDA_HTTPS_CERT_FILE}
@@ -190,6 +191,11 @@ services:
       STREAMS_ENABLED: true
       # Set default config to essentially do nothing, since we're using streams mode
       CONNECT_CFG_FILE: |
+        http:
+          enabled: true
+          address: 0.0.0.0:4195
+          root_path: /api
+          debug_endpoints: true
         input:
           generate:
             mapping: 'root = ""'
