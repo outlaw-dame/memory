@@ -5,18 +5,31 @@ DOCKER_COMPOSE_DEV=docker compose -f docker-compose-dev.yml  --env-file .env --e
 DOCKER_COMPOSE_ZROK=docker compose -f docker-compose-zrok.yml  --env-file .env.zrok --env-file .env.zrok.local
 DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file .env.production --env-file .env.production.local
 
+
+# Redpanda/Opensearch docker commands
+# dev only for the time being
+RP_OS_DOCKER_COMPOSE_DEV=docker compose -f ./docker/redpanda-opensearch/docker-compose.yml --env-file ./docker/redpanda-opensearch/.env
+
+
+# Mastopod/Memory start commands
+MEM_START=screen -dmS memory-backend bash -c 'cd backend; yarn run dev' && screen -dmS memory-frontend bash -c 'cd frontend; yarn run dev' 
+MEM_STOP=screen -XS memory-backend quit && screen -XS memory-frontend quit
+
+
 # Dev commands
 
 # Start relevant docker containers and run frontend and backend in separate screen
 start:
 	$(DOCKER_COMPOSE_DEV) up -d
-#	screen -d -m -S mastopod-frontend cd frontend && yarn run dev
-#	screen -d -m -S mastopod-backend cd backend && yarn run dev
+	$(RP_OS_DOCKER_COMPOSE_DEV) up -d
+#	$(MEM_START)
 
 stop:
 	$(DOCKER_COMPOSE_DEV) kill
 	$(DOCKER_COMPOSE_DEV) rm -fv
-#	screen -
+	$(RP_OS_DOCKER_COMPOSE_DEV) kill
+	$(RP_OS_DOCKER_COMPOSE_DEV) rm -fv
+#	$(MEM_STOP)
 
 config:
 	$(DOCKER_COMPOSE_DEV) config
