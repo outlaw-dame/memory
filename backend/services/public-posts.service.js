@@ -23,7 +23,7 @@ const CONFIG = require('../config/config');
 
 
 // OpenSearch configuration
-const opensearchAddress = "http://localhost:9200";
+const opensearchAddress = CONFIG.OPENSEARCH_HTTP_API_BASE_URL;
 const indexName = "public-posts";
 
 // RedPanda configuration
@@ -33,7 +33,7 @@ const rpPubTopic = CONFIG.REDPANDA_PUBLIC_TOPIC;
 
 
 // Allow swapping between OpenSearch only or Redpanda + OpenSearch by having two versions of the service
-const useRedPanda = true;
+const useRedPanda = false;
 const publicPostsService = useRedPanda ?
 
   // using RedPanda
