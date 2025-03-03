@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">memory</string>
+    <string name="title_activity_main">memory</string>
+    <string name="package_name">com.memory.app</string>
+    <string name="custom_url_scheme">com.memory.app</string>
+</resources>
