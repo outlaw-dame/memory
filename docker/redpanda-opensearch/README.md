@@ -33,6 +33,12 @@
 - `./config/mastodon-compat/` is currently unused, and contains some (untested) outlines for Mastodon related schemas. The future intent for these are to be used in the production of a Redpanda Connect pipeline for streaming of data between Memory instances and Mastodon instances while concurrently converting the data between the different formats (e.g. converting Memory formatted posts to Mastodon formatted posts, and vice versa).
 - `./docker-compose-default.yml` is the default docker compose file for setting up a Redpanda Connect pipeline, and is only kept temporarily for troubleshooting purposes.
 
+### Troubleshooting:
+- If you're ever having trouble with running the docker containers, then try the following:
+    - Prior to restarting, ensure all docker containers are down and removed with `docker compose down`.
+    - If that doesn't help, then ensure none of the docker containers are still around with `docker compose ps` and `docker ps`. If the latter shows a container, first stop it with `docker stop <container_name>`, then remove it with `docker rm <container_name>`.
+    - If all else fails, then run the containers with `docker compose up` instead of `docker compose up -d`, and check the logs for errors.
+
 
 ## TODO:
 - [ ] Get Redpanda Connect Streams working properly
