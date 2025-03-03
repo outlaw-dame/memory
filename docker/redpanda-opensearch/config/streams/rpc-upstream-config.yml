@@ -1,30 +1,22 @@
 # Configuration file for Redpanda Connect
 # Intended to handle post creation, updating, and deletion in conjunction with OpenSearch
 
-http:
-  enabled: true
-  address: "${REDPANDA_HTTP_BASE_URL:0.0.0.0:4195}"
-  #root_path: /public
-  debug_endpoints: true
-  cert_file: "${REDPANDA_HTTPS_CERT_FILE:\"\"}"
-  key_file: "${REDPANDA_HTTPS_KEY_FILE:\"\"}"
-
 input:
   http_server:
     #address: ""
     timeout: 10s
     rate_limit: ""
-    path: "${REDPANDA_NEW_POST_API_PATH:/upstream}"
+    path: /upstream # "${REDPANDA_NEW_POST_API_PATH:/upstream}"
     allowed_verbs: [ POST ]
       #path: "${REDPANDA_REQUEST_HASHTAG_HTTP_API_BASE_URL:/tags}/{hashtag}",
       #prefix: ${REDPANDA_DYNAMIC_HTTP_API_PREFIX:/api}
 
-buffer:
-  sqlite:
-    path: ./buffer.db
+#buffer:
+#  sqlite:
+#    path: ./buffer.db
 
 pipeline:
-  threads: 2
+  threads: 4
   processors:
     - mapping: |
         root = this
@@ -43,8 +35,8 @@ output:
   #      exclude_prefixes:
   #        - topic
   opensearch:
-    urls: [ "${OPENSEARCH_HTTP_API_BASE_URL:localhost:9200}" ]
-    index: "${OPENSEARCH_PUBLIC_INDEX_NAME:activities}"
+    urls: [ http://localhost:9200 ] #"${OPENSEARCH_HTTP_API_BASE_URL:localhost:9200}" ]
+    index: "public-posts" # "${OPENSEARCH_PUBLIC_INDEX_NAME:activities}"
     action: ${! @action }
     id: ${! @id }
     type: ""
@@ -60,12 +52,12 @@ output:
       password: ""
     #tls:
 
-redpanda:
-  seed_brokers: [ "redpanda-0:9092" ]
+#redpanda:
+#  seed_brokers: [ "redpanda-0:9092" ]
   #tls:
   #  enabled: true
-  #sasl:
-  #  - mechanism: SCRAM-SHA-256
-  #    password: "${REDPANDA_ADMIN_PASS:secretpassword}"
-  #    username: "${REDPANDA_ADMIN_USER:superuser}"
+#  sasl:
+#    - mechanism: SCRAM-SHA-256
+#      password: "secretpassword" #"${REDPANDA_ADMIN_PASS:secretpassword}"
+#      username: "superuser" #"${REDPANDA_ADMIN_USER:superuser}"
 
