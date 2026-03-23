@@ -16,5 +16,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '#api': resolve(__dirname, '../api/src')
     }
+  },
+  server: {
+    // Allow all proxied / tunnelled hosts (e.g. Manus sandbox, ngrok, Cloudflare Tunnel)
+    allowedHosts: true,
+    host: '0.0.0.0',
+    port: 5173
   }
 })
