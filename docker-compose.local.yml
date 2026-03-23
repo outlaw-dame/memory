@@ -1,22 +1,105 @@
 # ============================================================================
 # Memory App + AT Protocol Bridge — Full Local Stack
 #
-# Runs everything you need to see the Memory app in your browser with live
-# AT Protocol federated content flowing in from the Mastopod sidecar.
+# Runs the complete stack locally including the ActivityPods pod provider
+# so users can sign up and sign in via their local pod.
 #
 # Services:
-#   pg        — PostgreSQL 17 database
-#   api       — Memory API (Elysia/Bun) on http://localhost:8794
-#   frontend  — Memory UI (Vite/Vue) on http://localhost:5173
-#   mastopod  — AT Protocol ingress pipeline (Phase 5.5 local harness)
+#   fuseki            — Apache Jena Fuseki (RDF triple store for ActivityPods)
+#   redis             — Redis (ActivityPods job queue + AT cursor store)
+#   activitypods      — ActivityPods backend (pod provider on :3000)
+#   pg                — PostgreSQL 17 (Memory API database)
+#   api               — Memory API (Elysia/Bun) on :8794
+#   frontend          — Memory UI (Vite/Vue) on :5173
+#   mastopod          — AT Protocol ingress pipeline (Phase 5.5)
 #
 # Usage:
 #   docker compose -f docker-compose.local.yml up --build
 #
 # Then open: http://localhost:5173
+#
+# Sign up at: http://localhost:5173  (uses the local ActivityPods pod provider
+#             at http://localhost:3000 — this is pre-filled in the form)
 # ============================================================================
 
 services:
+
+  # --------------------------------------------------------------------------
+  # Apache Jena Fuseki — RDF triple store required by ActivityPods
+  # --------------------------------------------------------------------------
+  fuseki:
+    image: semapps/jena-fuseki-webacl
+    restart: unless-stopped
+    ports:
+      - '3030:3030'
+    volumes:
+      - fuseki_data:/fuseki
+    environment:
+      ADMIN_PASSWORD: localadmin
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:3030/$$/ping || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # --------------------------------------------------------------------------
+  # Redis — job queue for ActivityPods + optional AT cursor store
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: ['redis-server', '--appendonly', 'yes']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # --------------------------------------------------------------------------
+  # ActivityPods Backend — the Solid/ActivityPub pod provider
+  # Users sign up and sign in through this service.
+  # It exposes:
+  #   POST /auth/signup  — create a new pod
+  #   POST /auth/login   — get a bearer token
+  #   GET  /.well-known/openid-configuration  — Solid-OIDC discovery
+  # --------------------------------------------------------------------------
+  activitypods:
+    image: activitypods/backend:latest
+    restart: unless-stopped
+    depends_on:
+      fuseki:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    volumes:
+      - activitypods_logs:/app/backend/logs
+      - activitypods_jwt:/app/backend/jwt
+      - activitypods_uploads:/app/backend/uploads
+    environment:
+      SEMAPPS_JENA_PASSWORD: localadmin
+      SEMAPPS_APP_LANG: en
+      # Disable Mapbox (not needed for local dev — only used for address autocomplete)
+      SEMAPPS_MAPBOX_ACCESS_TOKEN: ''
+      # Use the local Fuseki instance
+      SEMAPPS_JENA_URL: http://fuseki:3030
+      # Redis connection
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    # ActivityPods uses host networking so it can reach the app backend at localhost:8794
+    network_mode: host
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:3000/.well-known/openid-configuration || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   # --------------------------------------------------------------------------
   # PostgreSQL — the database for the Memory API
@@ -76,12 +159,10 @@ services:
     depends_on:
       - api
     ports:
-      - '5173:5173'
+      - '5173:4000'
 
   # --------------------------------------------------------------------------
-  # Mastopod AT Protocol Ingress Pipeline (Phase 5.5 local harness)
-  # Runs the mock firehose + full ingress pipeline and forwards verified events
-  # to the Memory API webhook endpoint.
+  # Mastopod AT Protocol Ingress Pipeline (Phase 5.5)
   # --------------------------------------------------------------------------
   mastopod:
     build:
@@ -92,10 +173,15 @@ services:
       api:
         condition: service_healthy
     environment:
-      MEMORY_WEBHOOK_URL: http://api:8794/at/webhook/ingress
+      MEMORY_WEBHOOK_URL: http://localhost:8794/at/webhook/ingress
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
-      # Set to 'true' to connect to the real Bluesky relay instead of the mock
       USE_REAL_FIREHOSE: 'false'
+    network_mode: host
 
 volumes:
+  fuseki_data:
+  redis_data:
+  activitypods_logs:
+  activitypods_jwt:
+  activitypods_uploads:
   pg_data:

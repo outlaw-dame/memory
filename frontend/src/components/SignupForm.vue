@@ -3,23 +3,29 @@ import { validateEmail, validatePassword, validateUsername } from '@/controller/
 import { useAuthStore } from '@/stores/authStore'
 import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from '@/components/MemoryInput.vue'
-import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
 import { ProviderSignUpErrors } from '@/types'
 
 // Store
 const authStore = useAuthStore()
 
-// Form Data
-const username = ref('test')
-const email = ref('test@test.com')
-const password = ref('testtest')
-const confirmPassword = ref('testtest')
-const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
+// Form Data — no pre-filled test values in production
+const username = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+/**
+ * Pod provider endpoint — defaults to the local ActivityPods instance.
+ * Users connecting to an external pod provider can change this URL.
+ * e.g. https://activitypods.org
+ */
+const endpoint = ref('http://localhost:3000')
+
 // Validation
 const formIsValid = ref(true)
 const formLifeCheck = ref(false)
 const errorMessages = ref<Record<string, string>>({})
+
 // Variables
 const isRequesting = ref(false)
 
@@ -28,10 +34,14 @@ async function submitForm() {
   validateForm()
   if (formIsValid.value) {
     isRequesting.value = true
-    const authResponse = await authStore.signup(email.value, username.value, password.value, endpoint.value)
+    const authResponse = await authStore.signup(
+      email.value,
+      username.value,
+      password.value,
+      endpoint.value as any,
+    )
     // if the response is a string, it means that there was an error
     if (authResponse) {
-      console.log(authResponse)
       switch (authResponse) {
         case ProviderSignUpErrors['username.already.exists']:
         case ProviderSignUpErrors['username.invalid']:
@@ -45,7 +55,7 @@ async function submitForm() {
           errorMessages.value.default = authResponse
           break
       }
-      console.error(authResponse)
+      console.error('[SignupForm] signup error:', authResponse)
     }
     isRequesting.value = false
   }
@@ -81,13 +91,20 @@ function validateForm(): void {
       errorMessages.value.username = usernameVal
       valid = false
     }
+
+    // endpoint check
+    if (!endpoint.value.startsWith('http')) {
+      errorMessages.value.endpoint = 'Must be a valid http:// or https:// URL'
+      valid = false
+    }
+
     formIsValid.value = valid
   }
 }
 </script>
 
 <template>
-  <form @submit.prevent class="flex flex-col justify-between">
+  <form @submit.prevent="submitForm" class="flex flex-col justify-between gap-3">
     <div class="gap-(--gap-small) flex flex-col">
       <MemoryInput
         v-model="username"
@@ -121,7 +138,29 @@ function validateForm(): void {
           @input="validateForm"
         />
       </div>
+
+      <!-- Pod provider URL — which ActivityPods server to register on -->
+      <div class="flex flex-col gap-1">
+        <MemoryInput
+          v-model="endpoint"
+          :error="errorMessages.endpoint"
+          label="Pod Provider URL"
+          placeholder="http://localhost:3000"
+          @input="validateForm"
+        />
+        <p class="text-xs text-gray-400">
+          Local dev: <code>http://localhost:3000</code>
+          &nbsp;·&nbsp;
+          Public: <code>https://activitypods.org</code>
+        </p>
+      </div>
     </div>
+
+    <!-- General error message -->
+    <p v-if="errorMessages.default" class="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+      {{ errorMessages.default }}
+    </p>
+
     <MemoryButton
       :loading="isRequesting"
       @click="submitForm"
