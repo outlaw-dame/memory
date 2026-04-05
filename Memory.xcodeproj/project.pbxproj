@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		367C205C2E0C92D5007D95E1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 367C205B2E0C92D5007D95E1 /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		367C20652E0C92D7007D95E1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -25,6 +29,7 @@
 
 /* Begin PBXFileReference section */
 		367C20562E0C92D5007D95E1 /* Memory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		367C205B2E0C92D5007D95E1 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		367C20642E0C92D6007D95E1 /* MemoryTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		367C206E2E0C92D7007D95E1 /* MemoryUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MemoryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -75,7 +80,9 @@
 		367C204D2E0C92D5007D95E1 = {
 			isa = PBXGroup;
 			children = (
-				367C20582E0C92D5007D95E1 /* Memory */,
+				367C20822E0C9759007D95E1 /* App */,
+				367C20852E0C9785007D95E1 /* Resources */,
+				367C20842E0C977E007D95E1 /* Models */,
 				367C20672E0C92D7007D95E1 /* MemoryTests */,
 				367C20712E0C92D7007D95E1 /* MemoryUITests */,
 				367C20572E0C92D5007D95E1 /* Products */,
@@ -90,6 +97,141 @@
 				367C206E2E0C92D7007D95E1 /* MemoryUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		367C20812E0C9346007D95E1 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				367C20862E0C97A2007D95E1 /* Database */,
+				367C20892E0C97DE007D95E1 /* Utils */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		367C20822E0C9759007D95E1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				367C20812E0C9346007D95E1 /* Core */,
+				367C208F2E0C991A007D95E1 /* Features */,
+				367C205B2E0C92D5007D95E1 /* ContentView.swift */,
+				367C20582E0C92D5007D95E1 /* Memory */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		367C20842E0C977E007D95E1 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				367C208B2E0C9832007D95E1 /* ViewModels */,
+				367C208A2E0C9811007D95E1 /* Entities */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		367C20852E0C9785007D95E1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				367C208C2E0C98E2007D95E1 /* New Group */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		367C20862E0C97A2007D95E1 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				367C20872E0C97BF007D95E1 /* Networking */,
+			);
+			path = Database;
+			sourceTree = "<group>";
+		};
+		367C20872E0C97BF007D95E1 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				367C20882E0C97D0007D95E1 /* AI */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		367C20882E0C97D0007D95E1 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
+		367C20892E0C97DE007D95E1 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		367C208A2E0C9811007D95E1 /* Entities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Entities;
+			sourceTree = "<group>";
+		};
+		367C208B2E0C9832007D95E1 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		367C208C2E0C98E2007D95E1 /* New Group */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = "New Group";
+			sourceTree = "<group>";
+		};
+		367C208F2E0C991A007D95E1 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				367C20952E0C99F8007D95E1 /* Timeline */,
+				367C20902E0C9975007D95E1 /* Authentication */,
+				367C20942E0C99B5007D95E1 /* Settings */,
+				367C20932E0C99AE007D95E1 /* Profile */,
+				367C20922E0C99A1007D95E1 /* Compose */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		367C20902E0C9975007D95E1 /* Authentication */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Authentication;
+			sourceTree = "<group>";
+		};
+		367C20922E0C99A1007D95E1 /* Compose */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Compose;
+			sourceTree = "<group>";
+		};
+		367C20932E0C99AE007D95E1 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		367C20942E0C99B5007D95E1 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		367C20952E0C99F8007D95E1 /* Timeline */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Timeline;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -236,6 +378,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				367C205C2E0C92D5007D95E1 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
