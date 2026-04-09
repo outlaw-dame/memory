@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: docker-build docker-up build start log stop restart
+.PHONY: docker-build docker-up build start log stop restart db-push db-generate
 
 DOCKER_COMPOSE_DEV=docker compose -f docker-compose-dev.yml  --env-file .env
 DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file ./api/.env --env-file ./frontend/.env
@@ -83,3 +83,23 @@ publish-backend-latest:
 	export TAG=latest
 	$(DOCKER_COMPOSE_PROD) build app-backend
 	$(DOCKER_COMPOSE_PROD) push app-backend
+
+# ---------------------------------------------------------------------------
+# Database helpers
+# Requires the dev containers (make start) to be running so the 'pg' service
+# is accepting connections on localhost:5432.
+# ---------------------------------------------------------------------------
+
+# Push schema changes directly to the dev DB (fast, for local development).
+# Equivalent to: "apply whatever the Drizzle schema files describe right now".
+db-push:
+	cd api && DB_URL=postgres://postgres:$(POSTGRES_PASSWORD)@localhost:5432/postgres bun run drizzle:push
+
+# Generate a checked-in Drizzle migration SQL file from the current schema.
+# Commit the generated file in api/drizzle/ before deploying to production.
+db-generate:
+	cd api && bun run drizzle:generate
+
+# Apply all pending checked-in migration files (use in CI / production).
+db-migrate:
+	cd api && DB_URL=postgres://postgres:$(POSTGRES_PASSWORD)@localhost:5432/postgres bun run drizzle:migrate

@@ -5,17 +5,25 @@ export default class User {
   userName: string
   token: string
   endpoint: string
+  /** ATProto DID (e.g. "did:plc:abc123"), or null if not yet linked. */
+  atprotoDid: string | null
+  /** ATProto handle (e.g. "alice.pod.example"), or null if not yet resolved. */
+  atprotoHandle: string | null
 
   constructor(dbUser?: SelectUsers, token?: string) {
     this.userId = 0
     this.userName = ''
     this.token = ''
     this.endpoint = ''
+    this.atprotoDid = null
+    this.atprotoHandle = null
 
     if (dbUser) {
       this.userId = dbUser.id
       this.userName = dbUser.name
       this.endpoint = dbUser.providerEndpoint
+      this.atprotoDid = dbUser.atprotoDid ?? null
+      this.atprotoHandle = dbUser.atprotoHandle ?? null
     }
     if (token) {
       this.token = token
@@ -27,6 +35,8 @@ export default class User {
     this.userName = oldUser.userName
     this.token = oldUser.token
     this.endpoint = oldUser.endpoint
+    this.atprotoDid = oldUser.atprotoDid ?? null
+    this.atprotoHandle = oldUser.atprotoHandle ?? null
   }
 
   getWebId() {

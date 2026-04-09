@@ -115,6 +115,55 @@ export const atPosts = table('at_posts', {
 })
 
 // ---------------------------------------------------------------------------
+// AT Records (all supported lexicons)
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores raw commits for all supported lexicons.
+ * This allows Memory to support the same record families as Bluesky
+ * (app.bsky.*) plus standard.site.* without losing non-post data.
+ */
+export const atRecords = table('at_records', {
+  id: serial().primaryKey(),
+
+  /** ATProto DID of the author. */
+  authorDid: varchar('author_did', { length: 2048 }).notNull(),
+
+  /** Collection NSID, e.g. app.bsky.feed.post, standard.site.article. */
+  collection: varchar('collection', { length: 512 }).notNull(),
+
+  /** ATProto record key (rkey) for deduplication. */
+  rkey: varchar('rkey', { length: 512 }).notNull(),
+
+  /** Full AT URI (at://did/.../collection/rkey). */
+  atUri: varchar('at_uri', { length: 3072 }).notNull().unique(),
+
+  /** Content-addressed CID of the record. */
+  cid: varchar('cid', { length: 512 }),
+
+  /** Current operation state for this record. */
+  operation: varchar('operation', { length: 16 }).notNull().default('create'),
+
+  /** Raw record payload for lexicon-specific fields. */
+  record: jsonb('record'),
+
+  /** Whether this record is currently active (soft-delete support). */
+  isActive: boolean('is_active').notNull().default(true),
+
+  /** ISO-8601 timestamp from the ATProto record, when available. */
+  createdAt: timestamp('created_at', { withTimezone: true }),
+
+  /** ISO-8601 timestamp of local ingestion. */
+  ingestedAt: timestamp('ingested_at', { withTimezone: true }).defaultNow(),
+
+  /** Upstream firehose source (e.g. wss://relay.bsky.network). */
+  sourceRelay: varchar('source_relay', { length: 512 }),
+
+  /** ATProto firehose sequence number for ordering and deduplication. */
+  firehoseSeq: integer('firehose_seq'),
+})
+
+// ---------------------------------------------------------------------------
 // AT Firehose Cursor State (for UI observability)
 // ---------------------------------------------------------------------------
 
@@ -170,6 +219,8 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   source: varchar('source', { length: 32 }).notNull(),
   /** AT URI for ATProto posts, null for ActivityPods posts. */
   atUri: varchar('at_uri', { length: 3072 }),
+  /** ActivityPub object URI for ActivityPods posts, null for ATProto posts. */
+  objectUri: text('object_uri'),
 }).as(sql`
   SELECT
     posts.id,
@@ -181,7 +232,8 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     users.web_id as author_web_id,
     users.provider_endpoint as author_provider_endpoint,
     'activitypods' as source,
-    NULL::varchar as at_uri
+    NULL::varchar as at_uri,
+    posts.object_uri
   FROM posts
   INNER JOIN users ON posts.author_id = users.id
   WHERE posts.is_public = true
@@ -198,7 +250,8 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     at_posts.author_did as author_web_id,
     '' as author_provider_endpoint,
     'atproto' as source,
-    at_posts.at_uri
+    at_posts.at_uri,
+    NULL::text as object_uri
   FROM at_posts
   LEFT JOIN at_identities ON at_posts.author_did = at_identities.did
   WHERE at_posts.is_public = true

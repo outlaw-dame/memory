@@ -2,48 +2,63 @@ import Elysia, { t } from 'elysia'
 import { posts, postsView } from '../db/schema'
 import ActivityPod from '../services/ActivityPod'
 import { _createPost, selectQueryObject, type SelectPost } from '../types'
-import { db } from '..'
+import type { NoteCreateRequest } from '../types'
+import { db } from '../db/client'
 import setupPlugin from './setup'
+import { ilike } from 'drizzle-orm'
 
 const postsRoutes = new Elysia({ name: 'posts' })
   .use(setupPlugin)
-  .guard({
-    isSignedIn: true
-  })
   .post(
     '/posts',
-    async ({ error, body, user }) => {
-      const { content, isPublic } = body
+    async ({ set, body, user }) => {
+      const { content, isPublic, postType = 'note', name } = body
 
       const addressats = [`${user.endpoint}/${user.userName}/followers`]
       if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
 
-      const post = {
+      const asTypeUri = postType === 'article'
+        ? 'https://www.w3.org/ns/activitystreams#Article'
+        : 'https://www.w3.org/ns/activitystreams#Note'
+
+      const post: NoteCreateRequest = {
         '@context': 'https://www.w3.org/ns/activitystreams',
-        type: 'Note',
+        type: asTypeUri,
         attributedTo: `${user.endpoint}/${user.userName}`,
         content: content,
         to: addressats
       }
+      if (name) post.name = name
+
+      let objectUri: string | null = null
       let newPost: SelectPost
 
       try {
-        // create the post in the pod
-        await ActivityPod.createPost(user, post)
+        // Create the post in the ActivityPods pod outbox.
+        // user.token is the pod-native JWT (from /auth/login), stored in the DB
+        // and used by both the legacy /signin flow and the OIDC flow.
+        const created = await ActivityPod.createPost(user, post)
+        objectUri = created.objectUri
         // insert the post into the database
         const newPosts = await db
           .insert(posts)
           .values({
             authorId: user.userId,
             content,
-            isPublic
+            isPublic,
+            objectUri,
+            postType,
+            name: name ?? null
           })
           .returning()
         newPost = {
           id: newPosts[0].id,
           content,
           isPublic,
+          postType,
+          name: name ?? null,
           authorId: user.userId,
+          objectUri: newPosts[0].objectUri || objectUri || null,
           createdAt: newPosts[0].createdAt?.toString() || '',
           author: {
             id: user.userId,
@@ -53,27 +68,36 @@ const postsRoutes = new Elysia({ name: 'posts' })
         }
       } catch (e) {
         console.error('Error while creating the post: ', e)
-        return error(500, 'Error while creating the post')
+        set.status = 500
+        return 'Error while creating the post'
       }
 
       return newPost
     },
     {
-      body: t.Omit(_createPost, ['id', 'created_at', 'authorId']),
+      body: t.Object({
+        content: t.String({ minLength: 1 }),
+        isPublic: t.Boolean(),
+        postType: t.Optional(t.Union([t.Literal('note'), t.Literal('article')], { default: 'note' })),
+        name: t.Optional(t.String({ minLength: 1, maxLength: 500 }))
+      }),
       detail: 'Creates a new post',
       isSignedIn: true
     }
   )
   .get(
     '/posts',
-    async ({ query: { limit, offset } }) => {
-      const postsQuery = await db
+    async ({ query: { limit, offset, hashtag } }) => {
+      let query = db
         .select({
           id: postsView.id,
           content: postsView.content,
           isPublic: postsView.isPublic,
           createdAt: postsView.createdAt,
           authorId: postsView.authorId,
+          objectUri: postsView.objectUri,
+          postType: postsView.postType,
+          name: postsView.name,
           author: {
             id: postsView.authorId,
             name: postsView.authorName,
@@ -81,8 +105,13 @@ const postsRoutes = new Elysia({ name: 'posts' })
           }
         })
         .from(postsView)
-        .limit(limit)
-        .offset(offset)
+
+      if (hashtag && hashtag.trim().length > 0) {
+        const pattern = `%${hashtag.replace(/^#/, '#')}%`
+        query = query.where(ilike(postsView.content, pattern)) as typeof query
+      }
+
+      const postsQuery = await query.limit(limit).offset(offset)
       return postsQuery
     },
     {

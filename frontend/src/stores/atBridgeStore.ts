@@ -40,6 +40,16 @@ export interface AtPost {
   authorHandle: string | null
 }
 
+export interface QuotedPost {
+  id: number
+  authorName: string
+  authorWebId: string
+  authorProviderEndpoint: string
+  content: string
+  createdAt: string | null
+  source: 'activitypods' | 'atproto'
+}
+
 export interface UnifiedFeedItem {
   id: number
   content: string
@@ -51,6 +61,8 @@ export interface UnifiedFeedItem {
   authorProviderEndpoint: string
   source: 'activitypods' | 'atproto'
   atUri: string | null
+  objectUri: string | null
+  quotedPost?: QuotedPost
 }
 
 export interface FirehoseStatus {
@@ -63,6 +75,42 @@ export interface FirehoseStatus {
 }
 
 export type FeedSource = 'all' | 'activitypods' | 'atproto'
+export type TimelineMode = 'balanced' | 'chronological'
+
+export interface AtRecordSummary {
+  title: string | null
+  text: string | null
+  subjectUri: string | null
+  replyParentUri: string | null
+  replyRootUri: string | null
+  tags: string[]
+  languages: string[]
+  hasMedia: boolean
+}
+
+export interface AtRecord {
+  id: number
+  authorDid: string
+  collection: string
+  lexiconFamily: 'bsky' | 'standard.site' | 'other'
+  recordType: string
+  rkey: string
+  atUri: string
+  cid: string | null
+  operation: string
+  isActive: boolean
+  createdAt: string | null
+  ingestedAt: string | null
+  sourceRelay: string | null
+  firehoseSeq: number | null
+  summary: AtRecordSummary
+  record?: Record<string, unknown> | null
+}
+
+interface ProtocolWeights {
+  activitypods: number
+  atproto: number
+}
 
 // ---------------------------------------------------------------------------
 // Store
@@ -76,19 +124,24 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   // -------------------------------------------------------------------------
 
   const atPosts = ref<AtPost[]>([])
+  const atRecords = ref<AtRecord[]>([])
   const unifiedFeed = ref<UnifiedFeedItem[]>([])
   const firehoseStatus = ref<{
     sources: FirehoseStatus[]
-    stats: { totalAtPosts: number; totalAtIdentities: number }
-  }>({ sources: [], stats: { totalAtPosts: 0, totalAtIdentities: 0 } })
+    stats: { totalAtPosts: number; totalAtIdentities: number; totalAtRecords: number }
+  }>({ sources: [], stats: { totalAtPosts: 0, totalAtIdentities: 0, totalAtRecords: 0 } })
 
   const feedSource = ref<FeedSource>('all')
+  const timelineMode = ref<TimelineMode>('balanced')
+  const protocolWeights = ref<ProtocolWeights>({ activitypods: 50, atproto: 50 })
+  const hashtagFilter = ref('')
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   // Pagination
   const unifiedFeedOffset = ref(0)
   const atPostsOffset = ref(0)
+  const atRecordsOffset = ref(0)
   const PAGE_SIZE = 20
 
   // -------------------------------------------------------------------------
@@ -146,9 +199,12 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     try {
       const offset = append ? unifiedFeedOffset.value : 0
       const sourceParam = feedSource.value !== 'all' ? `&source=${feedSource.value}` : ''
+      const hashtagParam = hashtagFilter.value ? `&hashtag=${encodeURIComponent(hashtagFilter.value)}` : ''
+      const modeParam = `&mode=${timelineMode.value}`
+      const weightsParam = `&apWeight=${protocolWeights.value.activitypods}&atWeight=${protocolWeights.value.atproto}`
 
       const items = await apiFetch<UnifiedFeedItem[]>(
-        `/at/feed?limit=${PAGE_SIZE}&offset=${offset}${sourceParam}`,
+        `/at/feed?limit=${PAGE_SIZE}&offset=${offset}${sourceParam}${hashtagParam}${modeParam}${weightsParam}`,
       )
 
       if (append) {
@@ -199,6 +255,57 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   }
 
   /**
+   * Fetch supported lexicon records (Bluesky + standard.site).
+   */
+  async function fetchAtRecords(
+    append = false,
+    params?: {
+      collection?: string
+      did?: string
+      family?: 'all' | 'bsky' | 'standard.site'
+      recordType?: string
+      search?: string
+      includeRaw?: boolean
+    },
+  ): Promise<void> {
+    if (isLoading.value) return
+
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const offset = append ? atRecordsOffset.value : 0
+      const query = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(offset),
+      })
+
+      if (params?.collection) query.set('collection', params.collection)
+      if (params?.did) query.set('did', params.did)
+      if (params?.family) query.set('family', params.family)
+      if (params?.recordType) query.set('recordType', params.recordType)
+      if (params?.search) query.set('search', params.search)
+      if (typeof params?.includeRaw === 'boolean') query.set('includeRaw', String(params.includeRaw))
+
+      const records = await apiFetch<AtRecord[]>(`/at/records?${query.toString()}`)
+
+      if (append) {
+        atRecords.value.push(...records)
+      } else {
+        atRecords.value = records
+        atRecordsOffset.value = 0
+      }
+
+      atRecordsOffset.value = offset + records.length
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to fetch AT records'
+      console.error('[AtBridgeStore] fetchAtRecords error:', err)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
    * Fetch firehose ingestion health status.
    */
   async function fetchFirehoseStatus(): Promise<void> {
@@ -243,25 +350,57 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     await fetchUnifiedFeed(false)
   }
 
+  async function setTimelineMode(mode: TimelineMode): Promise<void> {
+    timelineMode.value = mode
+    await fetchUnifiedFeed(false)
+  }
+
+  async function setProtocolWeights(activitypods: number, atproto: number): Promise<void> {
+    const ap = Math.min(99, Math.max(1, Math.round(activitypods)))
+    const at = Math.min(99, Math.max(1, Math.round(atproto)))
+    protocolWeights.value = { activitypods: ap, atproto: at }
+    await fetchUnifiedFeed(false)
+  }
+
+  async function setHashtagFilter(hashtag: string): Promise<void> {
+    hashtagFilter.value = hashtag
+    await fetchUnifiedFeed(false)
+  }
+
+  async function clearHashtagFilter(): Promise<void> {
+    if (!hashtagFilter.value) return
+    hashtagFilter.value = ''
+    await fetchUnifiedFeed(false)
+  }
+
   /**
    * Reset all state (e.g. on logout).
    */
   function reset(): void {
     atPosts.value = []
+    atRecords.value = []
     unifiedFeed.value = []
-    firehoseStatus.value = { sources: [], stats: { totalAtPosts: 0, totalAtIdentities: 0 } }
+    firehoseStatus.value = { sources: [], stats: { totalAtPosts: 0, totalAtIdentities: 0, totalAtRecords: 0 } }
     feedSource.value = 'all'
+    timelineMode.value = 'balanced'
+    protocolWeights.value = { activitypods: 50, atproto: 50 }
+    hashtagFilter.value = ''
     error.value = null
     unifiedFeedOffset.value = 0
     atPostsOffset.value = 0
+    atRecordsOffset.value = 0
   }
 
   return {
     // State
     atPosts,
+    atRecords,
     unifiedFeed,
     firehoseStatus,
     feedSource,
+    timelineMode,
+    protocolWeights,
+    hashtagFilter,
     isLoading,
     error,
 
@@ -272,9 +411,14 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     // Actions
     fetchUnifiedFeed,
     fetchAtPosts,
+    fetchAtRecords,
     fetchFirehoseStatus,
     subscribeToSource,
     setFeedSource,
+    setTimelineMode,
+    setProtocolWeights,
+    setHashtagFilter,
+    clearHashtagFilter,
     reset,
   }
 })

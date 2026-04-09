@@ -12,6 +12,7 @@ export type User = Static<typeof _selectUsers>
 export interface CreatePost {
   content: string
   isPublic: boolean
+  objectUri?: string | null
 }
 export type CreateUser = Static<typeof _createUser>
 

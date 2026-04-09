@@ -1,6 +1,6 @@
 # Memory
 
-A Microblog-App that saves all data on your Pod.
+A Responsive Microblog-App and PWA that saves all data on your Pod.
 
 Built on the [ActivityPods](https://activitypods.org) framework.
 

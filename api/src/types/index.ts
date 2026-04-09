@@ -9,6 +9,7 @@ export interface NoteCreateRequest {
   type: string
   attributedTo: string
   content: string
+  name?: string
   to: string[]
 }
 

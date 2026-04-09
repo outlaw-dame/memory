@@ -1,9 +1,15 @@
 import { users } from "../db/schema"
 import ActivityPod from "../services/ActivityPod"
-import { type PodProviderSignInResponse, type SelectUsers, viablePodProviders, signinResponse, signUpBody, signinBody } from "../types"
+import {
+  type PodProviderSignInResponse,
+  type SelectUsers,
+  signinResponse,
+  signUpBody,
+  signinBody
+} from "../types"
 import { eq } from "drizzle-orm"
 import Elysia, { t } from "elysia"
-import { db } from ".."
+import { db } from "../db/client"
 import setupPlugin from "./setup"
 import { getTokenObject } from "../services/jwt"
 import User from "../decorater/User"
@@ -45,8 +51,17 @@ const authPlugin = new Elysia({name: 'auth'})
                 name: username as string,
                 email: username as string,
                 webId: providerResponse.webId,
-                providerEndpoint: providerEndpoint
+                providerEndpoint: providerEndpoint,
+                podToken: providerResponse.token
               })
+              .returning()
+          } else {
+            // User exists: refresh the stored pod-native token so OIDC sign-ins
+            // can retrieve it for outbox writes.
+            dbUser = await db
+              .update(users)
+              .set({ podToken: providerResponse.token })
+              .where(eq(users.webId, providerResponse.webId))
               .returning()
           }
         } catch (e) {
@@ -110,8 +125,15 @@ const authPlugin = new Elysia({name: 'auth'})
                 name: username as string,
                 email,
                 webId: providerResponse.webId,
-                providerEndpoint: providerEndpoint
+                providerEndpoint: providerEndpoint,
+                podToken: providerResponse.token
               }).returning()
+            } else {
+              userResponse = await db
+                .update(users)
+                .set({ podToken: providerResponse.token })
+                .where(eq(users.webId, providerResponse.webId))
+                .returning()
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)

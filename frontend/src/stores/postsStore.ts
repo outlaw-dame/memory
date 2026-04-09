@@ -8,6 +8,7 @@ import type { SelectPost } from '#api/types'
 export const usePostsStore = defineStore('posts', () => {
   // Default state
   const posts = ref<SelectPost[]>([])
+  const hashtagFilter = ref('')
   // Stores
   const authStore = useAuthStore()
   // API
@@ -27,7 +28,11 @@ export const usePostsStore = defineStore('posts', () => {
    */
   async function fetchPosts() {
     const { data: postResponse, status } = (await client.posts.get({
-      query: { limit: 10, offset: 0 }
+      query: {
+        limit: 10,
+        offset: 0,
+        ...(hashtagFilter.value ? { hashtag: hashtagFilter.value } : {})
+      }
     })) as unknown as { data: SelectPost[]; status: number }
     if (status === 401) {
       authStore.logout()
@@ -53,6 +58,17 @@ export const usePostsStore = defineStore('posts', () => {
     }
   }
 
+  async function setHashtagFilter(hashtag: string) {
+    hashtagFilter.value = hashtag
+    await fetchPosts()
+  }
+
+  async function clearHashtagFilter() {
+    if (!hashtagFilter.value) return
+    hashtagFilter.value = ''
+    await fetchPosts()
+  }
+
   console.log('posts: ', posts)
   console.log('posts: ', posts.value.length)
   // Init store
@@ -62,7 +78,10 @@ export const usePostsStore = defineStore('posts', () => {
 
   return {
     posts,
+    hashtagFilter,
     fetchPosts,
-    createPost
+    createPost,
+    setHashtagFilter,
+    clearHashtagFilter
   }
 })

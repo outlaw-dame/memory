@@ -27,19 +27,64 @@ const router = createRouter({
       path: '/welcome',
       name: 'welcome',
       component: () => import('../views/WelcomeView.vue')
+    },
+    {
+      path: '/auth/callback',
+      name: 'auth-callback',
+      component: () => import('../views/AuthCallbackView.vue')
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/SettingsView.vue')
+    },
+    {
+      path: '/settings/feed-controls',
+      name: 'feed-controls',
+      component: () => import('../views/FeedControlsView.vue')
+    },
+    {
+      path: '/settings/profile',
+      name: 'settings-profile',
+      component: () => import('../views/SettingsProfileView.vue')
+    },
+    {
+      path: '/thread/:id',
+      name: 'thread',
+      component: () => import('../views/ThreadView.vue')
+    },
+    {
+      path: '/explore',
+      name: 'explore',
+      component: () => import('../views/ExploreView.vue')
+    },
+    {
+      path: '/messages',
+      name: 'messages',
+      component: () => import('../views/MessagesView.vue')
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/NotificationsView.vue')
+    },
+    {
+      path: '/experience',
+      name: 'experience',
+      component: () => import('../views/ExperienceView.vue')
     }
   ]
 })
 
 router.beforeEach((to, _, next) => {
   // if the user is not logged in, redirect to signin page
-  if (to.name !== 'signin' && to.name !== 'signup' && to.name !== 'welcome') {
+  if (to.name !== 'signin' && to.name !== 'signup' && to.name !== 'welcome' && to.name !== 'auth-callback') {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
-      next({ name: 'welcome' })
+      return next({ name: 'welcome' })
     }
   }
-  next()
+  return next()
 })
 
 export default router

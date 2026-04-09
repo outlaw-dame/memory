@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import ControlBar from '@/components/ControlBar.vue'
+import BottomNav from '@/components/BottomNav.vue'
 </script>
 
 <template>
@@ -10,8 +11,9 @@ import ControlBar from '@/components/ControlBar.vue'
     <header class="py-[var(--padding-main)]">
       <ControlBar />
     </header>
-    <main>
+    <main class="overflow-y-auto pb-20">
       <RouterView />
     </main>
+    <BottomNav />
   </div>
 </template>

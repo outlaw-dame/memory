@@ -21,6 +21,38 @@ export const signinResponse = t.Object({
 })
 export type SignInResponse = Static<typeof signinResponse>
 
+export const oidcExchangeBody = t.Object({
+  accessToken: t.String(),
+  webId: t.String({ format: 'uri' }),
+  providerEndpoint: viablePodProviders,
+  name: t.Optional(t.String()),
+  email: t.Optional(t.String())
+})
+export type OidcExchangeBody = Static<typeof oidcExchangeBody>
+
+export const oidcPrepareBody = t.Object({
+  providerEndpoint: viablePodProviders,
+  redirectUri: t.String({ format: 'uri' }),
+  state: t.String(),
+  codeChallenge: t.String()
+})
+export type OidcPrepareBody = Static<typeof oidcPrepareBody>
+
+export const oidcPrepareResponse = t.Object({
+  authorizationUrl: t.String({ format: 'uri' }),
+  clientId: t.String()
+})
+export type OidcPrepareResponse = Static<typeof oidcPrepareResponse>
+
+export const oidcCallbackBody = t.Object({
+  providerEndpoint: viablePodProviders,
+  redirectUri: t.String({ format: 'uri' }),
+  clientId: t.String(),
+  code: t.String(),
+  codeVerifier: t.String()
+})
+export type OidcCallbackBody = Static<typeof oidcCallbackBody>
+
 export const signUpBody = t.Object({
   username: t.String(),
   password: t.String(),
@@ -39,6 +71,9 @@ export type SelectPost = {
   content: string;
   isPublic: boolean;
   createdAt: string;
+  objectUri?: string | null;
+  postType: 'note' | 'article';
+  name?: string | null;
   authorId: number;
   author: {
     id: number;

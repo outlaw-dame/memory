@@ -2,6 +2,14 @@ import type { SignInResponse, SignUpBody } from '#api/types'
 import { ApiErrorsGeneral, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
 
+export interface OidcExchangeBody {
+  accessToken: string
+  webId: string
+  providerEndpoint: string
+  name?: string
+  email?: string
+}
+
 export interface ApiResponse<T> {
   data: T
   status: number
@@ -19,6 +27,23 @@ export class ApiClient {
       return {
         data: 'Successfully signed up',
         status: response.status
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  async exchangeOidc(body: OidcExchangeBody): Promise<ApiResponse<SignInResponse | ApiErrors>> {
+    try {
+      const data = await ky
+        .post(`${this.baseUrl}/auth/oidc/exchange`, {
+          json: body
+        })
+        .json<SignInResponse>()
+
+      return {
+        data,
+        status: 200
       }
     } catch (e) {
       return await this.handleError(e)

@@ -16,5 +16,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '#api': resolve(__dirname, '../api/src')
     }
-  }
+  },
+  // PGlite WASM and transformers.js must not be pre-bundled by Vite —
+  // they manage their own WASM loading and dynamic imports internally.
+  optimizeDeps: {
+    exclude: ['@electric-sql/pglite', '@xenova/transformers'],
+  },
+  worker: {
+    format: 'es',
+  },
 })

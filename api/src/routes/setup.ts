@@ -3,14 +3,22 @@ import cors from '@elysiajs/cors'
 import jwt from '@elysiajs/jwt'
 import Elysia from 'elysia'
 
-const setupPlugin = new Elysia({ name: 'setup' })
+const JWT_SECRET = process.env.JWT_SECRET || 'secret'
+
+const setupPlugin = new Elysia()
   .use(
     jwt({
       name: 'jwt',
-      secret: process.env.JWT_SECRET || 'secret'
+      secret: JWT_SECRET
     })
   )
   .use(cors())
+  .derive(({ set }) => ({
+    error: (status: number, message: string) => {
+      set.status = status as any
+      return message
+    }
+  }))
   .decorate('user', new User())
 
 export default setupPlugin
