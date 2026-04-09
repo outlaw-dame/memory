@@ -57,7 +57,7 @@ services:
       FRONTEND_URL: http://localhost:5173
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
     healthcheck:
-      test: ['CMD-SHELL', 'curl -sf http://localhost:8794/health || exit 1']
+      test: ['CMD', 'bun', '-e', 'fetch("http://localhost:8794/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -76,7 +76,7 @@ services:
     depends_on:
       - api
     ports:
-      - '5173:5173'
+      - '5173:4000'
 
   # --------------------------------------------------------------------------
   # Mastopod AT Protocol Ingress Pipeline (Phase 5.5 local harness)
@@ -95,7 +95,7 @@ services:
       MEMORY_WEBHOOK_URL: http://api:8794/at/webhook/ingress
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
       # Preferred mode selector: mock | relay | jetstream
-      FIREHOSE_MODE: ${FIREHOSE_MODE:-mock}
+      FIREHOSE_MODE: ${FIREHOSE_MODE:-jetstream}
       # Optional override for Jetstream endpoint/filter params
       JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post}
       # Optional smoke-mode cutoff for quick proof runs (empty = continuous)
