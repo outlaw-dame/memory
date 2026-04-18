@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
+import { t } from '@/i18n'
 import { useAuthStore } from './authStore'
 import { getSessionPolicyConfig } from '@/utils/sessionPolicy'
 
@@ -73,20 +75,21 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   function getApiBase() {
-    return import.meta.env.VITE_API_URL || 'http://localhost:8796'
+    return getApiBaseUrl()
   }
 
-  function getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      auth: authStore.token,
-    }
+  function getHeaders(headers?: HeadersInit): HeadersInit {
+    return buildApiHeaders({
+      authToken: authStore.token || undefined,
+      includeJsonContentType: true,
+      headers
+    })
   }
 
   async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${getApiBase()}${path}`, {
       ...options,
-      headers: { ...getHeaders(), ...(options?.headers ?? {}) },
+      headers: getHeaders(options?.headers),
     })
 
     if (!response.ok) {
@@ -132,7 +135,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       }
       return status.value
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Unable to initialize notifications'
+      error.value = err instanceof Error ? err.message : t('notifications.errors.initialize')
       throw err
     } finally {
       isLoading.value = false

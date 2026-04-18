@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useConversationsStore } from '@/stores/conversationsStore'
+import { useI18n } from '@/i18n'
 
 const conversationsStore = useConversationsStore()
+const { t } = useI18n()
 
 onMounted(async () => {
   await conversationsStore.fetchConversations()
@@ -33,7 +35,7 @@ function getAvatarColor(name: string): string {
       <button
         type="button"
         class="flex h-11 w-11 items-center justify-center rounded-full bg-dark-10 text-dark"
-        aria-label="Notifications"
+        :aria-label="t('messages.notificationsAria')"
       >
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -41,12 +43,12 @@ function getAvatarColor(name: string): string {
         </svg>
       </button>
 
-      <h2 class="font-[Butler] text-[48px] leading-none text-dark">chats.</h2>
+      <h2 class="font-[Butler] text-[48px] leading-none text-dark">{{ t('messages.header') }}</h2>
 
       <button
         type="button"
         class="flex h-11 w-11 items-center justify-center rounded-full bg-dark-10 text-dark"
-        aria-label="Compose"
+        :aria-label="t('messages.composeAria')"
       >
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 20h9"/>
@@ -65,8 +67,8 @@ function getAvatarColor(name: string): string {
       <svg viewBox="0 0 24 24" class="h-16 w-16 text-dark-20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
-      <h3 class="text-[26px] font-semibold text-dark">No conversations yet</h3>
-      <p class="text-[17px] text-dark-50">Start a new chat to connect with others</p>
+      <h3 class="text-[26px] font-semibold text-dark">{{ t('messages.emptyTitle') }}</h3>
+      <p class="text-[17px] text-dark-50">{{ t('messages.emptyDescription') }}</p>
     </div>
 
     <!-- Conversations list -->

@@ -2,16 +2,18 @@
 import CreatePostForm from '@/components/CreatePostForm.vue'
 import UnifiedFeedList from '@/components/UnifiedFeedList.vue'
 import { ref } from 'vue'
+import { useI18n } from '@/i18n'
 
 type Tab = 'for-you' | 'home'
 const activeTab = ref<Tab>('for-you')
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex justify-end">
       <RouterLink to="/settings" class="rounded bg-pastel-light px-3 py-2 text-sm font-medium hover:bg-blue-100">
-        Settings
+        {{ t('home.settings') }}
       </RouterLink>
     </div>
 
@@ -24,7 +26,7 @@ const activeTab = ref<Tab>('for-you')
           : 'text-gray-500 hover:text-gray-700'"
         @click="activeTab = 'for-you'"
       >
-        For You
+        {{ t('home.tabs.forYou') }}
       </button>
       <button
         class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
@@ -33,7 +35,7 @@ const activeTab = ref<Tab>('for-you')
           : 'text-gray-500 hover:text-gray-700'"
         @click="activeTab = 'home'"
       >
-        Home
+        {{ t('home.tabs.home') }}
       </button>
     </div>
 

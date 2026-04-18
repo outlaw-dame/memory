@@ -1,4 +1,6 @@
 import { ref } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
+import { t } from '@/i18n'
 import ky, { HTTPError } from 'ky'
 
 export interface ReplyPolicyResolution {
@@ -27,23 +29,23 @@ export function useReply() {
     replyError.value = null
     const token = localStorage.getItem('token')
     if (!token) {
-      replyError.value = 'Not authenticated'
+      replyError.value = t('common.errors.notAuthenticated')
       return null
     }
 
     isResolving.value = true
     try {
       return await ky
-        .post(`${import.meta.env.VITE_API_URL}/replies/resolve`, {
-          headers: { auth: token },
+        .post(`${getApiBaseUrl()}/replies/resolve`, {
+          headers: buildApiHeaders({ authToken: token, includeJsonContentType: true }),
           json: { objectUri }
         })
         .json<ReplyPolicyResolution>()
     } catch (e) {
       if (e instanceof HTTPError) {
-        replyError.value = `Could not load reply policy (${e.response.status})`
+        replyError.value = t('reply.errors.loadPolicyStatus', { status: e.response.status })
       } else {
-        replyError.value = 'Could not load reply policy'
+        replyError.value = t('reply.errors.loadPolicy')
       }
       return null
     } finally {
@@ -55,23 +57,23 @@ export function useReply() {
     replyError.value = null
     const token = localStorage.getItem('token')
     if (!token) {
-      replyError.value = 'Not authenticated'
+      replyError.value = t('common.errors.notAuthenticated')
       return null
     }
 
     isSubmitting.value = true
     try {
       return await ky
-        .post(`${import.meta.env.VITE_API_URL}/replies`, {
-          headers: { auth: token },
+        .post(`${getApiBaseUrl()}/replies`, {
+          headers: buildApiHeaders({ authToken: token, includeJsonContentType: true }),
           json: { objectUri, content, isPublic }
         })
         .json<ReplySubmissionResult>()
     } catch (e) {
       if (e instanceof HTTPError) {
-        replyError.value = `Reply failed (${e.response.status})`
+        replyError.value = t('reply.errors.submitStatus', { status: e.response.status })
       } else {
-        replyError.value = 'Reply failed'
+        replyError.value = t('reply.errors.submit')
       }
       return null
     } finally {

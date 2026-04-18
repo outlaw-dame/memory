@@ -6,6 +6,7 @@ import 'boxicons'
 import App from './App.vue'
 import router from './router'
 import { initLocalDb } from './db/localDb'
+import { initializeLocale } from './i18n'
 import { logSessionPolicyConfig } from './utils/sessionPolicy'
 
 // Styles
@@ -21,6 +22,8 @@ if ('serviceWorker' in navigator) {
 
 // Bootstrap local PGlite database (non-blocking — sync store waits for it)
 initLocalDb().catch(err => console.error('[PGlite] init failed:', err))
+
+initializeLocale()
 
 // Log effective session policy once for environment-level verification.
 logSessionPolicyConfig()

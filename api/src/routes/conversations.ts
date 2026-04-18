@@ -3,6 +3,7 @@ import { conversations, conversationMembers, messages, users } from '../db/schem
 import { db } from '../db/client'
 import setupPlugin from './setup'
 import { eq, and, desc, sql } from 'drizzle-orm'
+import { formatRelativeTime, localeFromHeaders, translate, type ApiLocale } from '../i18n'
 
 export interface ConversationPreview {
   id: number
@@ -23,7 +24,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   })
   .get(
     '/conversations',
-    async ({ user }) => {
+    async ({ user, headers }) => {
+      const locale = localeFromHeaders(headers)
       try {
         // Fetch conversations for the user
         const convs = await db
@@ -75,16 +77,16 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
               }
             }
 
-            const preview = latestMsg?.content || 'No messages yet'
+            const preview = latestMsg?.content || translate(locale, 'conversations.noMessagesYet')
             const lastActivityDate = latestMsg?.createdAt
             const lastActivity = lastActivityDate
-              ? getRelativeTime(new Date(lastActivityDate))
+              ? getRelativeTime(new Date(lastActivityDate), locale)
               : ''
 
             return {
               id: conv.id,
               type: conv.type,
-              name: conv.name || otherUserName || 'Unknown',
+              name: conv.name || otherUserName || translate(locale, 'conversations.unknown'),
               preview,
               lastActivity,
               unreadCount: 0, // TODO: implement unread tracking
@@ -97,7 +99,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         return result
       } catch (e) {
         console.error('Error fetching conversations:', e)
-        throw new Error('Failed to fetch conversations')
+        throw new Error(translate(locale, 'conversations.fetchListFailed'))
       }
     },
     {
@@ -110,7 +112,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .get(
     '/conversations/:id',
-    async ({ params: { id }, user, error }) => {
+    async ({ params: { id }, user, headers, error }) => {
+      const locale = localeFromHeaders(headers)
       try {
         const conv = await db
           .select()
@@ -119,7 +122,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
           .limit(1)
 
         if (!conv.length || conv[0].userId !== user.userId) {
-          return error(404, 'Conversation not found')
+          return error(404, translate(locale, 'conversations.notFound'))
         }
 
         const msgs = await db
@@ -138,7 +141,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         return { conversation: conv[0], messages: msgs }
       } catch (e) {
         console.error('Error fetching conversation:', e)
-        return error(500, 'Failed to fetch conversation')
+        return error(500, translate(locale, 'conversations.fetchFailed'))
       }
     },
     {
@@ -148,7 +151,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .post(
     '/conversations',
-    async ({ body, user, error }) => {
+    async ({ body, user, headers, error }) => {
+      const locale = localeFromHeaders(headers)
       const { type, name, memberIds } = body as {
         type: 'dm' | 'group'
         name?: string
@@ -178,7 +182,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         return newConv
       } catch (e) {
         console.error('Error creating conversation:', e)
-        return error(500, 'Failed to create conversation')
+        return error(500, translate(locale, 'conversations.createFailed'))
       }
     },
     {
@@ -193,7 +197,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .post(
     '/conversations/:id/messages',
-    async ({ params: { id }, body, user, error }) => {
+    async ({ params: { id }, body, user, headers, error }) => {
+      const locale = localeFromHeaders(headers)
       const { content } = body as { content: string }
 
       try {
@@ -212,7 +217,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
           .limit(1)
 
         if (!member.length) {
-          return error(403, 'Not a member of this conversation')
+          return error(403, translate(locale, 'conversations.notMember'))
         }
 
         // Create message
@@ -240,7 +245,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         }
       } catch (e) {
         console.error('Error sending message:', e)
-        return error(500, 'Failed to send message')
+        return error(500, translate(locale, 'conversations.sendFailed'))
       }
     },
     {
@@ -252,23 +257,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
     }
   )
 
-function getRelativeTime(date: Date): string {
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'now'
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7)
-    return `${weeks} week${weeks > 1 ? 's' : ''} ago`
-  }
-
-  return date.toLocaleDateString()
+function getRelativeTime(date: Date, locale: ApiLocale): string {
+  return formatRelativeTime(date, locale)
 }
 
 export default conversationsRoutes

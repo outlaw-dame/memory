@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from '@/i18n'
 import type { UnifiedFeedItem } from '@/stores/atBridgeStore'
 
 const props = defineProps<{ item: UnifiedFeedItem }>()
 const emit = defineEmits<{ close: [] }>()
+const { locale, t } = useI18n()
+const currentLanguageLabel = computed(() => t(`common.languages.${locale.value}`))
 
 function getPostLink(): string {
   return props.item.objectUri ?? props.item.atUri ?? window.location.href
@@ -36,8 +40,8 @@ async function copyLink() {
 
       <!-- Header -->
       <div class="px-6 pt-4 pb-5">
-        <p class="text-h2 font-bold text-dark">More Actions</p>
-        <p class="text-footnote text-dark-50 mt-0.5">Perform different interactions with the post and its creator</p>
+        <p class="text-h2 font-bold text-dark">{{ t('moreActions.title') }}</p>
+        <p class="text-footnote text-dark-50 mt-0.5">{{ t('moreActions.description') }}</p>
       </div>
 
       <!-- Divider -->
@@ -54,10 +58,10 @@ async function copyLink() {
             </svg>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-subHeader font-semibold text-dark">Language</p>
-            <p class="text-caption text-dark-50 mt-0.5">Translate the post.</p>
+            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.language.title') }}</p>
+            <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.language.description') }}</p>
           </div>
-          <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark flex-shrink-0">English</span>
+          <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark flex-shrink-0">{{ currentLanguageLabel }}</span>
         </li>
 
         <li class="h-px bg-dark-10 mx-6" />
@@ -70,7 +74,7 @@ async function copyLink() {
                 <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
               </svg>
             </div>
-            <p class="text-subHeader font-semibold text-dark">Save</p>
+            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.save') }}</p>
           </button>
         </li>
 
@@ -84,7 +88,7 @@ async function copyLink() {
                 <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
               </svg>
             </div>
-            <p class="text-subHeader font-semibold text-dark">Copy Link</p>
+            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.copyLink') }}</p>
           </button>
         </li>
 
@@ -99,8 +103,8 @@ async function copyLink() {
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-subHeader font-semibold text-dark">Block user</p>
-              <p class="text-caption text-dark-50 mt-0.5">Hide this users post and block interactions.</p>
+              <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.blockUser') }}</p>
+              <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.blockUserDescription') }}</p>
             </div>
           </button>
         </li>
@@ -116,8 +120,8 @@ async function copyLink() {
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-subHeader font-semibold text-dark">Report</p>
-              <p class="text-caption text-dark-50 mt-0.5">Report this post to the Memory moderation team.</p>
+              <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.report') }}</p>
+              <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.reportDescription') }}</p>
             </div>
           </button>
         </li>
@@ -133,8 +137,8 @@ async function copyLink() {
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-subHeader font-semibold text-dark">I'm not interested</p>
-              <p class="text-caption text-dark-50 mt-0.5">Show less posts like these in your feed.</p>
+              <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.notInterested') }}</p>
+              <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.notInterestedDescription') }}</p>
             </div>
           </button>
         </li>

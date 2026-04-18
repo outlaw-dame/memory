@@ -14,6 +14,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { getLocalDb, getWorker } from '@/db/localDb'
 import { localPosts, syncState, pendingWrites } from '@/db/localSchema'
 import { eq, isNull, sql } from 'drizzle-orm'
@@ -154,16 +155,16 @@ export const useSyncStore = defineStore('sync', () => {
         .limit(1)
 
       const cursor = state?.cursor ?? null
-      const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8796'
+      const apiBase = getApiBaseUrl()
       const sinceParam = cursor ? `&since=${encodeURIComponent(cursor)}` : ''
 
       const response = await fetch(
         `${apiBase}/at/feed?limit=${SYNC_LIMIT}&offset=0&mode=chronological${sinceParam}`,
         {
-          headers: {
-            'Content-Type': 'application/json',
-            auth: authStore.token,
-          },
+          headers: buildApiHeaders({
+            authToken: authStore.token || undefined,
+            includeJsonContentType: true
+          }),
         },
       )
 
@@ -336,16 +337,16 @@ export const useSyncStore = defineStore('sync', () => {
     const db = await getLocalDb()
     const writes = await db.select().from(pendingWrites)
 
-    const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8796'
+    const apiBase = getApiBaseUrl()
 
     for (const write of writes) {
       try {
         const res = await fetch(`${apiBase}${write.path}`, {
           method: write.method,
-          headers: {
-            'Content-Type': 'application/json',
-            auth: authStore.token,
-          },
+          headers: buildApiHeaders({
+            authToken: authStore.token || undefined,
+            includeJsonContentType: write.method !== 'DELETE'
+          }),
           body: write.method !== 'DELETE' ? write.payload : undefined,
         })
 

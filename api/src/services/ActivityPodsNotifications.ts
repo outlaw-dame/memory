@@ -540,5 +540,5 @@ export async function verifyWebhookTarget(userId: number, signature?: string) {
   if (!signature) return false
   const expected = signWebhookTarget(userId)
   if (signature.length !== expected.length) return false
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  return crypto.timingSafeEqual(new Uint8Array(Buffer.from(signature)), new Uint8Array(Buffer.from(expected)))
 }

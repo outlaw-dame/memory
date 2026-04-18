@@ -1,7 +1,8 @@
-const TRANSACTION_STORAGE_KEY = 'memory.oidc.transaction'
-const API_BASE_URL = import.meta.env.VITE_API_URL
-
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import type { SignInResponse } from '#api/types'
+
+const TRANSACTION_STORAGE_KEY = 'memory.oidc.transaction'
+const API_BASE_URL = getApiBaseUrl()
 
 export const DEFAULT_PROVIDER_ENDPOINT = 'http://localhost:3000'
 
@@ -68,9 +69,7 @@ export async function finishOidcSignIn(search: string): Promise<OidcCallbackResu
 
   const session = await fetch(`${API_BASE_URL}/oidc-auth/callback`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: buildApiHeaders({ includeJsonContentType: true }),
     body: JSON.stringify({
       providerEndpoint: transaction.providerEndpoint,
       redirectUri: transaction.redirectUri,
@@ -101,9 +100,7 @@ async function prepareOidcLogin(
 ): Promise<OidcMetadata> {
   const response = await fetch(`${API_BASE_URL}/oidc-auth/callback`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: buildApiHeaders({ includeJsonContentType: true }),
     body: JSON.stringify({
       providerEndpoint,
       redirectUri,

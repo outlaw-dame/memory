@@ -1,6 +1,7 @@
 import Elysia, { t } from 'elysia'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
+import { localeFromHeaders, translate } from '../i18n'
 
 // ---------------------------------------------------------------------------
 // Shared validation helpers
@@ -24,15 +25,16 @@ const replyPlugin = new Elysia({ name: 'reply' })
   })
   .post(
     '/replies/resolve',
-    async ({ error, body, user }: any) => {
+    async ({ body, user, headers, error }: any) => {
+      const locale = localeFromHeaders(headers)
       if (!isAbsoluteHttpsUrl(body.objectUri)) {
-        return error(400, 'objectUri must be an absolute https:// URL')
+        return error(400, translate(locale, 'reply.objectUriHttps'))
       }
       try {
         return await ActivityPod.resolveReplyPolicy(user, body.objectUri)
       } catch (e) {
         console.error('Error while resolving reply policy:', e)
-        return error(502, 'Pod server reply policy request failed')
+        return error(502, translate(locale, 'reply.resolveFailed'))
       }
     },
     {
@@ -50,21 +52,22 @@ const replyPlugin = new Elysia({ name: 'reply' })
   )
   .post(
     '/replies',
-    async ({ error, body, user }: any) => {
+    async ({ body, user, headers, error }: any) => {
+      const locale = localeFromHeaders(headers)
       if (!isAbsoluteHttpsUrl(body.objectUri)) {
-        return error(400, 'objectUri must be an absolute https:// URL')
+        return error(400, translate(locale, 'reply.objectUriHttps'))
       }
       // Strip C0/C1 control characters before forwarding
       // eslint-disable-next-line no-control-regex
       const content = (body.content as string).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '').trim()
       if (content.length === 0) {
-        return error(400, 'Reply content must not be empty')
+        return error(400, translate(locale, 'reply.contentEmpty'))
       }
       try {
         return await ActivityPod.replyToObject(user, body.objectUri, content, body.isPublic ?? true)
       } catch (e) {
         console.error('Error while submitting reply:', e)
-        return error(502, 'Pod server reply request failed')
+        return error(502, translate(locale, 'reply.submitFailed'))
       }
     },
     {

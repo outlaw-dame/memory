@@ -13,15 +13,18 @@ import { db } from "../db/client"
 import setupPlugin from "./setup"
 import { getTokenObject } from "../services/jwt"
 import User from "../decorater/User"
+import { localeFromHeaders, translate } from "../i18n"
 
 const authPlugin = new Elysia({name: 'auth'})
   .use(setupPlugin)
   .post(
     '/signin',
-    async ({ body, jwt, headers: { auth }, error }) => {
+    async ({ body, jwt, headers, error }) => {
+      const locale = localeFromHeaders(headers)
+      const auth = headers.auth
       // check if user is already logged in
       if (auth && (await jwt.verify(auth))) {
-        return error(204, "You're already logged in")
+        return error(204, translate(locale, 'auth.alreadyLoggedIn'))
       }
       const { username, password, providerEndpoint } = body
 
@@ -32,12 +35,12 @@ const authPlugin = new Elysia({name: 'auth'})
         providerResponse = await ActivityPod.signIn(providerEndpoint, username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
-        return error(400, "Endpoint didn't respond with a 200 status code")
+        return error(400, translate(locale, 'auth.endpointBadStatus'))
       }
 
       // check if the endpoint returned a token
       if (providerResponse.token === undefined) {
-        return error(400, 'Endpoint did not return a token')
+        return error(400, translate(locale, 'auth.endpointNoToken'))
       } else {
         let dbUser: SelectUsers[] = []
         // the endpoint returned like expected now check if the user is already in the database
@@ -66,7 +69,7 @@ const authPlugin = new Elysia({name: 'auth'})
           }
         } catch (e) {
           console.error('Error while checking if user is in the database: ', e)
-          return error(500, 'Error while checking user')
+          return error(500, translate(locale, 'auth.userCheckFailed'))
         }
         // generate signed token for signIn
         const tokenObject = getTokenObject(new User(dbUser[0], providerResponse.token))
@@ -91,9 +94,10 @@ const authPlugin = new Elysia({name: 'auth'})
   )
   .get(
     '/logout',
-    async ({ cookie: { auth } }) => {
+    async ({ cookie: { auth }, headers }) => {
+      const locale = localeFromHeaders(headers)
       auth.remove()
-      return 'You have been logged out'
+      return translate(locale, 'auth.loggedOut')
     },
     {
       detail: 'Removes the auth cookie'
@@ -101,10 +105,12 @@ const authPlugin = new Elysia({name: 'auth'})
   )
   .post(
     '/signup',
-    async ({ body, error, headers: { auth }, jwt }) => {
+    async ({ body, error, headers, jwt }) => {
+      const locale = localeFromHeaders(headers)
+      const auth = headers.auth
       // check if user is already logged in
       if (auth && (await jwt.verify(auth))) {
-        return "You're already logged in"
+        return translate(locale, 'auth.alreadyLoggedIn')
       }
       const { username, password, email, providerEndpoint } = body
 
@@ -114,7 +120,7 @@ const authPlugin = new Elysia({name: 'auth'})
         let userResponse: SelectUsers[] = []
 
         if (providerResponse.token === undefined) {
-          return error(400, 'Provider did not return a token')
+          return error(400, translate(locale, 'auth.providerNoToken'))
         } else {
           // the provider created a new user, so we need to create a new user in the database
           try {
@@ -137,7 +143,7 @@ const authPlugin = new Elysia({name: 'auth'})
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)
-            return error(500, 'Error while checking user')
+            return error(500, translate(locale, 'auth.userCheckFailed'))
           }
           const authToken = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
 
@@ -153,7 +159,7 @@ const authPlugin = new Elysia({name: 'auth'})
           return error(errorJson.code, errorJson.message)
         }
         console.error('Error while signing up the user', e)
-        return error(400, 'Error with the provider')
+        return error(400, translate(locale, 'auth.providerError'))
       }
     },
     {

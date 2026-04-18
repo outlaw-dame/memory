@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from '@/i18n'
+
+type PostAudience = 'public' | 'followers' | 'private'
 
 export interface PostSettings {
   isPublic: boolean
-  audience: 'Public' | 'Followers' | 'Only me'
+  audience: PostAudience
   scheduledAt: string | null
   isDraft: boolean
   hasContentWarning: boolean
@@ -14,9 +17,10 @@ const emit = defineEmits<{
   close: []
   update: [settings: PostSettings]
 }>()
+const { t, formatDateTime } = useI18n()
 
 const isPublic = ref(true)
-const audience = ref<'Public' | 'Followers' | 'Only me'>('Public')
+const audience = ref<PostAudience>('public')
 const scheduledAt = ref<string | null>(null)
 const showScheduler = ref(false)
 const isDraft = ref(false)
@@ -24,7 +28,18 @@ const hasContentWarning = ref(false)
 const contentWarningText = ref('')
 const showCWInput = ref(false)
 
-const audienceOptions: PostSettings['audience'][] = ['Public', 'Followers', 'Only me']
+const audienceOptions: PostAudience[] = ['public', 'followers', 'private']
+const audienceLabel = computed(() => t(`composer.advanced.audiences.${audience.value}`))
+const scheduleLabel = computed(() => {
+  if (!scheduledAt.value) {
+    return t('composer.advanced.schedule.notSet')
+  }
+
+  return formatSchedule(scheduledAt.value)
+})
+const contentWarningStatusLabel = computed(() =>
+  hasContentWarning.value ? t('composer.advanced.contentWarning.enabled') : ''
+)
 
 function cycleAudience() {
   const i = audienceOptions.indexOf(audience.value)
@@ -32,15 +47,15 @@ function cycleAudience() {
 }
 
 function formatSchedule(value: string): string {
-  const d = new Date(value)
-  const day = d.getDate()
-  const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 < 4 && Math.floor(day / 10) !== 1) ? day % 10 : 0] ?? 'th'
-  const month = d.toLocaleString('en', { month: 'long' })
-  const hours = d.getHours()
-  const mins = d.getMinutes().toString().padStart(2, '0')
-  const ampm = hours >= 12 ? 'pm' : 'am'
-  const h = hours % 12 || 12
-  return `${day}${suffix} ${month}, ${h}.${mins} ${ampm}`
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return formatDateTime(date, {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
 }
 
 function moveToDrafts() {
@@ -81,9 +96,9 @@ function done() {
 
       <!-- Header -->
       <div class="px-6 pt-4 pb-5">
-        <p class="text-h2 font-bold text-dark">Advanced Settings</p>
+        <p class="text-h2 font-bold text-dark">{{ t('composer.advanced.title') }}</p>
         <p class="text-footnote text-dark-50 mt-1 leading-snug">
-          These settings can later be changed by pressing on the multi-function menu at the bottom right of the post.
+          {{ t('composer.advanced.description') }}
         </p>
       </div>
 
@@ -93,9 +108,9 @@ function done() {
       <!-- Public access toggle -->
       <div class="mx-6 mb-3 rounded-2xl bg-white px-4 py-4 flex items-start gap-3">
         <div class="flex-1 min-w-0">
-          <p class="text-subHeader font-semibold text-dark">Public access</p>
+          <p class="text-subHeader font-semibold text-dark">{{ t('composer.advanced.publicAccess.title') }}</p>
           <p class="text-caption text-dark-50 mt-0.5 leading-snug">
-            Enable visibility to users which are not logged in to the app or website.
+            {{ t('composer.advanced.publicAccess.description') }}
           </p>
         </div>
         <!-- Toggle -->
@@ -104,7 +119,7 @@ function done() {
           class="flex-shrink-0 mt-0.5 w-12 h-7 rounded-full transition-colors duration-200 relative"
           :style="isPublic ? 'background: rgb(99,100,246);' : 'background: rgba(55,55,55,0.15);'"
           @click="isPublic = !isPublic"
-          :aria-label="isPublic ? 'Disable public access' : 'Enable public access'"
+          :aria-label="isPublic ? t('composer.advanced.publicAccess.disable') : t('composer.advanced.publicAccess.enable')"
         >
           <span
             class="absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200"
@@ -125,9 +140,9 @@ function done() {
             <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
           </svg>
         </div>
-        <p class="flex-1 text-subHeader font-semibold text-dark text-left">Audience</p>
+        <p class="flex-1 text-subHeader font-semibold text-dark text-left">{{ t('composer.advanced.audience.title') }}</p>
         <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark flex-shrink-0">
-          {{ audience }}
+          {{ audienceLabel }}
         </span>
       </button>
 
@@ -147,9 +162,9 @@ function done() {
               <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
           </div>
-          <p class="flex-1 text-subHeader font-semibold text-dark text-left">Schedule post</p>
+          <p class="flex-1 text-subHeader font-semibold text-dark text-left">{{ t('composer.advanced.schedule.title') }}</p>
           <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark flex-shrink-0">
-            {{ scheduledAt ? formatSchedule(scheduledAt) : 'Not set' }}
+            {{ scheduleLabel }}
           </span>
         </button>
 
@@ -167,7 +182,7 @@ function done() {
             class="mt-2 text-caption text-dark-50 hover:text-dark transition-colors"
             @click="scheduledAt = null"
           >
-            Clear schedule
+            {{ t('composer.advanced.schedule.clear') }}
           </button>
         </div>
       </div>
@@ -187,8 +202,8 @@ function done() {
           </svg>
         </div>
         <div class="flex-1 min-w-0 text-left">
-          <p class="text-subHeader font-semibold text-dark">Move to drafts</p>
-          <p class="text-caption text-dark-50 mt-0.5">You can access your drafts through your profile.</p>
+          <p class="text-subHeader font-semibold text-dark">{{ t('composer.advanced.drafts.title') }}</p>
+          <p class="text-caption text-dark-50 mt-0.5">{{ t('composer.advanced.drafts.description') }}</p>
         </div>
       </button>
 
@@ -208,14 +223,14 @@ function done() {
             </svg>
           </div>
           <div class="flex-1 min-w-0 text-left">
-            <p class="text-subHeader font-semibold text-dark">Add content warning</p>
-            <p class="text-caption text-dark-50 mt-0.5">Warn users about different parts of your post.</p>
+            <p class="text-subHeader font-semibold text-dark">{{ t('composer.advanced.contentWarning.title') }}</p>
+            <p class="text-caption text-dark-50 mt-0.5">{{ t('composer.advanced.contentWarning.description') }}</p>
           </div>
           <span
             v-if="hasContentWarning"
             class="rounded-full px-3 py-1 text-footnote font-semibold text-white flex-shrink-0"
             style="background: rgb(99,100,246);"
-          >On</span>
+          >{{ contentWarningStatusLabel }}</span>
         </button>
 
         <div v-if="showCWInput" class="mt-3 ml-14">
@@ -223,7 +238,7 @@ function done() {
             v-model="contentWarningText"
             type="text"
             class="w-full rounded-xl bg-white border border-dark-10 px-3 py-2 text-sm text-dark outline-none focus:ring-2 focus:ring-indigo-300"
-            placeholder="Describe the sensitive content…"
+            :placeholder="t('composer.advanced.contentWarning.placeholder')"
             maxlength="100"
           />
         </div>
@@ -244,8 +259,8 @@ function done() {
             </svg>
           </div>
           <div class="text-left">
-            <p class="text-subHeader font-bold text-white">Boost this post</p>
-            <p class="text-caption text-white/70">Increase reach and engagement</p>
+            <p class="text-subHeader font-bold text-white">{{ t('composer.advanced.boost.title') }}</p>
+            <p class="text-caption text-white/70">{{ t('composer.advanced.boost.description') }}</p>
           </div>
         </button>
       </div>

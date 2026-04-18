@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
 import { getMemoryApplicationDocument, getRequiredAccessNeedGroupDocument, getUserById, recordNotificationDelivery, verifyWebhookTarget } from '../services/ActivityPodsNotifications'
 
 const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public' })
@@ -12,24 +13,27 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
     set.headers['Access-Control-Allow-Origin'] = '*'
     return getRequiredAccessNeedGroupDocument()
   })
-  .post('/activitypods/webhooks/inbox/:userId', async ({ params, query, body, request, set }) => {
+  .post('/activitypods/webhooks/inbox/:userId', async ({ params, query, body, request, headers, set }) => {
+    const locale = localeFromHeaders(headers)
+    applyLocaleHeaders(set, locale)
+
     const userId = Number.parseInt(String(params.userId), 10)
     if (!Number.isInteger(userId) || userId <= 0) {
       set.status = 400
-      return 'Invalid user id'
+      return translate(locale, 'activitypods.webhooks.invalidUserId')
     }
 
     const targetUser = await getUserById(userId)
     if (!targetUser) {
       set.status = 404
-      return 'Unknown webhook target user'
+      return translate(locale, 'activitypods.webhooks.unknownTargetUser')
     }
 
     const signature = typeof query.signature === 'string' ? query.signature : undefined
     const isValid = await verifyWebhookTarget(userId, signature)
     if (!isValid) {
       set.status = 401
-      return 'Unauthorized'
+      return translate(locale, 'activitypods.webhooks.unauthorized')
     }
 
     let parsedBody =
@@ -50,7 +54,7 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
         const rawText = await request.text()
         if (rawText.length > 200_000) {
           set.status = 413
-          return 'Payload too large'
+          return translate(locale, 'activitypods.webhooks.payloadTooLarge')
         }
         parsedBody = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : null
       } catch {
@@ -60,7 +64,7 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
 
     if (!parsedBody) {
       set.status = 400
-      return 'Invalid notification payload'
+      return translate(locale, 'activitypods.webhooks.invalidPayload')
     }
 
     const result = await recordNotificationDelivery(userId, parsedBody)

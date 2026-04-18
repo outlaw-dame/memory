@@ -1,4 +1,6 @@
 import { ref } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
+import { t } from '@/i18n'
 import ky, { HTTPError } from 'ky'
 
 export function useFollow() {
@@ -9,21 +11,21 @@ export function useFollow() {
     followError.value = null
     const token = localStorage.getItem('token')
     if (!token) {
-      followError.value = 'Not authenticated'
+      followError.value = t('common.errors.notAuthenticated')
       return false
     }
     try {
-      await ky.post(`${import.meta.env.VITE_API_URL}/follows`, {
-        headers: { auth: token },
+      await ky.post(`${getApiBaseUrl()}/follows`, {
+        headers: buildApiHeaders({ authToken: token, includeJsonContentType: true }),
         json: { objectUri }
       })
       followingSet.value = new Set([...followingSet.value, objectUri])
       return true
     } catch (e) {
       if (e instanceof HTTPError) {
-        followError.value = `Follow failed (${e.response.status})`
+        followError.value = t('follow.errors.failedStatus', { status: e.response.status })
       } else {
-        followError.value = 'Follow failed'
+        followError.value = t('follow.errors.failed')
       }
       return false
     }

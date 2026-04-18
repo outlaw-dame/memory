@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router'
 import HashtagText from './HashtagText.vue'
 import PostEmbedCard from './PostEmbedCard.vue'
 import type { EmbeddedPost } from './PostEmbedCard.vue'
+import type { LinkPreviewData } from './PostLinkPreview.vue'
+import type { CarouselMediaItem } from './PostMediaCarousel.vue'
 import InlineReplyComposer from './InlineReplyComposer.vue'
 import MoreActionsSheet from './MoreActionsSheet.vue'
 import type { UnifiedFeedItem } from '@/stores/atBridgeStore'
@@ -28,10 +30,14 @@ const replyPolicy = ref<ReplyPolicyResolution | null>(null)
 const replyComposer = ref<InstanceType<typeof InlineReplyComposer> | null>(null)
 
 const quotedEmbed = computed<EmbeddedPost | null>(() => {
-  const q = props.item.quotedPost
+  const q = resolveQuotedPost(props.item)
   if (!q) return null
   let domain = q.source === 'atproto' ? 'atproto' : 'activitypods'
   try { domain = new URL(q.authorProviderEndpoint).hostname } catch { /* ignore */ }
+
+  const normalizedMedia = normalizeQuotedMedia(q)
+  const linkPreview = normalizeQuotedLinkPreview(q)
+
   return {
     id: q.id,
     authorName: q.authorName,
@@ -39,8 +45,127 @@ const quotedEmbed = computed<EmbeddedPost | null>(() => {
     federationDomain: domain,
     timeAgo: formatRelativeTime(q.createdAt),
     content: q.content,
+    media: normalizedMedia,
+    linkPreview,
   }
 })
+
+interface NormalizedQuotedPost {
+  id: number
+  authorName: string
+  authorProviderEndpoint: string
+  content: string
+  createdAt: string | null
+  source: 'activitypods' | 'atproto'
+  media?: Array<{
+    type?: string
+    url?: string
+    alt?: string
+    attribution?: string
+    poster?: string
+    filename?: string
+    duration?: number
+  }>
+  linkPreview?: {
+    url?: string
+    title?: string
+    description?: string
+    image?: string
+    domain?: string
+  }
+}
+
+function resolveQuotedPost(item: UnifiedFeedItem): NormalizedQuotedPost | null {
+  const raw = (item as unknown as Record<string, unknown>).quotedPost
+    ?? (item as unknown as Record<string, unknown>).quoted_post
+    ?? (item as unknown as Record<string, unknown>).quotePost
+    ?? (item as unknown as Record<string, unknown>).quote
+  if (!raw || typeof raw !== 'object') return null
+
+  const source = normalizeSource((raw as Record<string, unknown>).source, item.source)
+  const id = normalizeNumber((raw as Record<string, unknown>).id) ?? item.id
+  const authorName = normalizeString((raw as Record<string, unknown>).authorName)
+    ?? normalizeString((raw as Record<string, unknown>).author_name)
+    ?? 'Unknown'
+  const authorProviderEndpoint = normalizeString((raw as Record<string, unknown>).authorProviderEndpoint)
+    ?? normalizeString((raw as Record<string, unknown>).author_provider_endpoint)
+    ?? ''
+  const content = normalizeString((raw as Record<string, unknown>).content)
+    ?? normalizeString((raw as Record<string, unknown>).text)
+    ?? ''
+  const createdAt = normalizeString((raw as Record<string, unknown>).createdAt)
+    ?? normalizeString((raw as Record<string, unknown>).created_at)
+    ?? null
+
+  const media = ((raw as Record<string, unknown>).media
+    ?? (raw as Record<string, unknown>).attachments
+    ?? undefined) as NormalizedQuotedPost['media']
+  const linkPreview = ((raw as Record<string, unknown>).linkPreview
+    ?? (raw as Record<string, unknown>).link_preview
+    ?? (raw as Record<string, unknown>).preview
+    ?? undefined) as NormalizedQuotedPost['linkPreview']
+
+  return {
+    id,
+    authorName,
+    authorProviderEndpoint,
+    content,
+    createdAt,
+    source,
+    media,
+    linkPreview,
+  }
+}
+
+function normalizeQuotedMedia(quoted: NormalizedQuotedPost): CarouselMediaItem[] {
+  const items = Array.isArray(quoted.media) ? quoted.media : []
+  const normalized: CarouselMediaItem[] = []
+  for (const item of items) {
+    if (!item?.url || typeof item.url !== 'string') continue
+    normalized.push({
+      type: normalizeMediaType(item.type),
+      url: item.url,
+      alt: item.alt,
+      attribution: item.attribution,
+      poster: item.poster,
+      filename: item.filename,
+      duration: item.duration,
+    })
+  }
+  return normalized
+}
+
+function normalizeQuotedLinkPreview(quoted: NormalizedQuotedPost): LinkPreviewData | undefined {
+  const preview = quoted.linkPreview
+  if (!preview || typeof preview.url !== 'string' || typeof preview.title !== 'string') {
+    return undefined
+  }
+
+  return {
+    url: preview.url,
+    title: preview.title,
+    description: preview.description,
+    image: preview.image,
+    domain: preview.domain,
+  }
+}
+
+function normalizeString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function normalizeNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function normalizeSource(value: unknown, fallback: UnifiedFeedItem['source']): 'activitypods' | 'atproto' {
+  return value === 'activitypods' || value === 'atproto' ? value : fallback
+}
+
+function normalizeMediaType(type: string | undefined): CarouselMediaItem['type'] {
+  if (type === 'gif' || type === 'video' || type === 'audio') return type
+  return 'image'
+}
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)

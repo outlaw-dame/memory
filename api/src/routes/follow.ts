@@ -1,18 +1,20 @@
 import Elysia, { t } from 'elysia'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
+import { localeFromHeaders, translate } from '../i18n'
 
 const followPlugin = new Elysia({ name: 'follow' })
   .use(setupPlugin)
   .post(
     '/follows',
-    async ({ error, body, user }) => {
+    async ({ body, user, headers, error }) => {
+      const locale = localeFromHeaders(headers)
       const { objectUri } = body
       try {
         await ActivityPod.followActor(user, objectUri)
       } catch (e) {
         console.error('Error while following actor:', e)
-        return error(502, 'Pod server follow request failed')
+        return error(502, translate(locale, 'follow.failed'))
       }
       return { followed: true }
     },

@@ -1,4 +1,5 @@
 import type { App, CreatePost } from '@/types'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
 import { useAuthStore } from './authStore'
@@ -12,12 +13,10 @@ export const usePostsStore = defineStore('posts', () => {
   // Stores
   const authStore = useAuthStore()
   // API
-  const client = treaty<App>(import.meta.env.VITE_API_URL, {
+  const client = treaty<App>(getApiBaseUrl(), {
     onRequest() {
       return {
-        headers: {
-          auth: authStore.token || ''
-        }
+        headers: buildApiHeaders({ authToken: authStore.token || undefined })
       }
     }
   })

@@ -1,6 +1,8 @@
 import Elysia, { t } from 'elysia'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
+import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
+import { normalizeProfileActorUpdate, ProfileStatusValidationError } from '../profileStatus'
 
 const profilePlugin = new Elysia({ name: 'profile' })
   .use(setupPlugin)
@@ -10,17 +12,19 @@ const profilePlugin = new Elysia({ name: 'profile' })
   })
   .get(
     '/profile',
-    async ({ set, user }: any) => {
+    async ({ set, user, headers }: any) => {
+      const locale = localeFromHeaders(headers)
+      applyLocaleHeaders(set, locale)
       if (!user?.endpoint || !user?.userName) {
         set.status = 401
-        return 'You must be signed in to do that'
+        return translate(locale, 'common.mustBeSignedIn')
       }
       try {
         return await ActivityPod.getProfile(user)
       } catch (e) {
         console.error('Error while fetching profile:', e)
         set.status = 502
-        return 'Pod server profile request failed'
+        return translate(locale, 'profile.fetchFailed')
       }
     },
     {
@@ -34,20 +38,42 @@ const profilePlugin = new Elysia({ name: 'profile' })
   )
   .put(
     '/profile',
-    async ({ set, body, user }: any) => {
+    async ({ set, body, user, headers }: any) => {
+      const locale = localeFromHeaders(headers)
+      applyLocaleHeaders(set, locale)
       if (!user?.endpoint || !user?.userName) {
         set.status = 401
-        return 'You must be signed in to do that'
+        return translate(locale, 'common.mustBeSignedIn')
       }
       if (!body.actor || typeof body.actor !== 'object' || Array.isArray(body.actor)) {
         set.status = 400
-        return 'actor must be an object'
+        return translate(locale, 'profile.actorMustBeObject')
       }
 
-      const actor = {
-        ...body.actor,
-        id: user.getWebId(),
-        '@id': user.getWebId()
+      let currentProfile: Record<string, unknown>
+      try {
+        currentProfile = await ActivityPod.getProfile(user)
+      } catch (e) {
+        console.error('Error while fetching current profile for update:', e)
+        set.status = 502
+        return translate(locale, 'profile.currentFetchFailed')
+      }
+
+      let actor: Record<string, unknown>
+      try {
+        actor = normalizeProfileActorUpdate(body.actor, {
+          actorId: user.getWebId(),
+          existingActor: currentProfile
+        })
+      } catch (error) {
+        if (error instanceof ProfileStatusValidationError) {
+          set.status = 400
+          return translate(locale, error.translationKey)
+        }
+
+        console.error('Error while normalizing profile status:', error)
+        set.status = 400
+        return translate(locale, 'profile.updateFailed')
       }
 
       try {
@@ -56,7 +82,7 @@ const profilePlugin = new Elysia({ name: 'profile' })
       } catch (e) {
         console.error('Error while updating profile:', e)
         set.status = 502
-        return 'Pod server profile update failed'
+        return translate(locale, 'profile.updateFailed')
       }
     },
     {

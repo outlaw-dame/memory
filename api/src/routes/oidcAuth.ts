@@ -6,6 +6,7 @@ import setupPlugin from './setup'
 import User from '../decorater/User'
 import { getTokenObject } from '../services/jwt'
 import { syncAtprotoIdentity } from '../services/WebIdProfileService'
+import { localeFromHeaders, translate } from '../i18n'
 
 /**
  * How long (in ms) to wait for the ATProto identity link before issuing the
@@ -16,10 +17,11 @@ const ATPROTO_LINK_DEADLINE_MS = 1_500
 
 const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
   .use(setupPlugin)
-  .post('/callback', async ({ body, jwt, set }) => {
-    const fail = (status: number, message: string) => {
+  .post('/callback', async ({ body, jwt, set, headers }) => {
+    const locale = localeFromHeaders(headers)
+    const fail = (status: number, key: string) => {
       set.status = status
-      return message
+      return translate(locale, key)
     }
 
     const payload = body as Record<string, unknown>
@@ -37,7 +39,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
       const codeChallenge = String(payload.codeChallenge || '')
 
       if (!providerEndpoint || !redirectUri || !state || !codeChallenge) {
-        return fail(400, 'Missing OIDC prepare parameters')
+        return fail(400, 'oidc.missingPrepareParams')
       }
 
       try {
@@ -70,7 +72,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
         }
       } catch (e) {
         console.error('Error while preparing OIDC login: ', e)
-        return fail(500, 'Unable to prepare OIDC login')
+        return fail(500, 'oidc.unableToPrepare')
       }
     }
 
@@ -84,7 +86,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
     const codeVerifier = String(payload.codeVerifier || '')
 
     if (!providerEndpoint || !redirectUri || !clientId || !code || !codeVerifier) {
-      return fail(400, 'Missing OIDC callback parameters')
+      return fail(400, 'oidc.missingCallbackParams')
     }
 
     try {
@@ -120,7 +122,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
       const webId = claims.webid || claims.sub || claims.azp
 
       if (!tokens.access_token || !webId) {
-        return fail(400, 'OIDC provider did not return a usable access token')
+        return fail(400, 'oidc.unusableAccessToken')
       }
 
       // Upsert the local user record keyed on WebID.
@@ -183,7 +185,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
       }
     } catch (e) {
       console.error('Error while completing OIDC login: ', e)
-      return fail(500, 'Unable to complete OIDC login')
+      return fail(500, 'oidc.unableToComplete')
     }
   })
 

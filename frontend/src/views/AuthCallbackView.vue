@@ -3,11 +3,13 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from '@/i18n'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
-const loadingMessage = ref('Finishing sign in...')
+const { t } = useI18n()
+const loadingMessage = ref(t('auth.callback.finishing'))
 
 onMounted(async () => {
   try {
@@ -20,17 +22,17 @@ onMounted(async () => {
     }
 
     if (params.has('register_app')) {
-      loadingMessage.value = 'Activating pod notifications...'
+      loadingMessage.value = t('auth.callback.activatingNotifications')
       await notificationsStore.bootstrap()
       await notificationsStore.fetchNotifications()
       await router.replace({ name: 'notifications' })
       return
     }
 
-    loadingMessage.value = 'Nothing to finalize. Returning to the app...'
+    loadingMessage.value = t('auth.callback.nothingToFinalize')
     await router.replace({ name: 'home' })
   } catch {
-    loadingMessage.value = 'Sign in failed. Returning to the sign-in page...'
+    loadingMessage.value = t('auth.callback.failed')
   }
 })
 </script>

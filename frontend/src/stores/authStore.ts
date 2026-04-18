@@ -1,5 +1,6 @@
 import type { SignInBody, SignUpBody, SignInResponse } from '#api/types'
 import { ApiClient } from '@/controller/api'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { beginOidcSignIn, finishOidcSignIn, DEFAULT_PROVIDER_ENDPOINT } from '@/controller/oidc'
 import { ApiErrorsGeneral, type ApiErrors, type App, type ProviderEndpoints, type User } from '@/types'
 import { treaty } from '@elysiajs/eden'
@@ -7,6 +8,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSessionPolicyConfig } from '@/utils/sessionPolicy'
+import { t } from '@/i18n'
 
 const SESSION_STARTED_AT_KEY = 'memory.session.startedAt'
 const sessionPolicyConfig = getSessionPolicyConfig()
@@ -18,7 +20,13 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>('')
   const authError = ref<string>('')
   // API
-  const client = treaty<App>(import.meta.env.VITE_API_URL)
+  const client = treaty<App>(getApiBaseUrl(), {
+    onRequest() {
+      return {
+        headers: buildApiHeaders({ authToken: token.value || undefined })
+      }
+    }
+  })
   const apiClient = new ApiClient()
   // Vue Hooks
   const router = useRouter()
@@ -117,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } catch (error) {
       console.log('error when trying to signIn: ', error)
-      setAuthError('Unable to sign in')
+      setAuthError(t('errors.unableToSignIn'))
     }
   }
 
@@ -137,7 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
       markSessionStartedNow()
       await router.replace({ name: 'home' })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to finish sign in'
+      const message = error instanceof Error ? error.message : t('errors.unableToFinishSignIn')
       setAuthError(message)
       await router.replace({ name: 'signin' })
       throw error

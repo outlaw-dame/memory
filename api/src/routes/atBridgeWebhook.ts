@@ -34,7 +34,7 @@ import crypto from 'crypto'
 
 function safeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) return false
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  return crypto.timingSafeEqual(new Uint8Array(Buffer.from(a)), new Uint8Array(Buffer.from(b)))
 }
 
 // ---------------------------------------------------------------------------

@@ -2,9 +2,11 @@
 import { computed, onMounted } from 'vue'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { getSessionPolicyConfig, isOperatorDiagnosticsEnabled } from '@/utils/sessionPolicy'
+import { useI18n } from '@/i18n'
 
 const notificationsStore = useNotificationsStore()
 const sessionPolicy = getSessionPolicyConfig()
+const { formatDateTime, t } = useI18n()
 
 onMounted(async () => {
   try {
@@ -16,18 +18,18 @@ onMounted(async () => {
 
 const emptyMessage = computed(() => {
   if (!notificationsStore.status?.installed) {
-    return 'Authorize Memory on your pod to start receiving inbox notifications.'
+    return t('notifications.empty.install')
   }
   if (!notificationsStore.status?.hasInboxWebhook) {
     if (notificationsStore.status?.upgradeNeeded) {
-      return 'Memory needs an authorization update before inbox notifications can be activated.'
+      return t('notifications.empty.upgrade')
     }
-    return 'Memory is authorized but the inbox webhook is not active yet.'
+    return t('notifications.empty.webhookInactive')
   }
   if (notificationsStore.deferPodReauth) {
-    return 'Using current trusted browser session. Re-authorization will be requested later if still required.'
+    return t('notifications.empty.deferPrompt')
   }
-  return 'No notifications have been delivered yet.'
+  return t('notifications.empty.noneDelivered')
 })
 
 const showOperatorDiagnostics = computed(() => {
@@ -36,20 +38,20 @@ const showOperatorDiagnostics = computed(() => {
 })
 
 function formatWhen(value: string | null) {
-  if (!value) return 'Pending timestamp'
-  return new Date(value).toLocaleString()
+  if (!value) return t('common.labels.pendingTimestamp')
+  return formatDateTime(value, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function getNotificationLabel(type: string) {
   switch (type) {
     case 'Add':
-      return 'New inbox item'
+      return t('notifications.labels.add')
     case 'Create':
-      return 'New activity'
+      return t('notifications.labels.create')
     case 'Update':
-      return 'Updated activity'
+      return t('notifications.labels.update')
     case 'Delete':
-      return 'Deleted activity'
+      return t('notifications.labels.delete')
     default:
       return type
   }
@@ -60,8 +62,8 @@ function getNotificationLabel(type: string) {
   <section class="mx-auto flex w-full max-w-[560px] flex-col gap-4 pb-24">
     <header class="flex items-start justify-between gap-4">
       <div>
-        <p class="text-[14px] uppercase tracking-[0.2em] text-dark/40">ActivityPods</p>
-        <h1 class="font-[Butler] text-[42px] leading-none text-dark">notifications.</h1>
+        <p class="text-[14px] uppercase tracking-[0.2em] text-dark/40">{{ t('notifications.product') }}</p>
+        <h1 class="font-[Butler] text-[42px] leading-none text-dark">{{ t('notifications.title') }}</h1>
       </div>
       <button
         v-if="notificationsStore.status && !notificationsStore.deferPodReauth && (!notificationsStore.status.installed || (!notificationsStore.status.hasInboxWebhook && notificationsStore.status.upgradeNeeded))"
@@ -69,7 +71,7 @@ function getNotificationLabel(type: string) {
         class="rounded-full bg-dark px-4 py-2 text-sm font-medium text-white"
         @click="notificationsStore.beginAuthorization()"
       >
-        {{ notificationsStore.status.upgradeNeeded ? 'Update access' : 'Enable' }}
+        {{ notificationsStore.status.upgradeNeeded ? t('common.actions.updateAccess') : t('common.actions.enable') }}
       </button>
     </header>
 
@@ -78,26 +80,26 @@ function getNotificationLabel(type: string) {
     </div>
 
     <div v-if="notificationsStore.status" class="rounded-[28px] bg-pastel-light px-5 py-5 text-dark">
-      <p class="text-[14px] uppercase tracking-[0.16em] text-dark/40">Status</p>
+      <p class="text-[14px] uppercase tracking-[0.16em] text-dark/40">{{ t('notifications.statusLabel') }}</p>
       <p class="mt-2 text-[20px] font-semibold">
-        <span v-if="!notificationsStore.status.installed">Authorization required</span>
-        <span v-else-if="notificationsStore.status.hasInboxWebhook">Watching {{ notificationsStore.status.inboxTopic }}</span>
-        <span v-else-if="notificationsStore.deferPodReauth">Using active session while deferring re-auth prompt</span>
-        <span v-else-if="notificationsStore.status.upgradeNeeded">Permissions update required</span>
-        <span v-else>Webhook provisioning pending</span>
+        <span v-if="!notificationsStore.status.installed">{{ t('notifications.status.authorizationRequired') }}</span>
+        <span v-else-if="notificationsStore.status.hasInboxWebhook">{{ t('notifications.status.watching', { topic: notificationsStore.status.inboxTopic }) }}</span>
+        <span v-else-if="notificationsStore.deferPodReauth">{{ t('notifications.status.deferPrompt') }}</span>
+        <span v-else-if="notificationsStore.status.upgradeNeeded">{{ t('notifications.status.permissionsUpdateRequired') }}</span>
+        <span v-else>{{ t('notifications.status.webhookPending') }}</span>
       </p>
     </div>
 
     <div v-if="showOperatorDiagnostics" class="rounded-[28px] border border-dark/15 bg-white px-5 py-5 text-dark/80">
-      <p class="text-[12px] uppercase tracking-[0.16em] text-dark/40">Operator diagnostics</p>
+      <p class="text-[12px] uppercase tracking-[0.16em] text-dark/40">{{ t('notifications.operatorDiagnostics') }}</p>
       <p class="mt-2 text-[14px]">
-        Frontend effective policy:
+        {{ t('notifications.frontendPolicy') }}
         <span class="font-semibold">
           session {{ sessionPolicy.sessionMaxAgeMs }}ms, defer {{ sessionPolicy.podReauthDeferMs }}ms
         </span>
       </p>
       <p class="mt-1 text-[14px]">
-        API expected policy:
+        {{ t('notifications.apiPolicy') }}
         <span class="font-semibold">
           session {{ notificationsStore.status?.expectedFrontendPolicy?.sessionMaxAgeMs }}ms,
           defer {{ notificationsStore.status?.expectedFrontendPolicy?.podReauthDeferMs }}ms
@@ -128,15 +130,15 @@ function getNotificationLabel(type: string) {
 
       <dl class="mt-4 grid gap-2 text-[14px] text-dark/70">
         <div v-if="item.actorUri">
-          <dt class="font-semibold text-dark">Actor</dt>
+          <dt class="font-semibold text-dark">{{ t('notifications.fields.actor') }}</dt>
           <dd class="break-all">{{ item.actorUri }}</dd>
         </div>
         <div v-if="item.objectUri">
-          <dt class="font-semibold text-dark">Object</dt>
+          <dt class="font-semibold text-dark">{{ t('notifications.fields.object') }}</dt>
           <dd class="break-all">{{ item.objectUri }}</dd>
         </div>
         <div v-if="item.targetUri">
-          <dt class="font-semibold text-dark">Target</dt>
+          <dt class="font-semibold text-dark">{{ t('notifications.fields.target') }}</dt>
           <dd class="break-all">{{ item.targetUri }}</dd>
         </div>
       </dl>

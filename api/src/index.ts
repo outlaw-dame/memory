@@ -3,6 +3,7 @@ import { _createPost, _selectUsers } from './types'
 import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
 import { db } from './db/client'
+import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
 
 export { db }
 
@@ -29,11 +30,14 @@ const protectedRoutes = new Elysia({ aot: false })
       if (!enabled) return
 
       return {
-        async beforeHandle({ headers: { auth }, jwt, set, user }) {
+        async beforeHandle({ headers, jwt, set, user }) {
+          const locale = localeFromHeaders(headers)
+          applyLocaleHeaders(set, locale)
+          const auth = headers.auth
           const authValue = await jwt.verify(auth)
           if (!authValue) {
             set.status = 401
-            return 'You must be signed in to do that'
+            return translate(locale, 'common.mustBeSignedIn')
           } else {
             user.loadUser(JSON.parse(authValue.user as string))
           }

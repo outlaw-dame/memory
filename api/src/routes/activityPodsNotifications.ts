@@ -1,6 +1,7 @@
 import Elysia, { t } from 'elysia'
 import setupPlugin from './setup'
 import { ensureMemoryInboxWebhook, getMemoryAppStatus, getUserById, listNotificationsForUser } from '../services/ActivityPodsNotifications'
+import { localeFromHeaders, translate } from '../i18n'
 
 const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notifications' })
   .use(setupPlugin)
@@ -8,11 +9,12 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     as: 'scoped',
     isSignedIn: true,
   })
-  .get('/activitypods/notifications/status', async ({ set, user }: any) => {
+  .get('/activitypods/notifications/status', async ({ set, user, headers }: any) => {
+    const locale = localeFromHeaders(headers)
     const dbUser = await getUserById(user.userId)
     if (!dbUser) {
       set.status = 404
-      return 'User not found'
+      return translate(locale, 'common.userNotFound')
     }
 
     try {
@@ -20,7 +22,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     } catch (error) {
       console.error('Error while fetching ActivityPods notification status:', error)
       set.status = 502
-      return 'Unable to fetch ActivityPods app status'
+      return translate(locale, 'notifications.fetchStatusFailed')
     }
   }, {
     response: {
@@ -30,11 +32,12 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     },
     detail: 'Return Memory app registration and webhook status for the current ActivityPods user',
   })
-  .post('/activitypods/notifications/bootstrap', async ({ set, user }: any) => {
+  .post('/activitypods/notifications/bootstrap', async ({ set, user, headers }: any) => {
+    const locale = localeFromHeaders(headers)
     const dbUser = await getUserById(user.userId)
     if (!dbUser) {
       set.status = 404
-      return 'User not found'
+      return translate(locale, 'common.userNotFound')
     }
 
     try {
@@ -42,14 +45,14 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
 
       if (!result.status.hasInboxWebhook && result.status.upgradeNeeded) {
         set.status = 409
-        return 'Pod requires application authorization upgrade before webhook activation'
+        return translate(locale, 'notifications.upgradeRequired')
       }
 
       return result
     } catch (error) {
       console.error('Error while bootstrapping ActivityPods notifications:', error)
       set.status = 502
-      return 'Unable to bootstrap ActivityPods notifications'
+      return translate(locale, 'notifications.bootstrapFailed')
     }
   }, {
     response: {
@@ -60,11 +63,12 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     },
     detail: 'Create the Memory inbox webhook after the app has been authorized on the user pod',
   })
-  .get('/activitypods/notifications', async ({ set, user }: any) => {
+  .get('/activitypods/notifications', async ({ set, user, headers }: any) => {
+    const locale = localeFromHeaders(headers)
     const dbUser = await getUserById(user.userId)
     if (!dbUser) {
       set.status = 404
-      return 'User not found'
+      return translate(locale, 'common.userNotFound')
     }
 
     try {
@@ -72,7 +76,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     } catch (error) {
       console.error('Error while listing notifications:', error)
       set.status = 500
-      return 'Unable to list notifications'
+      return translate(locale, 'notifications.listFailed')
     }
   }, {
     response: {

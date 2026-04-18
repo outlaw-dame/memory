@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import PostMediaCarousel from './PostMediaCarousel.vue'
+import PostLinkPreview from './PostLinkPreview.vue'
+import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CarouselMediaItem } from './PostMediaCarousel.vue'
 
 export interface EmbeddedPost {
@@ -14,6 +16,7 @@ export interface EmbeddedPost {
   embedCount?: string    // e.g. "2 embeds, 1 audio"
   viewCount?: string
   media?: CarouselMediaItem[]
+  linkPreview?: LinkPreviewData
 }
 
 const props = defineProps<{ post: EmbeddedPost }>()
@@ -72,7 +75,12 @@ function open() {
     </div>
 
     <!-- Content (max 3 lines) -->
-    <p class="text-sm text-dark leading-snug px-3.5 pb-2.5 line-clamp-3">{{ post.content }}</p>
+    <p v-if="post.content" class="text-sm text-dark leading-snug px-3.5 pb-2.5 line-clamp-3">{{ post.content }}</p>
+
+    <!-- Link preview -->
+    <div v-if="post.linkPreview" class="px-3.5 pb-3">
+      <PostLinkPreview :preview="post.linkPreview" />
+    </div>
 
     <!-- Media (carousel, first items only) -->
     <div v-if="post.media?.length" class="px-3.5 pb-3">

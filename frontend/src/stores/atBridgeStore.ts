@@ -17,6 +17,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { useAuthStore } from './authStore'
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,22 @@ export interface QuotedPost {
   content: string
   createdAt: string | null
   source: 'activitypods' | 'atproto'
+  media?: Array<{
+    type?: 'image' | 'gif' | 'video' | 'audio' | string
+    url: string
+    alt?: string
+    attribution?: string
+    poster?: string
+    filename?: string
+    duration?: number
+  }>
+  linkPreview?: {
+    url: string
+    title: string
+    description?: string
+    image?: string
+    domain?: string
+  }
 }
 
 export interface UnifiedFeedItem {
@@ -158,20 +175,21 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   // -------------------------------------------------------------------------
 
   function getApiBase(): string {
-    return import.meta.env.VITE_API_URL || 'http://localhost:8796'
+    return getApiBaseUrl()
   }
 
-  function getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      auth: authStore.token,
-    }
+  function getHeaders(headers?: HeadersInit): HeadersInit {
+    return buildApiHeaders({
+      authToken: authStore.token || undefined,
+      includeJsonContentType: true,
+      headers
+    })
   }
 
   async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${getApiBase()}${path}`, {
       ...options,
-      headers: { ...getHeaders(), ...(options?.headers ?? {}) },
+      headers: getHeaders(options?.headers),
     })
 
     if (!response.ok) {

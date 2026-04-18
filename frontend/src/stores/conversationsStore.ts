@@ -12,6 +12,8 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
+import { t } from '@/i18n'
 import { useAuthStore } from './authStore'
 
 export interface ConversationPreview {
@@ -63,20 +65,21 @@ export const useConversationsStore = defineStore('conversations', () => {
   // -------------------------------------------------------------------------
 
   function getApiBase(): string {
-    return import.meta.env.VITE_API_URL || 'http://localhost:8796'
+    return getApiBaseUrl()
   }
 
-  function getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      auth: authStore.token,
-    }
+  function getHeaders(headers?: HeadersInit): HeadersInit {
+    return buildApiHeaders({
+      authToken: authStore.token || undefined,
+      includeJsonContentType: true,
+      headers
+    })
   }
 
   async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${getApiBase()}${path}`, {
       ...options,
-      headers: { ...getHeaders(), ...(options?.headers ?? {}) },
+      headers: getHeaders(options?.headers),
     })
 
     if (!response.ok) {
@@ -104,7 +107,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       const data = await apiFetch<ConversationPreview[]>('/conversations')
       conversations.value = data
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch conversations'
+      error.value = err instanceof Error ? err.message : t('conversations.errors.fetchList')
       console.error('[ConversationsStore] fetchConversations error:', err)
     } finally {
       isLoading.value = false
@@ -124,7 +127,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       const data = await apiFetch<ConversationDetail>(`/conversations/${id}`)
       currentConversation.value = data
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to fetch conversation'
+      error.value = err instanceof Error ? err.message : t('conversations.errors.fetch')
       console.error('[ConversationsStore] fetchConversation error:', err)
     } finally {
       isLoading.value = false
@@ -150,7 +153,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       // Refresh conversation list to update timestamps
       await fetchConversations()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to send message'
+      error.value = err instanceof Error ? err.message : t('conversations.errors.send')
       console.error('[ConversationsStore] sendMessage error:', err)
     }
   }
@@ -175,7 +178,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       await fetchConversations()
       return data.id
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to create conversation'
+      error.value = err instanceof Error ? err.message : t('conversations.errors.create')
       console.error('[ConversationsStore] createConversation error:', err)
       return null
     }

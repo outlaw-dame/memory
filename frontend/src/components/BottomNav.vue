@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const hiddenRoutes = new Set(['signin', 'signup', 'welcome', 'experience'])
 const show = computed(() => !hiddenRoutes.has(String(route.name)))
 
 interface NavItem { name: string; route: string; label: string }
-const items: NavItem[] = [
-  { name: 'home',          route: '/',          label: 'Home' },
-  { name: 'explore',       route: '/explore',   label: 'Explore' },
-  { name: 'messages',      route: '/messages',  label: 'Messages' },
-  { name: 'notifications', route: '/notifications', label: 'Notifications' },
-  { name: 'profile',       route: '/profile',   label: 'Profile' },
-]
+const items = computed<NavItem[]>(() => [
+  { name: 'home', route: '/', label: t('nav.home') },
+  { name: 'explore', route: '/explore', label: t('nav.explore') },
+  { name: 'messages', route: '/messages', label: t('nav.messages') },
+  { name: 'notifications', route: '/notifications', label: t('nav.notifications') },
+  { name: 'profile', route: '/profile', label: t('nav.profile') },
+])
 
 function isActive(item: NavItem): boolean {
   if (item.name === 'home') return route.path === '/'

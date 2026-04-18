@@ -6,12 +6,15 @@ import type { NoteCreateRequest } from '../types'
 import { db } from '../db/client'
 import setupPlugin from './setup'
 import { ilike } from 'drizzle-orm'
+import { localeFromHeaders, translate } from '../i18n'
+import { FEP_C16B_CONTEXT, looksLikeMfm, renderMfmToHtml } from '../utils/mfm'
 
 const postsRoutes = new Elysia({ name: 'posts' })
   .use(setupPlugin)
   .post(
     '/posts',
-    async ({ set, body, user }) => {
+    async ({ set, body, user, headers }) => {
+      const locale = localeFromHeaders(headers)
       const { content, isPublic, postType = 'note', name } = body
 
       const addressats = [`${user.endpoint}/${user.userName}/followers`]
@@ -21,12 +24,21 @@ const postsRoutes = new Elysia({ name: 'posts' })
         ? 'https://www.w3.org/ns/activitystreams#Article'
         : 'https://www.w3.org/ns/activitystreams#Note'
 
+      const hasMfm = looksLikeMfm(content)
+      const renderedContent = hasMfm ? renderMfmToHtml(content) : content
+
       const post: NoteCreateRequest = {
-        '@context': 'https://www.w3.org/ns/activitystreams',
+        '@context': hasMfm
+          ? ['https://www.w3.org/ns/activitystreams', FEP_C16B_CONTEXT]
+          : 'https://www.w3.org/ns/activitystreams',
         type: asTypeUri,
         attributedTo: `${user.endpoint}/${user.userName}`,
-        content: content,
-        to: addressats
+        content: renderedContent,
+        to: addressats,
+        ...(hasMfm && {
+          htmlMfm: true,
+          source: { content, mediaType: 'text/x.misskeymarkdown' },
+        }),
       }
       if (name) post.name = name
 
@@ -69,7 +81,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
       } catch (e) {
         console.error('Error while creating the post: ', e)
         set.status = 500
-        return 'Error while creating the post'
+        return translate(locale, 'posts.createFailed')
       }
 
       return newPost

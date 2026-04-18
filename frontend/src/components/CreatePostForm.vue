@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from '@/i18n'
 import { usePostsStore } from '@/stores/postsStore'
 import { useAuthStore } from '@/stores/authStore'
 import GifPicker from './GifPicker.vue'
@@ -8,6 +9,7 @@ import { getEmbedUrl, type KlipyGif } from '@/composables/useKlipy'
 
 const postsStore = usePostsStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const CHAR_LIMIT = 500
 const content = ref('')
@@ -33,7 +35,8 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-const displayName = computed(() => authStore.user?.name ?? 'Me')
+const displayName = computed(() => authStore.user?.name ?? t('composer.displayNameFallback'))
+const characterCountLabel = computed(() => t('composer.characterCount', { count: charCount.value, limit: CHAR_LIMIT }))
 
 function applyFormat(type: 'bold' | 'italic' | 'underline') {
   const textarea = document.getElementById('composer-textarea') as HTMLTextAreaElement | null
@@ -51,7 +54,7 @@ function togglePoll() {
   showPoll.value = !showPoll.value
   if (showPoll.value && content.value.trim()) {
     const words = content.value.trim().split(/\s+/).slice(0, 8).join(' ')
-    pollQuestion.value = words.length > 0 ? `What do you think about "${words}"?` : ''
+    pollQuestion.value = words.length > 0 ? t('composer.poll.autoQuestion', { topic: words }) : ''
   } else if (!showPoll.value) {
     pollQuestion.value = ''
   }
@@ -102,17 +105,13 @@ function createPost() {
         v-model="content"
         class="bg-transparent text-base text-dark w-full resize-none appearance-none border-none outline-none leading-snug px-[var(--padding-main)] py-3"
         rows="5"
-        placeholder="Whats on your mind today?"
+        :placeholder="t('composer.placeholder')"
       />
 
       <!-- Character counter -->
       <div class="flex justify-end px-[var(--padding-main)] pb-2">
-        <span class="text-caption">
-          <span
-            class="font-bold"
-            :style="isOverLimit ? 'color: #ef4444;' : 'color: rgb(99,100,246);'"
-          >{{ charCount }}</span>
-          <span class="text-dark-50"> of 500 characters</span>
+        <span class="text-caption" :class="isOverLimit ? 'text-red-500' : 'text-dark-50'">
+          {{ characterCountLabel }}
         </span>
       </div>
 
@@ -160,7 +159,7 @@ function createPost() {
         <input
           v-model="pollQuestion"
           class="flex-1 bg-transparent text-sm text-dark outline-none"
-          placeholder="Add poll question..."
+          :placeholder="t('composer.poll.placeholder')"
         />
         <button type="button" @click="showPoll = false; pollQuestion = ''"
           class="flex-shrink-0 text-dark-50 hover:text-dark transition-colors">
@@ -218,7 +217,7 @@ function createPost() {
             :disabled="!canPost"
             class="flex items-center gap-2 pl-5 pr-4 py-2 text-footnote font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Post
+            {{ t('composer.actions.post') }}
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
             </svg>
@@ -230,7 +229,7 @@ function createPost() {
             type="button"
             class="flex items-center justify-center pl-3 pr-4 py-2 text-white hover:opacity-80 transition-opacity"
             @click="showAdvancedSettings = true"
-            aria-label="Advanced post settings"
+            :aria-label="t('composer.actions.openAdvancedSettings')"
           >
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
