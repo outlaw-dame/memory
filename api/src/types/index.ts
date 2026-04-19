@@ -10,6 +10,8 @@ export interface NoteCreateRequest {
   attributedTo: string
   content: string
   name?: string
+  summary?: string
+  url?: string | Record<string, unknown> | Array<string | Record<string, unknown>>
   to: string[]
   /** FEP-c16b: true when `content` is FEP-c16b-compliant MFM-rendered HTML */
   htmlMfm?: boolean

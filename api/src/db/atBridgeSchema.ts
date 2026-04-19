@@ -86,6 +86,18 @@ export const atPosts = table('at_posts', {
   /** Post text content. */
   content: text('content').notNull(),
 
+  /** Whether the projected item is a short note or long-form article teaser. */
+  postType: varchar('post_type', { length: 16 }).notNull().default('note'),
+
+  /** Optional long-form title. */
+  title: text('title'),
+
+  /** Optional long-form summary / lede. */
+  summary: text('summary'),
+
+  /** Canonical external URL for long-form items when available. */
+  canonicalUrl: varchar('canonical_url', { length: 3072 }),
+
   /** Whether this post is publicly visible. */
   isPublic: boolean('is_public').notNull().default(true),
 
@@ -209,6 +221,10 @@ export const atFirehoseCursors = table('at_firehose_cursors', {
 export const unifiedFeedView = pgView('unified_feed_view', {
   id: serial().primaryKey(),
   content: text('content').notNull(),
+  postType: varchar('post_type', { length: 16 }).notNull(),
+  title: text('title'),
+  summary: text('summary'),
+  canonicalUrl: varchar('canonical_url', { length: 3072 }),
   createdAt: timestamp('created_at', { withTimezone: true }),
   isPublic: boolean('is_public').notNull(),
   authorId: integer('author_id'),
@@ -225,6 +241,10 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   SELECT
     posts.id,
     posts.content,
+    posts.post_type,
+    posts.name as title,
+    posts.summary,
+    posts.object_uri as canonical_url,
     posts.created_at,
     posts.is_public,
     posts.author_id,
@@ -243,6 +263,10 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   SELECT
     at_posts.id,
     at_posts.content,
+    at_posts.post_type,
+    at_posts.title,
+    at_posts.summary,
+    at_posts.canonical_url,
     at_posts.created_at,
     at_posts.is_public,
     NULL::integer as author_id,

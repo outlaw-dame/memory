@@ -26,10 +26,20 @@ vi.mock('@/composables/useReply', () => ({
   }),
 }))
 
+vi.mock('@/i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
 function buildBaseItem(): UnifiedFeedItemModel {
   return {
     id: 11,
     content: 'Root post body',
+    postType: 'note',
+    title: null,
+    summary: null,
+    canonicalUrl: null,
     createdAt: '2026-04-10T10:00:00.000Z',
     isPublic: true,
     authorId: 4,

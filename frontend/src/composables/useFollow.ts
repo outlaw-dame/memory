@@ -3,6 +3,15 @@ import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { t } from '@/i18n'
 import ky, { HTTPError } from 'ky'
 
+const isAbsoluteHttpsUrl = (value: string): boolean => {
+  try {
+    const u = new URL(value)
+    return u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function useFollow() {
   const followingSet = ref<Set<string>>(new Set())
   const followError = ref<string | null>(null)
@@ -12,6 +21,10 @@ export function useFollow() {
     const token = localStorage.getItem('token')
     if (!token) {
       followError.value = t('common.errors.notAuthenticated')
+      return false
+    }
+    if (!isAbsoluteHttpsUrl(objectUri)) {
+      followError.value = t('follow.errors.invalidTarget')
       return false
     }
     try {

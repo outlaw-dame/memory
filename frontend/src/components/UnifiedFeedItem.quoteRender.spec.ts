@@ -28,6 +28,12 @@ vi.mock('@/composables/useReply', () => ({
   }),
 }))
 
+vi.mock('@/i18n', () => ({
+  useI18n: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
 const PostEmbedCardStub = defineComponent({
   name: 'PostEmbedCard',
   props: {
@@ -50,6 +56,10 @@ function buildBaseItem(): UnifiedFeedItemModel {
   return {
     id: 1,
     content: 'Root post',
+    postType: 'note',
+    title: null,
+    summary: null,
+    canonicalUrl: null,
     createdAt: '2026-04-10T10:00:00.000Z',
     isPublic: true,
     authorId: 1,

@@ -200,6 +200,37 @@ function extractRecordContent(record: any): string | null {
   return null
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function inferFeedPostType(
+  collection: string,
+  value: { content?: CanonicalContent | null } | Record<string, unknown> | null | undefined,
+): 'note' | 'article' {
+  if (collection.startsWith('standard.site.')) return 'article'
+  if (value && typeof value === 'object' && 'content' in value) {
+    const content = (value as { content?: CanonicalContent | null }).content
+    if (content?.kind === 'article') return 'article'
+  }
+  return 'note'
+}
+
+function extractRecordTitle(record: any): string | null {
+  return normalizeOptionalString(record?.title)
+    ?? normalizeOptionalString(record?.name)
+    ?? normalizeOptionalString(record?.headline)
+}
+
+function extractRecordSummary(record: any): string | null {
+  return normalizeOptionalString(record?.summary)
+    ?? normalizeOptionalString(record?.description)
+}
+
+function extractRecordCanonicalUrl(record: any): string | null {
+  return normalizeOptionalString(record?.url)
+}
+
 function shouldProjectToFeed(collection: string, record: any): boolean {
   if (collection === 'app.bsky.feed.post') return true
   if (!collection.startsWith('standard.site.')) return false
@@ -302,6 +333,20 @@ function contentFromCanonical(intent: CanonicalIntentEvent): string | null {
     return intent.content.title
   }
   return null
+}
+
+function titleFromCanonical(intent: CanonicalIntentEvent): string | null {
+  return normalizeOptionalString(intent.content?.title)
+}
+
+function summaryFromCanonical(intent: CanonicalIntentEvent): string | null {
+  return normalizeOptionalString(intent.content?.summary)
+}
+
+function canonicalUrlFromIntent(intent: CanonicalIntentEvent): string | null {
+  return normalizeOptionalString(intent.content?.externalUrl)
+    ?? normalizeOptionalString(intent.object?.canonicalUrl)
+    ?? normalizeOptionalString(intent.object?.activityPubObjectId)
 }
 
 function shouldProjectCanonicalToFeed(intent: CanonicalIntentEvent): boolean {
@@ -462,6 +507,10 @@ export class AtBridgeIngestionService {
 
     const content = extractRecordContent(record)
     if (!content) return
+    const postType = inferFeedPostType(commit.collection, record)
+    const title = extractRecordTitle(record)
+    const summary = extractRecordSummary(record)
+    const canonicalUrl = extractRecordCanonicalUrl(record)
 
     await db
       .insert(atPosts)
@@ -471,6 +520,10 @@ export class AtBridgeIngestionService {
         atUri,
         cid: commit.cid,
         content,
+        postType,
+        title,
+        summary,
+        canonicalUrl,
         isPublic: true,
         facets: record?.facets ?? null,
         embeds: record?.embed ?? null,
@@ -486,6 +539,10 @@ export class AtBridgeIngestionService {
         set: {
           content,
           cid: commit.cid,
+          postType,
+          title,
+          summary,
+          canonicalUrl,
           facets: record?.facets ?? null,
           embeds: record?.embed ?? null,
           isPublic: true,
@@ -601,6 +658,10 @@ export class AtBridgeIngestionService {
       const content = contentFromCanonical(intent)
       if (content) {
         const parentUri = intent.inReplyTo?.atUri ?? intent.inReplyTo?.activityPubObjectId ?? null
+        const postType = inferFeedPostType(collection, intent)
+        const title = titleFromCanonical(intent)
+        const summary = summaryFromCanonical(intent)
+        const canonicalUrl = canonicalUrlFromIntent(intent)
         await db
           .insert(atPosts)
           .values({
@@ -609,6 +670,10 @@ export class AtBridgeIngestionService {
             atUri: uri,
             cid,
             content,
+            postType,
+            title,
+            summary,
+            canonicalUrl,
             isPublic: true,
             facets: intent.content?.facets ?? null,
             embeds: intent.content?.attachments ?? null,
@@ -624,6 +689,10 @@ export class AtBridgeIngestionService {
             set: {
               content,
               cid,
+              postType,
+              title,
+              summary,
+              canonicalUrl,
               facets: intent.content?.facets ?? null,
               embeds: intent.content?.attachments ?? null,
               isPublic: true,

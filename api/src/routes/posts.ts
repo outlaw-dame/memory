@@ -7,7 +7,7 @@ import { db } from '../db/client'
 import setupPlugin from './setup'
 import { ilike } from 'drizzle-orm'
 import { localeFromHeaders, translate } from '../i18n'
-import { FEP_C16B_CONTEXT, looksLikeMfm, renderMfmToHtml } from '../utils/mfm'
+import { buildOutboxPost } from '../postPayload'
 
 const postsRoutes = new Elysia({ name: 'posts' })
   .use(setupPlugin)
@@ -15,32 +15,16 @@ const postsRoutes = new Elysia({ name: 'posts' })
     '/posts',
     async ({ set, body, user, headers }) => {
       const locale = localeFromHeaders(headers)
-      const { content, isPublic, postType = 'note', name } = body
+      const { content, isPublic, postType = 'note', name, summary } = body
 
-      const addressats = [`${user.endpoint}/${user.userName}/followers`]
-      if (isPublic) addressats.push('https://www.w3.org/ns/activitystreams#Public')
-
-      const asTypeUri = postType === 'article'
-        ? 'https://www.w3.org/ns/activitystreams#Article'
-        : 'https://www.w3.org/ns/activitystreams#Note'
-
-      const hasMfm = looksLikeMfm(content)
-      const renderedContent = hasMfm ? renderMfmToHtml(content) : content
-
-      const post: NoteCreateRequest = {
-        '@context': hasMfm
-          ? ['https://www.w3.org/ns/activitystreams', FEP_C16B_CONTEXT]
-          : 'https://www.w3.org/ns/activitystreams',
-        type: asTypeUri,
-        attributedTo: `${user.endpoint}/${user.userName}`,
-        content: renderedContent,
-        to: addressats,
-        ...(hasMfm && {
-          htmlMfm: true,
-          source: { content, mediaType: 'text/x.misskeymarkdown' },
-        }),
-      }
-      if (name) post.name = name
+      const post: NoteCreateRequest = buildOutboxPost({
+        user,
+        content,
+        isPublic,
+        postType,
+        name,
+        summary,
+      })
 
       let objectUri: string | null = null
       let newPost: SelectPost
@@ -60,7 +44,8 @@ const postsRoutes = new Elysia({ name: 'posts' })
             isPublic,
             objectUri,
             postType,
-            name: name ?? null
+            name: name ?? null,
+            summary: summary ?? null
           })
           .returning()
         newPost = {
@@ -69,6 +54,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           isPublic,
           postType,
           name: name ?? null,
+          summary: summary ?? null,
           authorId: user.userId,
           objectUri: newPosts[0].objectUri || objectUri || null,
           createdAt: newPosts[0].createdAt?.toString() || '',
@@ -91,7 +77,8 @@ const postsRoutes = new Elysia({ name: 'posts' })
         content: t.String({ minLength: 1 }),
         isPublic: t.Boolean(),
         postType: t.Optional(t.Union([t.Literal('note'), t.Literal('article')], { default: 'note' })),
-        name: t.Optional(t.String({ minLength: 1, maxLength: 500 }))
+        name: t.Optional(t.String({ minLength: 1, maxLength: 160 })),
+        summary: t.Optional(t.String({ minLength: 1, maxLength: 500 }))
       }),
       detail: 'Creates a new post',
       isSignedIn: true
@@ -110,6 +97,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           objectUri: postsView.objectUri,
           postType: postsView.postType,
           name: postsView.name,
+          summary: postsView.summary,
           author: {
             id: postsView.authorId,
             name: postsView.authorName,

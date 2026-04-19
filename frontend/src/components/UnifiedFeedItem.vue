@@ -2,8 +2,10 @@
 import { DateTime } from 'luxon'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from '@/i18n'
 import HashtagText from './HashtagText.vue'
 import PostEmbedCard from './PostEmbedCard.vue'
+import PostPoll from './PostPoll.vue'
 import type { EmbeddedPost } from './PostEmbedCard.vue'
 import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CarouselMediaItem } from './PostMediaCarousel.vue'
@@ -24,6 +26,7 @@ const emit = defineEmits<{
 const { follow, isFollowing } = useFollow()
 const { resolvePolicy, submitReply, replyError, isResolving, isSubmitting } = useReply()
 const router = useRouter()
+const { t } = useI18n()
 const isReplying = ref(false)
 const isMoreActionsOpen = ref(false)
 const replyPolicy = ref<ReplyPolicyResolution | null>(null)
@@ -47,6 +50,26 @@ const quotedEmbed = computed<EmbeddedPost | null>(() => {
     content: q.content,
     media: normalizedMedia,
     linkPreview,
+  }
+})
+
+function stripMarkup(value: string | null | undefined): string | null {
+  if (typeof value !== 'string' || value.trim().length === 0) return null
+  const stripped = value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return stripped.length > 0 ? stripped : null
+}
+
+const isArticle = computed(() => props.item.postType === 'article')
+const articleTitle = computed(() => stripMarkup(props.item.title))
+const articleSummary = computed(() => stripMarkup(props.item.summary))
+const articleUrl = computed(() => {
+  const candidate = props.item.canonicalUrl ?? props.item.objectUri ?? null
+  if (!candidate) return null
+  try {
+    const parsed = new URL(candidate)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null
+  } catch {
+    return null
   }
 })
 
@@ -267,12 +290,60 @@ async function onReplySubmit(content: string) {
 
     </div>
 
-    <!-- Post content -->
+    <div v-if="isArticle" class="mt-3 flex flex-col gap-2.5">
+      <div class="flex items-center gap-2">
+        <span
+          class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
+          style="background: rgba(99,100,246,0.12); color: rgb(99,100,246);"
+        >
+          {{ t('feed.article.badge') }}
+        </span>
+      </div>
+
+      <h2 v-if="articleTitle" class="text-xl font-bold leading-tight text-dark">
+        {{ articleTitle }}
+      </h2>
+
+      <p v-if="articleSummary" class="text-sm leading-relaxed text-dark-50">
+        {{ articleSummary }}
+      </p>
+
+      <HashtagText
+        class="text-base text-dark leading-relaxed line-clamp-6"
+        :text="item.content"
+        @hashtag-click="emit('hashtagClick', $event)"
+      />
+
+      <div v-if="articleUrl" @click.stop>
+        <a
+          :href="articleUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-footnote font-semibold transition-opacity hover:opacity-80"
+          style="background: rgba(99,100,246,0.1); color: rgb(99,100,246);"
+        >
+          {{ t('feed.article.open') }}
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 17L17 7M8 7h9v9"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
     <HashtagText
+      v-else
       class="text-base text-dark leading-snug mt-3"
       :text="item.content"
       @hashtag-click="emit('hashtagClick', $event)"
     />
+
+    <!-- Poll (FEP-9967) -->
+    <div v-if="item.poll" class="mt-3" @click.stop>
+      <PostPoll
+        :poll="item.poll"
+        :poll-uri="item.objectUri"
+      />
+    </div>
 
     <!-- Embedded / quote post -->
     <div v-if="quotedEmbed" class="mt-3" @click.stop>

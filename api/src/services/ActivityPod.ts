@@ -36,7 +36,17 @@ const extractObjectUri = (response: any): string | null => {
   if (typeof response.object === 'string') return response.object
   if (response.object && typeof response.object.id === 'string') return response.object.id
   if (response.object && typeof response.object['@id'] === 'string') return response.object['@id']
-  if (typeof response.id === 'string' && response.type === 'Note') return response.id
+  if (
+    typeof response.id === 'string' &&
+    (
+      response.type === 'Note' ||
+      response.type === 'Article' ||
+      response.type === 'https://www.w3.org/ns/activitystreams#Note' ||
+      response.type === 'https://www.w3.org/ns/activitystreams#Article'
+    )
+  ) {
+    return response.id
+  }
   return null
 }
 
@@ -144,6 +154,25 @@ export default abstract class ActivityPod {
   }
 
   static async followActor(user: User, objectUri: string) {
+    return this.followObject(user, objectUri)
+  }
+
+  static async resolveFollowTarget(user: User, objectUri: string) {
+    return ky
+      .post(`${user.endpoint}/api/followable/resolve`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        json: {
+          objectUri,
+          recursionLimit: 1,
+          requireFollowersCollection: true
+        },
+        retry: SAFE_RETRY,
+        timeout: DEFAULT_TIMEOUT
+      })
+      .json()
+  }
+
+  static async followObject(user: User, objectUri: string) {
     const response = await ky
       .post(`${user.endpoint}/api/followable/follow`, {
         headers: { Authorization: `Bearer ${user.token}` },

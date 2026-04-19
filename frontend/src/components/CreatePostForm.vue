@@ -2,27 +2,62 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '@/i18n'
 import { usePostsStore } from '@/stores/postsStore'
+import { useAtBridgeStore } from '@/stores/atBridgeStore'
 import { useAuthStore } from '@/stores/authStore'
 import GifPicker from './GifPicker.vue'
 import PostAdvancedSettings from './PostAdvancedSettings.vue'
 import { getEmbedUrl, type KlipyGif } from '@/composables/useKlipy'
+import type { CreatePoll } from '@/types'
 
 const postsStore = usePostsStore()
+const atBridgeStore = useAtBridgeStore()
 const authStore = useAuthStore()
 const { t } = useI18n()
 
-const CHAR_LIMIT = 500
+const NOTE_CHAR_LIMIT = 500
+const ARTICLE_CHAR_LIMIT = 10_000
+const ARTICLE_TITLE_LIMIT = 160
+const ARTICLE_SUMMARY_LIMIT = 500
+
+const postType = ref<'note' | 'article'>('note')
 const content = ref('')
-const pollQuestion = ref('')
+const articleTitle = ref('')
+const articleSummary = ref('')
 const showPoll = ref(false)
+/** FEP-9967: list of poll option labels entered by the user */
+const pollOptions = ref<string[]>(['', ''])
+/** FEP-9967: 'oneOf' = single choice, 'anyOf' = multiple choice */
+const pollMode = ref<'oneOf' | 'anyOf'>('oneOf')
+/** FEP-9967: optional end time (ISO string or empty) */
+const pollEndTime = ref('')
 const showFormatting = ref(false)
 const showGifPicker = ref(false)
 const selectedGif = ref<KlipyGif | null>(null)
 const showAdvancedSettings = ref(false)
 
+const currentCharLimit = computed(() => (postType.value === 'article' ? ARTICLE_CHAR_LIMIT : NOTE_CHAR_LIMIT))
 const charCount = computed(() => content.value.length)
-const isOverLimit = computed(() => charCount.value > CHAR_LIMIT)
-const canPost = computed(() => (content.value.trim().length > 0 || selectedGif.value !== null) && !isOverLimit.value)
+const isOverLimit = computed(() => charCount.value > currentCharLimit.value)
+const isArticleTitleOverLimit = computed(() => articleTitle.value.length > ARTICLE_TITLE_LIMIT)
+const isArticleSummaryOverLimit = computed(() => articleSummary.value.length > ARTICLE_SUMMARY_LIMIT)
+const isArticleMetaValid = computed(
+  () => !isArticleTitleOverLimit.value && !isArticleSummaryOverLimit.value,
+)
+
+/** Validate poll: need at least 2 non-empty unique option names */
+const isPollValid = computed(() => {
+  if (!showPoll.value) return true
+  const names = pollOptions.value.map((o) => o.trim()).filter(Boolean)
+  return names.length >= 2 && new Set(names).size === names.length
+})
+
+const canPost = computed(
+  () =>
+    (content.value.trim().length > 0 || (postType.value === 'note' && selectedGif.value !== null)) &&
+    !isOverLimit.value &&
+    isPollValid.value &&
+    isArticleMetaValid.value
+)
 
 function onGifSelect(gif: KlipyGif) {
   selectedGif.value = gif
@@ -36,7 +71,14 @@ function getInitials(name: string): string {
 }
 
 const displayName = computed(() => authStore.user?.name ?? t('composer.displayNameFallback'))
-const characterCountLabel = computed(() => t('composer.characterCount', { count: charCount.value, limit: CHAR_LIMIT }))
+const characterCountLabel = computed(() => t('composer.characterCount', { count: charCount.value, limit: currentCharLimit.value }))
+const articleTitleCountLabel = computed(() => t('composer.article.titleCount', { count: articleTitle.value.length, limit: ARTICLE_TITLE_LIMIT }))
+const articleSummaryCountLabel = computed(() => t('composer.article.summaryCount', { count: articleSummary.value.length, limit: ARTICLE_SUMMARY_LIMIT }))
+const composerPlaceholder = computed(() => (
+  postType.value === 'article'
+    ? t('composer.article.bodyPlaceholder')
+    : t('composer.placeholder')
+))
 
 function applyFormat(type: 'bold' | 'italic' | 'underline') {
   const textarea = document.getElementById('composer-textarea') as HTMLTextAreaElement | null
@@ -51,25 +93,77 @@ function applyFormat(type: 'bold' | 'italic' | 'underline') {
 }
 
 function togglePoll() {
+  if (postType.value === 'article') return
   showPoll.value = !showPoll.value
-  if (showPoll.value && content.value.trim()) {
-    const words = content.value.trim().split(/\s+/).slice(0, 8).join(' ')
-    pollQuestion.value = words.length > 0 ? t('composer.poll.autoQuestion', { topic: words }) : ''
-  } else if (!showPoll.value) {
-    pollQuestion.value = ''
+  if (!showPoll.value) {
+    pollOptions.value = ['', '']
+    pollMode.value = 'oneOf'
+    pollEndTime.value = ''
   }
 }
 
-function createPost() {
+function setPostType(nextType: 'note' | 'article') {
+  postType.value = nextType
+  if (nextType === 'article') {
+    showPoll.value = false
+    pollOptions.value = ['', '']
+    pollMode.value = 'oneOf'
+    pollEndTime.value = ''
+    showGifPicker.value = false
+    selectedGif.value = null
+  }
+}
+
+function addPollOption() {
+  if (pollOptions.value.length < 8) {
+    pollOptions.value.push('')
+  }
+}
+
+function removePollOption(index: number) {
+  if (pollOptions.value.length > 2) {
+    pollOptions.value.splice(index, 1)
+  }
+}
+
+async function createPost() {
   if (!canPost.value) return
   let finalContent = content.value
-  if (selectedGif.value) {
+  if (postType.value === 'note' && selectedGif.value) {
     const gifUrl = getEmbedUrl(selectedGif.value)
     finalContent = finalContent.trim() ? `${finalContent.trim()}\n${gifUrl}` : gifUrl
   }
-  postsStore.createPost(finalContent)
+
+  let poll: CreatePoll | null = null
+  if (showPoll.value) {
+    const options = pollOptions.value
+      .map((o) => o.trim())
+      .filter(Boolean)
+      .map((name) => ({ name }))
+    poll = {
+      mode: pollMode.value,
+      options,
+      endTime: pollEndTime.value.trim() || null,
+    }
+  }
+
+  const created = await postsStore.createPost({
+    content: finalContent,
+    poll,
+    postType: postType.value,
+    name: postType.value === 'article' ? articleTitle.value.trim() || null : null,
+    summary: postType.value === 'article' ? articleSummary.value.trim() || null : null,
+  })
+  if (!created) return
+
+  await atBridgeStore.fetchUnifiedFeed()
   content.value = ''
-  pollQuestion.value = ''
+  articleTitle.value = ''
+  articleSummary.value = ''
+  postType.value = 'note'
+  pollOptions.value = ['', '']
+  pollMode.value = 'oneOf'
+  pollEndTime.value = ''
   selectedGif.value = null
   showPoll.value = false
   showFormatting.value = false
@@ -99,13 +193,68 @@ function createPost() {
         </div>
       </div>
 
+      <!-- Post type -->
+      <div class="flex gap-2 px-[var(--padding-main)] pt-3">
+        <button
+          type="button"
+          class="rounded-full px-3 py-1.5 text-footnote font-semibold transition-colors"
+          :class="postType === 'note' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
+          :style="postType === 'note' ? 'background: rgb(99,100,246);' : ''"
+          @click="setPostType('note')"
+        >
+          {{ t('composer.types.note') }}
+        </button>
+        <button
+          type="button"
+          class="rounded-full px-3 py-1.5 text-footnote font-semibold transition-colors"
+          :class="postType === 'article' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
+          :style="postType === 'article' ? 'background: rgb(99,100,246);' : ''"
+          @click="setPostType('article')"
+        >
+          {{ t('composer.types.article') }}
+        </button>
+      </div>
+
+      <div v-if="postType === 'article'" class="px-[var(--padding-main)] pt-3 pb-1 flex flex-col gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-footnote font-semibold text-dark" for="composer-article-title">
+            {{ t('composer.article.titleLabel') }}
+          </label>
+          <input
+            id="composer-article-title"
+            v-model="articleTitle"
+            type="text"
+            class="rounded-2xl border border-dark-10 bg-white px-4 py-3 text-dark outline-none focus:border-indigo-400"
+            :placeholder="t('composer.article.titlePlaceholder')"
+          />
+          <span class="text-caption" :class="isArticleTitleOverLimit ? 'text-red-500' : 'text-dark-50'">
+            {{ articleTitleCountLabel }}
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-footnote font-semibold text-dark" for="composer-article-summary">
+            {{ t('composer.article.summaryLabel') }}
+          </label>
+          <textarea
+            id="composer-article-summary"
+            v-model="articleSummary"
+            class="min-h-24 rounded-2xl border border-dark-10 bg-white px-4 py-3 text-dark outline-none resize-none focus:border-indigo-400"
+            :placeholder="t('composer.article.summaryPlaceholder')"
+          />
+          <span class="text-caption" :class="isArticleSummaryOverLimit ? 'text-red-500' : 'text-dark-50'">
+            {{ articleSummaryCountLabel }}
+          </span>
+        </div>
+      </div>
+
       <!-- Textarea -->
       <textarea
         id="composer-textarea"
         v-model="content"
         class="bg-transparent text-base text-dark w-full resize-none appearance-none border-none outline-none leading-snug px-[var(--padding-main)] py-3"
         rows="5"
-        :placeholder="t('composer.placeholder')"
+        :placeholder="composerPlaceholder"
       />
 
       <!-- Character counter -->
@@ -132,12 +281,12 @@ function createPost() {
       </div>
 
       <!-- GIF picker -->
-      <div v-if="showGifPicker" class="px-[var(--padding-main)] pb-3 border-t border-dark-10 pt-3">
+      <div v-if="postType === 'note' && showGifPicker" class="px-[var(--padding-main)] pb-3 border-t border-dark-10 pt-3">
         <GifPicker @select="onGifSelect" />
       </div>
 
       <!-- Selected GIF preview -->
-      <div v-if="selectedGif && !showGifPicker" class="relative mx-[var(--padding-main)] mb-3">
+      <div v-if="postType === 'note' && selectedGif && !showGifPicker" class="relative mx-[var(--padding-main)] mb-3">
         <img
           :src="getEmbedUrl(selectedGif)"
           :alt="selectedGif.title"
@@ -154,19 +303,69 @@ function createPost() {
         </button>
       </div>
 
-      <!-- Poll input -->
-      <div v-if="showPoll" class="mx-[var(--padding-main)] mb-3 flex items-center gap-2 rounded-full bg-pastel-light px-4 py-2.5">
-        <input
-          v-model="pollQuestion"
-          class="flex-1 bg-transparent text-sm text-dark outline-none"
-          :placeholder="t('composer.poll.placeholder')"
-        />
-        <button type="button" @click="showPoll = false; pollQuestion = ''"
-          class="flex-shrink-0 text-dark-50 hover:text-dark transition-colors">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
+      <!-- Poll editor (FEP-9967) -->
+      <div v-if="showPoll" class="mx-[var(--padding-main)] mb-3 rounded-2xl bg-pastel-light border border-dark-10 p-3 flex flex-col gap-2">
+        <!-- Header row -->
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-dark">Poll options</span>
+          <!-- Mode toggle -->
+          <div class="flex items-center gap-1 text-xs">
+            <button type="button"
+              :class="pollMode === 'oneOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
+              class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              @click="pollMode = 'oneOf'">
+              Single
+            </button>
+            <button type="button"
+              :class="pollMode === 'anyOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
+              class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              @click="pollMode = 'anyOf'">
+              Multi
+            </button>
+            <button type="button" @click="togglePoll" class="ml-1 text-dark-50 hover:text-dark transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Option inputs -->
+        <div v-for="(_, i) in pollOptions" :key="i" class="flex items-center gap-2">
+          <input
+            v-model="pollOptions[i]"
+            class="flex-1 bg-white rounded-xl px-3 py-2 text-sm text-dark outline-none border border-dark-10 focus:border-indigo-400"
+            :placeholder="`Option ${i + 1}`"
+          />
+          <button
+            v-if="pollOptions.length > 2"
+            type="button"
+            class="text-dark-50 hover:text-dark transition-colors flex-shrink-0"
+            @click="removePollOption(i)"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Add option -->
+        <button
+          v-if="pollOptions.length < 8"
+          type="button"
+          class="text-xs text-indigo-500 font-semibold self-start hover:underline"
+          @click="addPollOption"
+        >
+          + Add option
         </button>
+
+        <!-- End time (optional) -->
+        <input
+          v-model="pollEndTime"
+          type="datetime-local"
+          class="bg-white rounded-xl px-3 py-2 text-sm text-dark outline-none border border-dark-10 focus:border-indigo-400 w-full"
+          :placeholder="'End time (optional)'"
+        />
       </div>
 
       <!-- Divider -->
@@ -176,9 +375,13 @@ function createPost() {
       <div class="flex items-center gap-1 px-[var(--padding-main)] py-3">
 
         <!-- GIF -->
-        <button type="button" @click="showGifPicker = !showGifPicker"
+        <button
+          v-if="postType === 'note'"
+          type="button"
+          @click="showGifPicker = !showGifPicker"
           class="flex items-center justify-center w-9 h-9 rounded-full transition-colors text-dark-50"
-          :class="showGifPicker || selectedGif ? 'bg-dark-10 text-dark' : 'hover:bg-dark-10'">
+          :class="showGifPicker || selectedGif ? 'bg-dark-10 text-dark' : 'hover:bg-dark-10'"
+        >
           <span class="text-[10px] font-black" style="font-family: Arial, sans-serif; letter-spacing: -0.5px;">GIF</span>
         </button>
 
@@ -202,7 +405,9 @@ function createPost() {
         </button>
 
         <!-- Poll (auto-generate) -->
-        <button type="button" @click="togglePoll"
+        <button
+          v-if="postType === 'note'"
+          type="button" @click="togglePoll"
           class="flex items-center justify-center w-9 h-9 rounded-full transition-colors text-dark-50"
           :class="showPoll ? 'bg-dark-10 text-dark' : 'hover:bg-dark-10'">
           <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

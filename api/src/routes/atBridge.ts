@@ -27,6 +27,10 @@ import setupPlugin from './setup'
 type UnifiedFeedRow = {
   id: number
   content: string
+  postType: 'note' | 'article'
+  title: string | null
+  summary: string | null
+  canonicalUrl: string | null
   createdAt: Date | null
   isPublic: boolean
   authorId: number | null

@@ -74,6 +74,7 @@ export type SelectPost = {
   objectUri?: string | null;
   postType: 'note' | 'article';
   name?: string | null;
+  summary?: string | null;
   authorId: number;
   author: {
     id: number;

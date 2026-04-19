@@ -43,6 +43,7 @@ export const posts = table('posts', {
   objectUri: text('object_uri'),
   postType: text('post_type', { enum: ['note', 'article'] }).notNull().default('note'),
   name: text('name'),
+  summary: text('summary'),
 })
 
 export const postsView = pgView('posts_view', {
@@ -54,6 +55,7 @@ export const postsView = pgView('posts_view', {
   objectUri: text('object_uri'),
   postType: text('post_type', { enum: ['note', 'article'] }).notNull(),
   name: text('name'),
+  summary: text('summary'),
   authorName: text("author_name").notNull(),
   authorWebId: text('author_web_id').notNull().unique(),
   authorProviderEndpoint: text('author_provider_endpoint').notNull(),

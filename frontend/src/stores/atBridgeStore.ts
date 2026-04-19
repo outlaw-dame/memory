@@ -67,9 +67,34 @@ export interface QuotedPost {
   }
 }
 
+/** FEP-9967: poll option as returned by the API. */
+export interface FeedPollOption {
+  name: string
+  voteCount: number
+}
+
+/** FEP-9967: poll data attached to a Question item in the unified feed. */
+export interface FeedPoll {
+  /** 'oneOf' = single choice, 'anyOf' = multiple choice. */
+  mode: 'oneOf' | 'anyOf'
+  options: FeedPollOption[]
+  /** ISO 8601 end time; absent = no expiry. */
+  endTime?: string | null
+  /** Total unique voters (Mastodon extension). */
+  votersCount?: number | null
+  /** Whether the current user has already voted. */
+  voted?: boolean
+  /** Option name(s) the current user voted for (if voted). */
+  votedOptions?: string[]
+}
+
 export interface UnifiedFeedItem {
   id: number
   content: string
+  postType: 'note' | 'article'
+  title?: string | null
+  summary?: string | null
+  canonicalUrl?: string | null
   createdAt: string | null
   isPublic: boolean
   authorId: number | null
@@ -80,6 +105,8 @@ export interface UnifiedFeedItem {
   atUri: string | null
   objectUri: string | null
   quotedPost?: QuotedPost
+  /** Present when this feed item is a poll (FEP-9967 Question object). */
+  poll?: FeedPoll | null
 }
 
 export interface FirehoseStatus {

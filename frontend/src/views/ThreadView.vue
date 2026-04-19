@@ -3,12 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PostAudioPlayer from '@/components/PostAudioPlayer.vue'
 import PostPoll from '@/components/PostPoll.vue'
-import type { PollData } from '@/components/PostPoll.vue'
 import PostImageGrid from '@/components/PostImageGrid.vue'
 import type { GridImage } from '@/components/PostImageGrid.vue'
 import PostLinkPreview from '@/components/PostLinkPreview.vue'
 import type { LinkPreviewData } from '@/components/PostLinkPreview.vue'
 import AiInterpolatorCard from '@/components/AiInterpolatorCard.vue'
+import type { FeedPoll } from '@/stores/atBridgeStore'
 
 const router = useRouter()
 const showAiInterpolator = ref(true)
@@ -32,7 +32,7 @@ interface ThreadPost {
   likeCount: string
   repostCount: string
   audio?: { filename: string; duration: number }
-  poll?: PollData
+  poll?: FeedPoll
   images?: GridImage[]
   linkPreview?: LinkPreviewData
 }
@@ -40,6 +40,8 @@ interface ThreadPost {
 // -----------------------------------------------------------------------
 // Mock data
 // -----------------------------------------------------------------------
+
+const fourteenHoursFromNow = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString()
 
 const rootPost: ThreadPost = {
   id: 1,
@@ -78,14 +80,15 @@ const replies: ThreadPost[] = [
     likeCount: '12k',
     repostCount: '9.8k',
     poll: {
-      question: 'How hyped are you for the final release of Memory?',
+      mode: 'oneOf',
       options: [
-        { text: 'Hyped!', percent: 50 },
-        { text: 'Superhyped!!', percent: 50 },
+        { name: 'Hyped!', voteCount: 28642 },
+        { name: 'Superhyped!!', voteCount: 28642 },
       ],
-      totalVotes: "57'284",
-      timeLeft: '14h left',
+      endTime: fourteenHoursFromNow,
+      votersCount: 57284,
       voted: true,
+      votedOptions: ['Hyped!'],
     },
     images: [
       { url: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=400&fit=crop', alt: 'shadow person' },
@@ -115,14 +118,15 @@ const replies: ThreadPost[] = [
     likeCount: '12k',
     repostCount: '9.8k',
     poll: {
-      question: 'How hyped are you for the final release of Memory?',
+      mode: 'oneOf',
       options: [
-        { text: 'Hyped!', percent: 50 },
-        { text: 'Superhyped!!', percent: 50 },
+        { name: 'Hyped!', voteCount: 28642 },
+        { name: 'Superhyped!!', voteCount: 28642 },
       ],
-      totalVotes: "57'284",
-      timeLeft: '14h left',
+      endTime: fourteenHoursFromNow,
+      votersCount: 57284,
       voted: true,
+      votedOptions: ['Hyped!'],
     },
     linkPreview: {
       url: 'https://productivity.net',

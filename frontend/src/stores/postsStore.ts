@@ -1,4 +1,4 @@
-import type { App, CreatePost } from '@/types'
+import type { App, CreatePost, CreatePoll } from '@/types'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { treaty } from '@elysiajs/eden'
 import { defineStore } from 'pinia'
@@ -41,20 +41,41 @@ export const usePostsStore = defineStore('posts', () => {
     }
   }
 
+  interface CreatePostInput {
+    content: string
+    poll?: CreatePoll | null
+    postType?: 'note' | 'article'
+    name?: string | null
+    summary?: string | null
+  }
+
   /**
-   * Create a new Post
-   * @param content {string} - The content of the new post
+   * Create a new post using the API's unified request shape.
+   * Polls remain note-only in the current UI, while articles can include
+   * a title and summary for long-form publishing.
    */
-  async function createPost(content: string) {
+  async function createPost({
+    content,
+    poll = null,
+    postType = 'note',
+    name = null,
+    summary = null,
+  }: CreatePostInput): Promise<SelectPost | null> {
     const requestBody: CreatePost = {
       content,
-      isPublic: true
+      isPublic: true,
+      postType,
+      ...(name ? { name } : {}),
+      ...(summary ? { summary } : {}),
+      ...(poll ? { poll } : {}),
     }
     const postResponse = await client.posts.post(requestBody)
     if (postResponse.status === 200) {
       const newPost = postResponse.data as SelectPost
       posts.value.push(newPost)
+      return newPost
     }
+    return null
   }
 
   async function setHashtagFilter(hashtag: string) {
