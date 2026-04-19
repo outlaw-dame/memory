@@ -14,6 +14,12 @@ import {
   validateActorStatusDraft,
   type ActorStatusDraft
 } from '@/controller/profileStatus'
+import {
+  ATTRIBUTION_DOMAIN_LIMIT,
+  buildAttributionDomainsPayload,
+  parseActorAttributionDomains,
+  validateAttributionDomains
+} from '@/controller/profileAuthorAttribution'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { useAuthStore } from '@/stores/authStore'
 import ky from 'ky'
@@ -44,6 +50,7 @@ const actor = ref<ActorProfile | null>(null)
 const name = ref('')
 const summary = ref('')
 const statusDraft = ref<ActorStatusDraft>(clearActorStatusDraft())
+const attributionDomains = ref<string[]>([])
 const metadataFields = ref<ProfileField[]>([])
 const isLoading = ref(true)
 const isSaving = ref(false)
@@ -61,7 +68,10 @@ const verifiedSummary = computed(() => {
 
 const statusCharacterCount = computed(() => countStatusCharacters(statusDraft.value.content))
 const statusValidationKey = computed(() => validateActorStatusDraft(statusDraft.value))
-const saveDisabled = computed(() => isSaving.value || Boolean(statusValidationKey.value))
+const authorAttributionValidationKey = computed(() => validateAttributionDomains(attributionDomains.value))
+const saveDisabled = computed(() =>
+  isSaving.value || Boolean(statusValidationKey.value) || Boolean(authorAttributionValidationKey.value)
+)
 
 const authHeaders = computed(() =>
   buildApiHeaders({
@@ -85,6 +95,7 @@ const loadProfile = async () => {
     name.value = typeof profile.name === 'string' ? profile.name : ''
     summary.value = typeof profile.summary === 'string' ? profile.summary : ''
     statusDraft.value = parseActorStatusDraft(profile.status)
+    attributionDomains.value = parseActorAttributionDomains(profile)
     metadataFields.value = extractProfileFields(profile.attachment)
   } catch (error) {
     errorMessage.value = (error as Error)?.message || t('settings.profile.loadFailed')
@@ -97,6 +108,10 @@ const saveProfile = async () => {
   if (!actor.value) return
   if (statusValidationKey.value) {
     errorMessage.value = t(statusValidationKey.value)
+    return
+  }
+  if (authorAttributionValidationKey.value) {
+    errorMessage.value = t(authorAttributionValidationKey.value)
     return
   }
 
@@ -112,6 +127,12 @@ const saveProfile = async () => {
       summary: summary.value.trim(),
       status: buildActorStatusPayload(statusDraft.value),
       attachment: mergeProfileFieldsIntoAttachment(actor.value.attachment, metadataFields.value)
+    }
+    const nextAttributionDomains = buildAttributionDomainsPayload(attributionDomains.value)
+    if (nextAttributionDomains && nextAttributionDomains.length > 0) {
+      nextActor.attributionDomains = nextAttributionDomains
+    } else {
+      delete nextActor.attributionDomains
     }
 
     const profile = await ky
@@ -129,6 +150,7 @@ const saveProfile = async () => {
     name.value = typeof profile.name === 'string' ? profile.name : ''
     summary.value = typeof profile.summary === 'string' ? profile.summary : ''
     statusDraft.value = parseActorStatusDraft(profile.status)
+    attributionDomains.value = parseActorAttributionDomains(profile)
     metadataFields.value = extractProfileFields(profile.attachment)
     verification.value = null
     successMessage.value = t('settings.profile.updated')
@@ -170,6 +192,14 @@ const addField = () => {
 
 const removeField = (index: number) => {
   metadataFields.value = metadataFields.value.filter((_, fieldIndex) => fieldIndex !== index)
+}
+
+const addAttributionDomain = () => {
+  attributionDomains.value = [...attributionDomains.value, '']
+}
+
+const removeAttributionDomain = (index: number) => {
+  attributionDomains.value = attributionDomains.value.filter((_, domainIndex) => domainIndex !== index)
 }
 
 const clearStatus = () => {
@@ -271,6 +301,51 @@ onMounted(() => {
         <p class="text-caption">{{ t('settings.profile.status.linkHint') }}</p>
         <p v-if="statusValidationKey" class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
           {{ t(statusValidationKey) }}
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-3 rounded bg-white p-3 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-base font-semibold">{{ t('settings.profile.authorAttribution.title') }}</h3>
+            <p class="text-caption mt-1">{{ t('settings.profile.authorAttribution.description') }}</p>
+          </div>
+          <button class="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white" type="button" @click="addAttributionDomain">
+            {{ t('settings.profile.authorAttribution.addDomain') }}
+          </button>
+        </div>
+
+        <p class="text-caption">{{ t('settings.profile.authorAttribution.hint', { limit: ATTRIBUTION_DOMAIN_LIMIT }) }}</p>
+
+        <div
+          v-if="attributionDomains.length === 0"
+          class="rounded border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-600"
+        >
+          {{ t('settings.profile.authorAttribution.empty') }}
+        </div>
+
+        <div
+          v-for="(domain, index) in attributionDomains"
+          :key="`${index}-${domain}`"
+          class="grid gap-3 rounded border border-gray-200 bg-gray-50 p-3 md:grid-cols-[1fr_auto] md:items-end"
+        >
+          <label class="flex flex-col gap-1 text-sm font-medium">
+            {{ t('settings.profile.authorAttribution.domainLabel') }}
+            <input
+              v-model.trim="attributionDomains[index]"
+              type="text"
+              class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
+              placeholder="example.com"
+            />
+          </label>
+
+          <button class="rounded bg-pastel-dark px-3 py-2 text-sm font-medium" type="button" @click="removeAttributionDomain(index)">
+            {{ t('common.actions.remove') }}
+          </button>
+        </div>
+
+        <p v-if="authorAttributionValidationKey" class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {{ t(authorAttributionValidationKey) }}
         </p>
       </div>
 

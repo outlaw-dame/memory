@@ -72,6 +72,7 @@ export type SelectPost = {
   isPublic: boolean;
   createdAt: string;
   objectUri?: string | null;
+  canonicalUrl?: string | null;
   postType: 'note' | 'article';
   name?: string | null;
   summary?: string | null;

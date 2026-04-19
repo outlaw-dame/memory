@@ -3,6 +3,7 @@ import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
 import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
 import { normalizeProfileActorUpdate, ProfileStatusValidationError } from '../profileStatus'
+import { normalizeProfileAuthorAttribution, ProfileAuthorAttributionValidationError } from '../profileAuthorAttribution'
 
 const profilePlugin = new Elysia({ name: 'profile' })
   .use(setupPlugin)
@@ -65,8 +66,11 @@ const profilePlugin = new Elysia({ name: 'profile' })
           actorId: user.getWebId(),
           existingActor: currentProfile
         })
+        actor = normalizeProfileAuthorAttribution(actor, {
+          existingActor: currentProfile
+        })
       } catch (error) {
-        if (error instanceof ProfileStatusValidationError) {
+        if (error instanceof ProfileStatusValidationError || error instanceof ProfileAuthorAttributionValidationError) {
           set.status = 400
           return translate(locale, error.translationKey)
         }

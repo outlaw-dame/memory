@@ -95,6 +95,24 @@ interface NormalizedQuotedPost {
     description?: string
     image?: string
     domain?: string
+    authorName?: string
+    authorUrl?: string
+    authors?: Array<{
+      name: string
+      url: string
+      handle?: string
+      verified?: boolean
+      verificationState?: 'verified' | 'claimed'
+      verificationReason?: string
+      account?: {
+        acct: string
+        uri?: string
+        url?: string
+        displayName?: string
+        avatarUrl?: string
+        attributionDomains?: string[]
+      } | null
+    }>
   }
 }
 
@@ -170,6 +188,9 @@ function normalizeQuotedLinkPreview(quoted: NormalizedQuotedPost): LinkPreviewDa
     description: preview.description,
     image: preview.image,
     domain: preview.domain,
+    authorName: preview.authorName,
+    authorUrl: preview.authorUrl,
+    authors: preview.authors,
   }
 }
 

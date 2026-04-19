@@ -244,7 +244,7 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     posts.post_type,
     posts.name as title,
     posts.summary,
-    posts.object_uri as canonical_url,
+    COALESCE(posts.canonical_url, posts.object_uri) as canonical_url,
     posts.created_at,
     posts.is_public,
     posts.author_id,

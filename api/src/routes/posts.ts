@@ -8,6 +8,7 @@ import setupPlugin from './setup'
 import { ilike } from 'drizzle-orm'
 import { localeFromHeaders, translate } from '../i18n'
 import { buildOutboxPost } from '../postPayload'
+import { deriveArticleCanonicalUrl } from '../articleShare'
 
 const postsRoutes = new Elysia({ name: 'posts' })
   .use(setupPlugin)
@@ -27,6 +28,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
       })
 
       let objectUri: string | null = null
+      let canonicalUrl: string | null = null
       let newPost: SelectPost
 
       try {
@@ -35,6 +37,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
         // and used by both the legacy /signin flow and the OIDC flow.
         const created = await ActivityPod.createPost(user, post)
         objectUri = created.objectUri
+        canonicalUrl = postType === 'article' ? deriveArticleCanonicalUrl(objectUri) : null
         // insert the post into the database
         const newPosts = await db
           .insert(posts)
@@ -43,6 +46,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
             content,
             isPublic,
             objectUri,
+            canonicalUrl,
             postType,
             name: name ?? null,
             summary: summary ?? null
@@ -57,6 +61,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           summary: summary ?? null,
           authorId: user.userId,
           objectUri: newPosts[0].objectUri || objectUri || null,
+          canonicalUrl: newPosts[0].canonicalUrl || canonicalUrl || null,
           createdAt: newPosts[0].createdAt?.toString() || '',
           author: {
             id: user.userId,
@@ -95,6 +100,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           createdAt: postsView.createdAt,
           authorId: postsView.authorId,
           objectUri: postsView.objectUri,
+          canonicalUrl: postsView.canonicalUrl,
           postType: postsView.postType,
           name: postsView.name,
           summary: postsView.summary,
