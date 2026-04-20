@@ -23,10 +23,12 @@ import { db } from '../db/client'
 import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords } from '../db/atBridgeSchema'
 import { desc, eq, and, sql, ilike, or, gt } from 'drizzle-orm'
 import setupPlugin from './setup'
+import { extractHashtagsFromFacets, normalizeHashtag } from '../utils/hashtags'
 
 type UnifiedFeedRow = {
   id: number
   content: string
+  hashtags: string[]
   postType: 'note' | 'article'
   title: string | null
   summary: string | null
@@ -184,22 +186,6 @@ function normalizeStringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
 }
 
-function extractTagsFromFacets(facets: unknown): string[] {
-  if (!Array.isArray(facets)) return []
-  const tags: string[] = []
-  for (const facet of facets) {
-    if (!facet || typeof facet !== 'object') continue
-    const features = (facet as Record<string, unknown>).features
-    if (!Array.isArray(features)) continue
-    for (const feature of features) {
-      if (!feature || typeof feature !== 'object') continue
-      const tag = (feature as Record<string, unknown>).tag
-      if (typeof tag === 'string' && tag.trim().length > 0) tags.push(tag)
-    }
-  }
-  return [...new Set(tags)]
-}
-
 function hasMediaEmbed(embed: unknown): boolean {
   if (!embed || typeof embed !== 'object') return false
   const record = embed as Record<string, unknown>
@@ -242,7 +228,7 @@ function summarizeRecord(record: unknown): AtRecordSummary {
     : null
   const tags = [
     ...normalizeStringArray(source.tags),
-    ...extractTagsFromFacets(source.facets)
+    ...extractHashtagsFromFacets(source.facets)
   ]
 
   return {
@@ -458,8 +444,16 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         }
 
         if (hashtag && hashtag.trim().length > 0) {
-          const pattern = `%${hashtag.replace(/^#/, '#')}%`
-          query = query.where(ilike(unifiedFeedView.content, pattern)) as typeof query
+          const normalizedHashtag = normalizeHashtag(hashtag)
+          if (normalizedHashtag) {
+            const pattern = `%${normalizedHashtag}%`
+            query = query.where(
+              or(
+                ilike(unifiedFeedView.content, pattern),
+                sql`${unifiedFeedView.hashtags} @> ARRAY[${normalizedHashtag}]::text[]`
+              )
+            ) as typeof query
+          }
         }
 
         if (since) {
@@ -544,8 +538,21 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         const conditions = [eq(atPosts.isPublic, true)]
 
         if (hashtag && hashtag.trim().length > 0) {
-          const pattern = `%${hashtag.replace(/^#/, '#')}%`
-          conditions.push(ilike(atPosts.content, pattern))
+          const normalizedHashtag = normalizeHashtag(hashtag)
+          if (normalizedHashtag) {
+            const pattern = `%${normalizedHashtag}%`
+            conditions.push(
+              or(
+                ilike(atPosts.content, pattern),
+                sql`EXISTS (
+                  SELECT 1
+                  FROM jsonb_array_elements(COALESCE(${atPosts.facets}, '[]'::jsonb)) facet,
+                       jsonb_array_elements(COALESCE(facet->'features', '[]'::jsonb)) feature
+                  WHERE feature ? 'tag' AND '#' || lower(trim(feature->>'tag')) = ${normalizedHashtag}
+                )`
+              )
+            )
+          }
         }
 
         const query = db

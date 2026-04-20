@@ -1,5 +1,6 @@
 import type User from './decorater/User'
 import type { NoteCreateRequest } from './types'
+import { mergeHashtags, toActivityPubHashtagTags } from './utils/hashtags'
 import { FEP_C16B_CONTEXT, looksLikeMfm, renderMfmToHtml } from './utils/mfm'
 
 export type MemoryPostType = 'note' | 'article'
@@ -7,6 +8,7 @@ export type MemoryPostType = 'note' | 'article'
 export interface BuildOutboxPostInput {
   user: User
   content: string
+  hashtags?: string[] | null
   isPublic: boolean
   postType?: MemoryPostType
   name?: string | null
@@ -41,6 +43,7 @@ function plainTextToHtmlParagraphs(value: string): string {
 export function buildOutboxPost({
   user,
   content,
+  hashtags,
   isPublic,
   postType = 'note',
   name,
@@ -52,6 +55,8 @@ export function buildOutboxPost({
   const normalizedName = normalizeOptionalText(name)
   const normalizedSummary = normalizeOptionalText(summary)
   const hasMfm = looksLikeMfm(content)
+  const normalizedHashtags = mergeHashtags(content, hashtags)
+  const activityPubTags = toActivityPubHashtagTags(normalizedHashtags, user.endpoint)
 
   if (postType === 'article') {
     const post: NoteCreateRequest = {
@@ -62,6 +67,7 @@ export function buildOutboxPost({
       attributedTo: `${user.endpoint}/${user.userName}`,
       content,
       to: addressats,
+      ...(activityPubTags.length > 0 ? { tag: activityPubTags } : {}),
       source: {
         content,
         mediaType: hasMfm ? 'text/x.misskeymarkdown' : 'text/markdown',
@@ -83,6 +89,7 @@ export function buildOutboxPost({
     attributedTo: `${user.endpoint}/${user.userName}`,
     content: renderedContent,
     to: addressats,
+    ...(activityPubTags.length > 0 ? { tag: activityPubTags } : {}),
     ...(hasMfm && {
       htmlMfm: true,
       source: { content, mediaType: 'text/x.misskeymarkdown' },

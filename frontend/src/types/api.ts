@@ -24,6 +24,7 @@ export interface CreatePoll {
 // Create Objects
 export interface CreatePost {
   content: string
+  hashtags?: string[]
   isPublic: boolean
   postType?: 'note' | 'article'
   name?: string

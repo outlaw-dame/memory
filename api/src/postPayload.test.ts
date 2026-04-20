@@ -46,4 +46,32 @@ describe('buildOutboxPost', () => {
     )
     expect(result.to).not.toContain('https://www.w3.org/ns/activitystreams#Public')
   })
+
+  it('adds ActivityPub hashtag tags from content and out-of-band hashtags', () => {
+    const result = buildOutboxPost({
+      user: mockUser,
+      content: 'Hello #Fediverse',
+      hashtags: ['#Interop', 'activitypub', '#fediverse'],
+      isPublic: true,
+      postType: 'note',
+    })
+
+    expect(result.tag).toEqual([
+      {
+        type: 'Hashtag',
+        name: '#fediverse',
+        href: 'https://pods.example/tags/fediverse',
+      },
+      {
+        type: 'Hashtag',
+        name: '#interop',
+        href: 'https://pods.example/tags/interop',
+      },
+      {
+        type: 'Hashtag',
+        name: '#activitypub',
+        href: 'https://pods.example/tags/activitypub',
+      },
+    ])
+  })
 })

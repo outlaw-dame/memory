@@ -69,6 +69,7 @@ export const selectPost = createSelectSchema(postsView)
 export type SelectPost = {
   id: number;
   content: string;
+  hashtags: string[];
   isPublic: boolean;
   createdAt: string;
   objectUri?: string | null;

@@ -9,6 +9,11 @@ export interface NoteCreateRequest {
   type: string
   attributedTo: string
   content: string
+  tag?: Array<{
+    type: 'Hashtag'
+    name: string
+    href: string
+  }>
   name?: string
   summary?: string
   url?: string | Record<string, unknown> | Array<string | Record<string, unknown>>

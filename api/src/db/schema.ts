@@ -37,6 +37,7 @@ export const usersRelations = relations(users, ({one}) => ({
 export const posts = table('posts', {
   id: serial().primaryKey(),
   content: text().notNull(),
+  hashtags: text('hashtags').array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   isPublic: boolean('is_public').notNull(),
   authorId: integer('author_id').notNull().references(() => users.id),
@@ -50,6 +51,7 @@ export const posts = table('posts', {
 export const postsView = pgView('posts_view', {
   id: serial().primaryKey(),
   content: text().notNull(),
+  hashtags: text('hashtags').array().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   isPublic: boolean('is_public').notNull(),
   authorId: integer('author_id').notNull().references(() => users.id),

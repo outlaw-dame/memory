@@ -221,6 +221,7 @@ export const atFirehoseCursors = table('at_firehose_cursors', {
 export const unifiedFeedView = pgView('unified_feed_view', {
   id: serial().primaryKey(),
   content: text('content').notNull(),
+  hashtags: text('hashtags').array().notNull(),
   postType: varchar('post_type', { length: 16 }).notNull(),
   title: text('title'),
   summary: text('summary'),
@@ -241,6 +242,7 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   SELECT
     posts.id,
     posts.content,
+    posts.hashtags,
     posts.post_type,
     posts.name as title,
     posts.summary,
@@ -263,6 +265,15 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   SELECT
     at_posts.id,
     at_posts.content,
+    COALESCE(
+      ARRAY(
+        SELECT DISTINCT '#' || lower(trim(feature->>'tag'))
+        FROM jsonb_array_elements(COALESCE(at_posts.facets, '[]'::jsonb)) facet,
+             jsonb_array_elements(COALESCE(facet->'features', '[]'::jsonb)) feature
+        WHERE feature ? 'tag' AND length(trim(feature->>'tag')) > 0
+      ),
+      ARRAY[]::text[]
+    ) as hashtags,
     at_posts.post_type,
     at_posts.title,
     at_posts.summary,

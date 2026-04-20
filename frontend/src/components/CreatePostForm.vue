@@ -8,6 +8,7 @@ import GifPicker from './GifPicker.vue'
 import PostAdvancedSettings from './PostAdvancedSettings.vue'
 import { getEmbedUrl, type KlipyGif } from '@/composables/useKlipy'
 import type { CreatePoll } from '@/types'
+import { parseHashtagInput } from '@/utils/hashtags'
 
 const postsStore = usePostsStore()
 const atBridgeStore = useAtBridgeStore()
@@ -34,6 +35,7 @@ const showFormatting = ref(false)
 const showGifPicker = ref(false)
 const selectedGif = ref<KlipyGif | null>(null)
 const showAdvancedSettings = ref(false)
+const outOfBandHashtags = ref('')
 
 const currentCharLimit = computed(() => (postType.value === 'article' ? ARTICLE_CHAR_LIMIT : NOTE_CHAR_LIMIT))
 const charCount = computed(() => content.value.length)
@@ -149,6 +151,7 @@ async function createPost() {
 
   const created = await postsStore.createPost({
     content: finalContent,
+    hashtags: parseHashtagInput(outOfBandHashtags.value),
     poll,
     postType: postType.value,
     name: postType.value === 'article' ? articleTitle.value.trim() || null : null,
@@ -165,6 +168,7 @@ async function createPost() {
   pollMode.value = 'oneOf'
   pollEndTime.value = ''
   selectedGif.value = null
+  outOfBandHashtags.value = ''
   showPoll.value = false
   showFormatting.value = false
   showGifPicker.value = false
@@ -262,6 +266,15 @@ async function createPost() {
         <span class="text-caption" :class="isOverLimit ? 'text-red-500' : 'text-dark-50'">
           {{ characterCountLabel }}
         </span>
+      </div>
+
+      <!-- Out-of-band hashtags -->
+      <div class="px-[var(--padding-main)] pb-3">
+        <input
+          v-model="outOfBandHashtags"
+          class="w-full rounded-xl border border-dark-10 bg-white px-3 py-2 text-sm text-dark outline-none focus:border-indigo-400"
+          placeholder="Extra hashtags (e.g. #activitypub, #fediverse)"
+        />
       </div>
 
       <!-- Text formatting toolbar -->

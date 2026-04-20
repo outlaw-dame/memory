@@ -43,6 +43,7 @@ export const usePostsStore = defineStore('posts', () => {
 
   interface CreatePostInput {
     content: string
+    hashtags?: string[]
     poll?: CreatePoll | null
     postType?: 'note' | 'article'
     name?: string | null
@@ -56,6 +57,7 @@ export const usePostsStore = defineStore('posts', () => {
    */
   async function createPost({
     content,
+    hashtags = [],
     poll = null,
     postType = 'note',
     name = null,
@@ -63,6 +65,7 @@ export const usePostsStore = defineStore('posts', () => {
   }: CreatePostInput): Promise<SelectPost | null> {
     const requestBody: CreatePost = {
       content,
+      ...(hashtags.length > 0 ? { hashtags } : {}),
       isPublic: true,
       postType,
       ...(name ? { name } : {}),

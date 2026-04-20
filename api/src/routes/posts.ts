@@ -5,10 +5,11 @@ import { _createPost, selectQueryObject, type SelectPost } from '../types'
 import type { NoteCreateRequest } from '../types'
 import { db } from '../db/client'
 import setupPlugin from './setup'
-import { ilike } from 'drizzle-orm'
+import { ilike, or, sql } from 'drizzle-orm'
 import { localeFromHeaders, translate } from '../i18n'
 import { buildOutboxPost } from '../postPayload'
 import { deriveArticleCanonicalUrl } from '../articleShare'
+import { mergeHashtags, normalizeHashtag } from '../utils/hashtags'
 
 const postsRoutes = new Elysia({ name: 'posts' })
   .use(setupPlugin)
@@ -16,11 +17,13 @@ const postsRoutes = new Elysia({ name: 'posts' })
     '/posts',
     async ({ set, body, user, headers }) => {
       const locale = localeFromHeaders(headers)
-      const { content, isPublic, postType = 'note', name, summary } = body
+      const { content, hashtags, isPublic, postType = 'note', name, summary } = body
+      const normalizedHashtags = mergeHashtags(content, hashtags)
 
       const post: NoteCreateRequest = buildOutboxPost({
         user,
         content,
+        hashtags: normalizedHashtags,
         isPublic,
         postType,
         name,
@@ -44,6 +47,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
           .values({
             authorId: user.userId,
             content,
+            hashtags: normalizedHashtags,
             isPublic,
             objectUri,
             canonicalUrl,
@@ -55,6 +59,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
         newPost = {
           id: newPosts[0].id,
           content,
+          hashtags: newPosts[0].hashtags,
           isPublic,
           postType,
           name: name ?? null,
@@ -80,6 +85,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
     {
       body: t.Object({
         content: t.String({ minLength: 1 }),
+        hashtags: t.Optional(t.Array(t.String({ minLength: 1, maxLength: 65 }), { maxItems: 50 })),
         isPublic: t.Boolean(),
         postType: t.Optional(t.Union([t.Literal('note'), t.Literal('article')], { default: 'note' })),
         name: t.Optional(t.String({ minLength: 1, maxLength: 160 })),
@@ -96,6 +102,7 @@ const postsRoutes = new Elysia({ name: 'posts' })
         .select({
           id: postsView.id,
           content: postsView.content,
+            hashtags: postsView.hashtags,
           isPublic: postsView.isPublic,
           createdAt: postsView.createdAt,
           authorId: postsView.authorId,
@@ -113,8 +120,16 @@ const postsRoutes = new Elysia({ name: 'posts' })
         .from(postsView)
 
       if (hashtag && hashtag.trim().length > 0) {
-        const pattern = `%${hashtag.replace(/^#/, '#')}%`
-        query = query.where(ilike(postsView.content, pattern)) as typeof query
+        const normalizedHashtag = normalizeHashtag(hashtag)
+        if (normalizedHashtag) {
+          const pattern = `%${normalizedHashtag}%`
+          query = query.where(
+            or(
+              ilike(postsView.content, pattern),
+              sql`${postsView.hashtags} @> ARRAY[${normalizedHashtag}]::text[]`
+            )
+          ) as typeof query
+        }
       }
 
       const postsQuery = await query.limit(limit).offset(offset)
