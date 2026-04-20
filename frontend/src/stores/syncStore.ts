@@ -159,7 +159,7 @@ export const useSyncStore = defineStore('sync', () => {
       const sinceParam = cursor ? `&since=${encodeURIComponent(cursor)}` : ''
 
       const response = await fetch(
-        `${apiBase}/at/feed?limit=${SYNC_LIMIT}&offset=0&mode=chronological${sinceParam}`,
+        `${apiBase}/at/feed?limit=${SYNC_LIMIT}&offset=0&mode=chronological&excludeViewed=true${sinceParam}`,
         {
           headers: buildApiHeaders({
             authToken: authStore.token || undefined,

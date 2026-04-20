@@ -76,6 +76,78 @@ type AtRecordResponseItem = {
   record?: Record<string, unknown> | null
 }
 
+type ViewershipResolveResponse = {
+  viewedObjectIds?: string[]
+}
+
+const activityPodsBaseUrl = (process.env.ACTIVITYPODS_URL || '').replace(/\/$/, '')
+const activityPodsToken = process.env.ACTIVITYPODS_TOKEN || process.env.INTERNAL_API_TOKEN || ''
+
+function isViewershipIntegrationEnabled(): boolean {
+  return activityPodsBaseUrl.length > 0 && activityPodsToken.length > 0
+}
+
+async function resolveViewedObjectIds(actorId: string, objectIds: string[]): Promise<Set<string>> {
+  if (!isViewershipIntegrationEnabled() || objectIds.length === 0) {
+    return new Set<string>()
+  }
+
+  const response = await fetch(`${activityPodsBaseUrl}/api/internal/viewership-history/resolve`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${activityPodsToken}`,
+      'X-API-Key': activityPodsToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ actorId, objectIds })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Viewership resolve failed: ${response.status}`)
+  }
+
+  const payload = (await response.json()) as ViewershipResolveResponse
+  const values = Array.isArray(payload.viewedObjectIds)
+    ? payload.viewedObjectIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
+    : []
+  return new Set(values)
+}
+
+async function recordViewedObjectIds(actorId: string, objectIds: string[], viewedAt?: string): Promise<void> {
+  if (!isViewershipIntegrationEnabled() || objectIds.length === 0) {
+    return
+  }
+
+  const body: Record<string, unknown> = { actorId, objectIds }
+  if (typeof viewedAt === 'string' && viewedAt.trim().length > 0) {
+    body.viewedAt = viewedAt
+  }
+
+  const response = await fetch(`${activityPodsBaseUrl}/api/internal/viewership-history/record`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${activityPodsToken}`,
+      'X-API-Key': activityPodsToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+
+  if (!response.ok) {
+    throw new Error(`Viewership record failed: ${response.status}`)
+  }
+}
+
+function feedItemObjectId(row: UnifiedFeedRow): string | null {
+  if (typeof row.objectUri === 'string' && row.objectUri.length > 0) {
+    return row.objectUri
+  }
+  if (typeof row.atUri === 'string' && row.atUri.length > 0) {
+    return row.atUri
+  }
+  return null
+}
+
 function getLexiconFamily(collection: string): LexiconFamily {
   if (collection.startsWith('app.bsky.')) return 'bsky'
   if (collection.startsWith('standard.site.')) return 'standard.site'
@@ -337,8 +409,15 @@ const feedQuery = t.Object({
   mode: t.Optional(t.Union([t.Literal('chronological'), t.Literal('balanced')])),
   apWeight: t.Optional(t.Integer({ default: 50, minimum: 1, maximum: 99 })),
   atWeight: t.Optional(t.Integer({ default: 50, minimum: 1, maximum: 99 })),
+  excludeViewed: t.Optional(t.Boolean({ default: false })),
   /** ISO-8601 timestamp — return only posts created after this value (delta sync cursor). */
   since: t.Optional(t.String({ minLength: 10, maxLength: 64 })),
+})
+
+const feedViewedBody = t.Object({
+  objectId: t.Optional(t.String({ minLength: 1, maxLength: 2048 })),
+  objectIds: t.Optional(t.Array(t.String({ minLength: 1, maxLength: 2048 }), { minItems: 1, maxItems: 100 })),
+  viewedAt: t.Optional(t.String({ minLength: 1, maxLength: 64 }))
 })
 
 const subscribeBody = t.Object({
@@ -360,7 +439,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   // -------------------------------------------------------------------------
   .get(
     '/feed',
-    async ({ query: { limit, offset, source, hashtag, mode, apWeight, atWeight, since } }) => {
+    async ({ query: { limit, offset, source, hashtag, mode, apWeight, atWeight, excludeViewed, since }, user }) => {
       try {
         const timelineMode: TimelineMode = mode ?? 'balanced'
         const normalizedApWeight = apWeight ?? 50
@@ -392,11 +471,26 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
         const results = (await query) as UnifiedFeedRow[]
 
-        if (timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto') {
-          return results.slice(offset, offset + limit)
+        let output = timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto'
+          ? results.slice(offset, offset + limit)
+          : buildBalancedFeed(results, limit, offset, normalizedApWeight, normalizedAtWeight)
+
+        if (excludeViewed && isViewershipIntegrationEnabled()) {
+          const objectIds = [...new Set(output.map(feedItemObjectId).filter((value): value is string => !!value))]
+          if (objectIds.length > 0) {
+            try {
+              const viewed = await resolveViewedObjectIds(user.getWebId(), objectIds)
+              output = output.filter(item => {
+                const objectId = feedItemObjectId(item)
+                return !objectId || !viewed.has(objectId)
+              })
+            } catch (error) {
+              console.warn('[AT Bridge] Viewership filtering unavailable:', error)
+            }
+          }
         }
 
-        return buildBalancedFeed(results, limit, offset, normalizedApWeight, normalizedAtWeight)
+        return output
       } catch (err) {
         console.error('[AT Bridge] Failed to fetch unified feed:', err)
         throw new Error('Failed to fetch unified feed')
@@ -406,6 +500,37 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
       query: feedQuery,
       detail: 'Returns a unified feed of ActivityPods and AT Protocol posts',
       isSignedIn: true,
+    },
+  )
+
+  .post(
+    '/feed/viewed',
+    async ({ body, user, error }) => {
+      const objectIds = [...new Set([body.objectId, ...(body.objectIds ?? [])].filter((value): value is string => !!value && value.trim().length > 0))]
+      if (objectIds.length === 0) {
+        return error(400, 'objectId or objectIds is required')
+      }
+
+      try {
+        await recordViewedObjectIds(user.getWebId(), objectIds, body.viewedAt)
+        return { ok: true, recorded: objectIds.length }
+      } catch (err) {
+        console.error('[AT Bridge] Failed to record viewed feed objects:', err)
+        return error(502, 'Failed to record viewed feed objects')
+      }
+    },
+    {
+      body: feedViewedBody,
+      detail: 'Record viewed objects for the signed-in user',
+      isSignedIn: true,
+      response: {
+        200: t.Object({
+          ok: t.Boolean(),
+          recorded: t.Number(),
+        }),
+        400: t.String(),
+        502: t.String(),
+      },
     },
   )
 

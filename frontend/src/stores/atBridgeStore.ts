@@ -265,9 +265,10 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
       const hashtagParam = hashtagFilter.value ? `&hashtag=${encodeURIComponent(hashtagFilter.value)}` : ''
       const modeParam = `&mode=${timelineMode.value}`
       const weightsParam = `&apWeight=${protocolWeights.value.activitypods}&atWeight=${protocolWeights.value.atproto}`
+      const viewershipParam = '&excludeViewed=true'
 
       const items = await apiFetch<UnifiedFeedItem[]>(
-        `/at/feed?limit=${PAGE_SIZE}&offset=${offset}${sourceParam}${hashtagParam}${modeParam}${weightsParam}`,
+        `/at/feed?limit=${PAGE_SIZE}&offset=${offset}${sourceParam}${hashtagParam}${modeParam}${weightsParam}${viewershipParam}`,
       )
 
       if (append) {
