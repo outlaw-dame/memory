@@ -9,6 +9,8 @@ import { useI18n } from '@/i18n'
 const route = useRoute()
 const { t } = useI18n()
 
+const isDashboard = computed(() => route.path.startsWith('/dashboard'))
+
 const documentTitle = computed(() => {
   const titleKey = typeof route.meta.titleKey === 'string' ? route.meta.titleKey : 'app.name'
   return `${t(titleKey)} · ${t('app.name')}`
@@ -20,7 +22,12 @@ watchEffect(() => {
 </script>
 
 <template>
+  <!-- Dashboard routes get their own full-page layout via nested RouterView -->
+  <RouterView v-if="isDashboard" />
+
+  <!-- Standard app layout for all other routes -->
   <div
+    v-else
     class="memoryContainer bg-pastel-dark grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-[var(--padding-main)]"
   >
     <header class="py-[var(--padding-main)]">

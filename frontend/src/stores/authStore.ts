@@ -131,7 +131,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function signinWithOidc(providerEndpoint: ProviderEndpoints = DEFAULT_PROVIDER_ENDPOINT as ProviderEndpoints) {
     setAuthError('')
-    await beginOidcSignIn(providerEndpoint)
+    try {
+      await beginOidcSignIn(providerEndpoint)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('errors.unableToSignIn')
+      console.error('error when trying to begin OIDC signIn: ', error)
+      setAuthError(message)
+    }
   }
 
   async function completeOidcSignin(search: string) {

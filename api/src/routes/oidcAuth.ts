@@ -14,6 +14,7 @@ import { localeFromHeaders, translate } from '../i18n'
  * Kept short so authentication latency stays acceptable.
  */
 const ATPROTO_LINK_DEADLINE_MS = 1_500
+const SERVER_SIDE_PROVIDER_HOST_FALLBACK = 'host.docker.internal'
 
 const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
   .use(setupPlugin)
@@ -43,12 +44,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
       }
 
       try {
-        const metadata = await fetch(`${providerEndpoint}/.well-known/openid-configuration`).then(async response => {
-          if (!response.ok) {
-            throw new Error(await response.text())
-          }
-          return response.json() as Promise<Record<string, string>>
-        })
+          const { metadata } = await fetchOidcDiscovery(providerEndpoint)
 
         // Use the Memory app's stable Solid OIDC client document URL as client_id.
         // The pod provider fetches this document to verify redirect_uris instead of
@@ -90,12 +86,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
     }
 
     try {
-      const metadata = await fetch(`${providerEndpoint}/.well-known/openid-configuration`).then(async response => {
-        if (!response.ok) {
-          throw new Error(await response.text())
-        }
-        return response.json() as Promise<Record<string, string>>
-      })
+      const { metadata, resolvedProviderEndpoint } = await fetchOidcDiscovery(providerEndpoint)
 
       const tokenBody = new URLSearchParams({
         grant_type: 'authorization_code',
@@ -105,7 +96,7 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
         code_verifier: codeVerifier
       })
 
-      const tokens = await fetch(metadata.token_endpoint, {
+      const tokens = await fetch(rewriteUrlOrigin(metadata.token_endpoint, resolvedProviderEndpoint), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -208,6 +199,55 @@ function getNameFromWebId(webId: string): string {
     return segment || url.hostname
   } catch {
     return webId
+  }
+}
+
+async function fetchOidcDiscovery(providerEndpoint: string): Promise<{
+  metadata: Record<string, string>
+  resolvedProviderEndpoint: string
+}> {
+  const candidateEndpoints = [providerEndpoint]
+
+  try {
+    const parsed = new URL(providerEndpoint)
+    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+      parsed.hostname = SERVER_SIDE_PROVIDER_HOST_FALLBACK
+      candidateEndpoints.push(parsed.toString().replace(/\/$/, ''))
+    }
+  } catch {
+    // Fall through to the original endpoint only.
+  }
+
+  let lastError: unknown
+  for (const endpoint of candidateEndpoints) {
+    try {
+      const response = await fetch(`${endpoint.replace(/\/$/, '')}/.well-known/openid-configuration`)
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      return {
+        metadata: (await response.json()) as Record<string, string>,
+        resolvedProviderEndpoint: endpoint.replace(/\/$/, '')
+      }
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Unable to fetch OIDC discovery document')
+}
+
+function rewriteUrlOrigin(url: string, newOrigin: string) {
+  try {
+    const parsed = new URL(url)
+    const replacement = new URL(newOrigin)
+    parsed.protocol = replacement.protocol
+    parsed.hostname = replacement.hostname
+    parsed.port = replacement.port
+    return parsed.toString()
+  } catch {
+    return url
   }
 }
 

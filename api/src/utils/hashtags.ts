@@ -49,6 +49,7 @@ export function extractHashtagsFromFacets(facets: unknown): string[] {
       if (!feature || typeof feature !== 'object') continue
 
       const tag = (feature as Record<string, unknown>).tag
+      if (typeof tag !== 'string') continue
       const normalized = normalizeHashtag(tag)
       if (normalized) hashtags.add(normalized)
     }

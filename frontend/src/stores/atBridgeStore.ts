@@ -122,9 +122,37 @@ export interface UnifiedFeedItem {
   source: 'activitypods' | 'atproto'
   atUri: string | null
   objectUri: string | null
+  replyParentUri?: string | null
+  replyRootUri?: string | null
+  type?: 'post' | 'thread_summary'
+  threadReplyCount?: number | null
+  threadParticipantCount?: number | null
+  threadLastActivityAt?: string | null
+  threadParentAuthorId?: string | null
+  threadRootAuthorId?: string | null
   quotedPost?: QuotedPost
   /** Present when this feed item is a poll (FEP-9967 Question object). */
   poll?: FeedPoll | null
+}
+
+export interface ThreadContextResponse {
+  rootUri: string
+  root: UnifiedFeedItem | null
+  items: UnifiedFeedItem[]
+  nextCursor: string | null
+  hasMore: boolean
+  replyCount: number
+  participantCount: number
+  lastActivityAt: string | null
+}
+
+type ViewerModerationAction = 'block' | 'mute'
+
+interface ViewerModerationResponse {
+  ok: boolean
+  action: ViewerModerationAction
+  subjectCanonicalId: string
+  subjectProtocol: string
 }
 
 export interface FirehoseStatus {
@@ -174,6 +202,17 @@ interface ProtocolWeights {
   atproto: number
 }
 
+interface ThreadCacheEntry {
+  value: ThreadContextResponse
+  cachedAt: number
+}
+
+const API_TIMEOUT_MS = 8000
+const API_MAX_RETRIES = 2
+const API_RETRY_BASE_MS = 180
+const THREAD_CACHE_TTL_MS = 60_000
+const THREAD_CACHE_STORAGE_KEY = 'memory.threadContextCache.v1'
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -199,6 +238,8 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   const hashtagFilter = ref('')
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const threadContextCache = ref<Record<string, ThreadCacheEntry>>({})
+  const moderationRevision = ref(0)
 
   // Pagination
   const unifiedFeedOffset = ref(0)
@@ -231,18 +272,102 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     })
   }
 
-  async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${getApiBase()}${path}`, {
-      ...options,
-      headers: getHeaders(options?.headers),
-    })
+  function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
+  }
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => 'Unknown error')
-      throw new Error(`API error ${response.status}: ${text}`)
+  function getThreadCacheKey(rootUri: string, limit: number, cursor?: string): string {
+    return `${rootUri}::${limit}::${cursor ?? 'first'}`
+  }
+
+  function writeThreadCacheToStorage(): void {
+    try {
+      sessionStorage.setItem(THREAD_CACHE_STORAGE_KEY, JSON.stringify(threadContextCache.value))
+    } catch {
+      // Ignore storage failures and keep runtime cache only.
+    }
+  }
+
+  function loadThreadCacheFromStorage(): void {
+    try {
+      const raw = sessionStorage.getItem(THREAD_CACHE_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Record<string, ThreadCacheEntry>
+      if (parsed && typeof parsed === 'object') {
+        threadContextCache.value = parsed
+      }
+    } catch {
+      // Ignore invalid or unavailable storage data.
+    }
+  }
+
+  function getCachedThreadContext(rootUri: string, limit: number, cursor?: string): ThreadContextResponse | null {
+    const key = getThreadCacheKey(rootUri, limit, cursor)
+    const entry = threadContextCache.value[key]
+    if (!entry) return null
+    if (Date.now() - entry.cachedAt > THREAD_CACHE_TTL_MS) {
+      delete threadContextCache.value[key]
+      writeThreadCacheToStorage()
+      return null
+    }
+    return entry.value
+  }
+
+  function setCachedThreadContext(rootUri: string, limit: number, cursor: string | undefined, value: ThreadContextResponse): void {
+    const key = getThreadCacheKey(rootUri, limit, cursor)
+    threadContextCache.value[key] = { value, cachedAt: Date.now() }
+    writeThreadCacheToStorage()
+  }
+
+  function clearThreadCache(): void {
+    threadContextCache.value = {}
+    try {
+      sessionStorage.removeItem(THREAD_CACHE_STORAGE_KEY)
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+    let lastError: unknown = null
+
+    for (let attempt = 0; attempt <= API_MAX_RETRIES; attempt += 1) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+
+      try {
+        const response = await fetch(`${getApiBase()}${path}`, {
+          ...options,
+          signal: controller.signal,
+          headers: getHeaders(options?.headers),
+        })
+
+        clearTimeout(timeout)
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => 'Unknown error')
+          const shouldRetry = response.status >= 500 && attempt < API_MAX_RETRIES
+          if (shouldRetry) {
+            const jitter = Math.floor(Math.random() * 60)
+            await sleep(API_RETRY_BASE_MS * (2 ** attempt) + jitter)
+            continue
+          }
+          throw new Error(`API error ${response.status}: ${text}`)
+        }
+
+        return response.json() as Promise<T>
+      } catch (err) {
+        clearTimeout(timeout)
+        lastError = err
+        if (attempt >= API_MAX_RETRIES) {
+          break
+        }
+        const jitter = Math.floor(Math.random() * 60)
+        await sleep(API_RETRY_BASE_MS * (2 ** attempt) + jitter)
+      }
     }
 
-    return response.json() as Promise<T>
+    throw (lastError instanceof Error ? lastError : new Error('Request failed'))
   }
 
   // -------------------------------------------------------------------------
@@ -382,6 +507,66 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   }
 
   /**
+   * Fetch paginated thread context using cache-first semantics.
+   */
+  async function fetchThreadContext(
+    rootUri: string,
+    options?: { limit?: number; cursor?: string; forceRefresh?: boolean },
+  ): Promise<ThreadContextResponse | null> {
+    const normalizedRootUri = rootUri.trim()
+    if (!normalizedRootUri) return null
+
+    const limit = Math.min(50, Math.max(1, options?.limit ?? PAGE_SIZE))
+    const cursor = options?.cursor
+    const forceRefresh = options?.forceRefresh === true
+
+    if (!forceRefresh) {
+      const cached = getCachedThreadContext(normalizedRootUri, limit, cursor)
+      if (cached) return cached
+    }
+
+    try {
+      const query = new URLSearchParams({
+        rootUri: normalizedRootUri,
+        limit: String(limit),
+      })
+      if (cursor) query.set('cursor', cursor)
+
+      const payload = await apiFetch<ThreadContextResponse>(`/at/thread?${query.toString()}`)
+      setCachedThreadContext(normalizedRootUri, limit, cursor, payload)
+      return payload
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to fetch thread context'
+      console.error('[AtBridgeStore] fetchThreadContext error:', err)
+      const cached = getCachedThreadContext(normalizedRootUri, limit, cursor)
+      return cached
+    }
+  }
+
+  async function moderateAuthor(item: UnifiedFeedItem, action: ViewerModerationAction): Promise<boolean> {
+    try {
+      await apiFetch<ViewerModerationResponse>('/at/moderation/author', {
+        method: 'POST',
+        body: JSON.stringify({
+          action,
+          source: item.source,
+          authorWebId: item.authorWebId,
+          atUri: item.atUri,
+        }),
+      })
+
+      clearThreadCache()
+      moderationRevision.value += 1
+      await fetchUnifiedFeed(false)
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : `Failed to ${action} author`
+      console.error(`[AtBridgeStore] moderateAuthor(${action}) error:`, err)
+      return false
+    }
+  }
+
+  /**
    * Subscribe to a new AT firehose source.
    */
   async function subscribeToSource(
@@ -450,10 +635,14 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     protocolWeights.value = { activitypods: 50, atproto: 50 }
     hashtagFilter.value = ''
     error.value = null
+    clearThreadCache()
+    moderationRevision.value = 0
     unifiedFeedOffset.value = 0
     atPostsOffset.value = 0
     atRecordsOffset.value = 0
   }
+
+  loadThreadCacheFromStorage()
 
   return {
     // State
@@ -467,6 +656,8 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     hashtagFilter,
     isLoading,
     error,
+    threadContextCache,
+    moderationRevision,
 
     // Computed
     hasAtContent,
@@ -477,6 +668,8 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     fetchAtPosts,
     fetchAtRecords,
     fetchFirehoseStatus,
+    fetchThreadContext,
+    moderateAuthor,
     subscribeToSource,
     setFeedSource,
     setTimelineMode,

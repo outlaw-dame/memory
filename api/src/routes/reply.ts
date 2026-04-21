@@ -1,7 +1,11 @@
 import Elysia, { t } from 'elysia'
+import { eq } from 'drizzle-orm'
 import ActivityPod from '../services/ActivityPod'
+import { db } from '../db/client'
+import { posts } from '../db/schema'
 import setupPlugin from './setup'
 import { localeFromHeaders, translate } from '../i18n'
+import { mergeHashtags } from '../utils/hashtags'
 
 // ---------------------------------------------------------------------------
 // Shared validation helpers
@@ -64,7 +68,37 @@ const replyPlugin = new Elysia({ name: 'reply' })
         return error(400, translate(locale, 'reply.contentEmpty'))
       }
       try {
-        return await ActivityPod.replyToObject(user, body.objectUri, content, body.isPublic ?? true)
+        const replyResult = await ActivityPod.replyToObject(user, body.objectUri, content, body.isPublic ?? true)
+        const replyObjectUri = typeof replyResult.replyObjectUri === 'string' ? replyResult.replyObjectUri : null
+
+        if (replyObjectUri) {
+          const [parentPost] = await db
+            .select({
+              objectUri: posts.objectUri,
+              replyRootUri: posts.replyRootUri,
+            })
+            .from(posts)
+            .where(eq(posts.objectUri, body.objectUri))
+            .limit(1)
+
+          const replyRootUri = parentPost?.replyRootUri ?? parentPost?.objectUri ?? body.objectUri
+
+          await db.insert(posts).values({
+            authorId: user.userId,
+            content,
+            hashtags: mergeHashtags(content),
+            isPublic: body.isPublic ?? true,
+            objectUri: replyObjectUri,
+            replyParentUri: body.objectUri,
+            replyRootUri,
+            postType: 'note',
+            canonicalUrl: null,
+            name: null,
+            summary: null,
+          })
+        }
+
+        return replyResult
       } catch (e) {
         console.error('Error while submitting reply:', e)
         return error(502, translate(locale, 'reply.submitFailed'))

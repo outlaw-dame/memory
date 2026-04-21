@@ -54,7 +54,7 @@ services:
       DB_URL: postgres://postgres:localpassword@pg:5432/memory
       JWT_SECRET: local-dev-jwt-secret-change-in-prod
       API_PORT: 8794
-      FRONTEND_URL: http://localhost:5173
+      FRONTEND_URL: http://localhost:5174
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
     healthcheck:
       test: ['CMD', 'bun', '-e', 'fetch("http://localhost:8794/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
@@ -71,12 +71,15 @@ services:
       context: .
       dockerfile: docker/frontend.dockerfile
       args:
-        VITE_API_URL: http://localhost:8794
+        VITE_API_URL: /api
+        VITE_POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://localhost:3000}
     restart: unless-stopped
     depends_on:
       - api
     ports:
       - '5173:4000'
+    environment:
+      BACKEND_URL: http://api:8794
 
   # --------------------------------------------------------------------------
   # Mastopod AT Protocol Ingress Pipeline (Phase 5.5 local harness)

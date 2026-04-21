@@ -211,6 +211,73 @@ export const atFirehoseCursors = table('at_firehose_cursors', {
 })
 
 // ---------------------------------------------------------------------------
+// Thread graph primitives (reply relationships + aggregates)
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalized edge table representing reply relationships for both local
+ * ActivityPods posts and ATProto posts.
+ */
+export const threadEdges = table('thread_edges', {
+  id: serial().primaryKey(),
+
+  /** Source family for the item represented by this edge. */
+  itemSource: varchar('item_source', { length: 32 }).notNull(),
+
+  /** Optional foreign key to local posts.id when itemSource = 'activitypods'. */
+  itemLocalPostId: integer('item_local_post_id'),
+
+  /** Optional foreign key to at_posts.id when itemSource = 'atproto'. */
+  itemAtPostId: integer('item_at_post_id'),
+
+  /** Canonical URI for the item (object_uri or at_uri). */
+  itemUri: varchar('item_uri', { length: 3072 }).notNull().unique(),
+
+  /** Actor id of the reply author. */
+  replyAuthorId: varchar('reply_author_id', { length: 2048 }).notNull(),
+
+  /** URI of the direct parent (if this is a reply). */
+  parentUri: varchar('parent_uri', { length: 3072 }),
+
+  /** Actor id of the parent author, when known. */
+  parentAuthorId: varchar('parent_author_id', { length: 2048 }),
+
+  /** URI of the thread root (if this is a reply). */
+  rootUri: varchar('root_uri', { length: 3072 }),
+
+  /** Actor id of the root author, when known. */
+  rootAuthorId: varchar('root_author_id', { length: 2048 }),
+
+  /** Original post timestamp. */
+  createdAt: timestamp('created_at', { withTimezone: true }),
+
+  /** Last refresh timestamp for this derived edge. */
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * Per-thread participant aggregates.
+ */
+export const threadParticipants = table('thread_participants', {
+  rootUri: varchar('root_uri', { length: 3072 }).notNull(),
+  participantActorId: varchar('participant_actor_id', { length: 2048 }).notNull(),
+  replyCount: integer('reply_count').notNull().default(0),
+  firstReplyAt: timestamp('first_reply_at', { withTimezone: true }),
+  lastReplyAt: timestamp('last_reply_at', { withTimezone: true }),
+})
+
+/**
+ * Per-thread aggregate counters.
+ */
+export const threadStats = table('thread_stats', {
+  rootUri: varchar('root_uri', { length: 3072 }).primaryKey(),
+  replyCount: integer('reply_count').notNull().default(0),
+  participantCount: integer('participant_count').notNull().default(0),
+  lastActivityAt: timestamp('last_activity_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ---------------------------------------------------------------------------
 // Unified Feed View (AT + ActivityPods posts)
 // ---------------------------------------------------------------------------
 
@@ -238,6 +305,8 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   atUri: varchar('at_uri', { length: 3072 }),
   /** ActivityPub object URI for ActivityPods posts, null for ATProto posts. */
   objectUri: text('object_uri'),
+  replyParentUri: varchar('reply_parent_uri', { length: 3072 }),
+  replyRootUri: varchar('reply_root_uri', { length: 3072 }),
 }).as(sql`
   SELECT
     posts.id,
@@ -255,7 +324,9 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     users.provider_endpoint as author_provider_endpoint,
     'activitypods' as source,
     NULL::varchar as at_uri,
-    posts.object_uri
+    posts.object_uri,
+    posts.reply_parent_uri,
+    posts.reply_root_uri
   FROM posts
   INNER JOIN users ON posts.author_id = users.id
   WHERE posts.is_public = true
@@ -286,8 +357,53 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     '' as author_provider_endpoint,
     'atproto' as source,
     at_posts.at_uri,
-    NULL::text as object_uri
+    NULL::text as object_uri,
+    at_posts.reply_parent_uri,
+    at_posts.reply_root_uri
   FROM at_posts
   LEFT JOIN at_identities ON at_posts.author_did = at_identities.did
   WHERE at_posts.is_public = true
+`)
+
+/**
+ * Feed-candidate enriched view combining unified feed rows with thread graph
+ * metadata and aggregate counters.
+ */
+export const unifiedFeedCandidatesView = pgView('unified_feed_candidates_view', {
+  id: serial().primaryKey(),
+  content: text('content').notNull(),
+  hashtags: text('hashtags').array().notNull(),
+  postType: varchar('post_type', { length: 16 }).notNull(),
+  title: text('title'),
+  summary: text('summary'),
+  canonicalUrl: varchar('canonical_url', { length: 3072 }),
+  createdAt: timestamp('created_at', { withTimezone: true }),
+  isPublic: boolean('is_public').notNull(),
+  authorId: integer('author_id'),
+  authorName: text('author_name').notNull(),
+  authorWebId: text('author_web_id').notNull(),
+  authorProviderEndpoint: text('author_provider_endpoint').notNull(),
+  source: varchar('source', { length: 32 }).notNull(),
+  atUri: varchar('at_uri', { length: 3072 }),
+  objectUri: text('object_uri'),
+  replyParentUri: varchar('reply_parent_uri', { length: 3072 }),
+  replyRootUri: varchar('reply_root_uri', { length: 3072 }),
+  candidateUri: varchar('candidate_uri', { length: 3072 }),
+  threadParentAuthorId: varchar('thread_parent_author_id', { length: 2048 }),
+  threadRootAuthorId: varchar('thread_root_author_id', { length: 2048 }),
+  threadReplyCount: integer('thread_reply_count'),
+  threadParticipantCount: integer('thread_participant_count'),
+  threadLastActivityAt: timestamp('thread_last_activity_at', { withTimezone: true }),
+}).as(sql`
+  SELECT
+    ufv.*,
+    COALESCE(ufv.at_uri, ufv.object_uri) AS candidate_uri,
+    te.parent_author_id AS thread_parent_author_id,
+    te.root_author_id AS thread_root_author_id,
+    ts.reply_count AS thread_reply_count,
+    ts.participant_count AS thread_participant_count,
+    ts.last_activity_at AS thread_last_activity_at
+  FROM unified_feed_view ufv
+  LEFT JOIN thread_edges te ON te.item_uri = COALESCE(ufv.at_uri, ufv.object_uri)
+  LEFT JOIN thread_stats ts ON ts.root_uri = COALESCE(te.root_uri, COALESCE(ufv.at_uri, ufv.object_uri))
 `)

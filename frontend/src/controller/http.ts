@@ -1,7 +1,7 @@
-import { getLocale } from '@/i18n'
+import { getLocale } from '../i18n'
 
 export function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_URL || 'http://localhost:8796'
+  return import.meta.env.VITE_API_URL || '/api'
 }
 
 export function buildApiHeaders(

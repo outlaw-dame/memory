@@ -4,7 +4,7 @@ import type { SignInResponse } from '#api/types'
 const TRANSACTION_STORAGE_KEY = 'memory.oidc.transaction'
 const API_BASE_URL = getApiBaseUrl()
 
-export const DEFAULT_PROVIDER_ENDPOINT = 'http://localhost:3000'
+export const DEFAULT_PROVIDER_ENDPOINT = import.meta.env.VITE_POD_PROVIDER_BASE_URL || 'http://localhost:3000'
 
 interface OidcMetadata {
   authorizationUrl: string

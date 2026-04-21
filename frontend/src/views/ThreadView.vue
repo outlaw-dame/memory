@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import PostAudioPlayer from '@/components/PostAudioPlayer.vue'
 import PostPoll from '@/components/PostPoll.vue'
 import PostImageGrid from '@/components/PostImageGrid.vue'
@@ -8,9 +8,11 @@ import type { GridImage } from '@/components/PostImageGrid.vue'
 import PostLinkPreview from '@/components/PostLinkPreview.vue'
 import type { LinkPreviewData } from '@/components/PostLinkPreview.vue'
 import AiInterpolatorCard from '@/components/AiInterpolatorCard.vue'
-import type { FeedPoll } from '@/stores/atBridgeStore'
+import { useAtBridgeStore, type UnifiedFeedItem, type FeedPoll } from '@/stores/atBridgeStore'
 
 const router = useRouter()
+const route = useRoute()
+const store = useAtBridgeStore()
 const showAiInterpolator = ref(true)
 
 // -----------------------------------------------------------------------
@@ -38,105 +40,98 @@ interface ThreadPost {
 }
 
 // -----------------------------------------------------------------------
-// Mock data
+// State
 // -----------------------------------------------------------------------
 
-const fourteenHoursFromNow = new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString()
+const loading = ref(true)
+const error = ref<string | null>(null)
+const rootItem = ref<UnifiedFeedItem | null>(null)
+const replyItems = ref<UnifiedFeedItem[]>([])
 
-const rootPost: ThreadPost = {
-  id: 1,
-  authorName: 'David Noé',
-  authorHandle: 'david@fosstodon.org',
-  avatarInitials: 'DN',
-  avatarColor: '#2d2d2d',
-  federationDomain: 'fosstodon.org',
-  timeAgo: '7 mins ago',
-  content: 'Heya! This is the first post on this new platform called Memory! :)',
-  viewCount: '1.3k',
-  replyCount: '1.3k',
-  likeCount: '12k',
-  repostCount: '9.8k',
-  audio: { filename: 'audiofile.wav', duration: 84 },
-  linkPreview: {
-    url: 'https://productivity.net',
-    title: '10 ways to be more productiv…',
-    description: 'This website provides you 10 ways how you can focus better and be more productive. Featuring the…',
-    image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=200&h=200&fit=crop',
-    domain: 'productivity.net',
-  },
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+
+function domainFromWebId(webId: string): string {
+  try { return new URL(webId).hostname } catch { return webId }
 }
 
-const replies: ThreadPost[] = [
-  {
-    id: 2,
-    authorName: 'David Noé',
-    authorHandle: 'david@fosstodon.org',
-    avatarInitials: 'DN',
-    avatarColor: '#2d2d2d',
-    federationDomain: 'fosstodon.org',
-    timeAgo: '7 mins ago',
-    inReplyToName: 'David Noé',
-    content: 'Heya! This is the first post on this new platform called Memory! :)',
-    likeCount: '12k',
-    repostCount: '9.8k',
-    poll: {
-      mode: 'oneOf',
-      options: [
-        { name: 'Hyped!', voteCount: 28642 },
-        { name: 'Superhyped!!', voteCount: 28642 },
-      ],
-      endTime: fourteenHoursFromNow,
-      votersCount: 57284,
-      voted: true,
-      votedOptions: ['Hyped!'],
-    },
-    images: [
-      { url: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=400&fit=crop', alt: 'shadow person' },
-      { url: 'https://images.unsplash.com/photo-1474631245212-32dc3c8310c6?w=400&h=400&fit=crop', alt: 'lone tree sunset' },
-      { url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=400&h=400&fit=crop', alt: 'rocks', type: 'gif' },
-      { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop', alt: 'painting', attribution: 'sugus' },
-      { url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop', alt: 'moon' },
-    ],
-    linkPreview: {
-      url: 'https://productivity.net',
-      title: '10 ways to be more productiv…',
-      description: 'This website provides you 10 ways how you can focus better and be more productive. Featuring the pomodoro…',
-      image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=200&h=200&fit=crop',
-      domain: 'productivity.net',
-    },
-  },
-  {
-    id: 3,
-    authorName: 'David Noé',
-    authorHandle: 'david@fosstodon.org',
-    avatarInitials: 'DN',
-    avatarColor: '#2d2d2d',
-    federationDomain: 'fosstodon.org',
-    timeAgo: '7 mins ago',
-    inReplyToName: 'David Noé',
-    content: 'Heya! This is the first post on this new platform called Memory! :)',
-    likeCount: '12k',
-    repostCount: '9.8k',
-    poll: {
-      mode: 'oneOf',
-      options: [
-        { name: 'Hyped!', voteCount: 28642 },
-        { name: 'Superhyped!!', voteCount: 28642 },
-      ],
-      endTime: fourteenHoursFromNow,
-      votersCount: 57284,
-      voted: true,
-      votedOptions: ['Hyped!'],
-    },
-    linkPreview: {
-      url: 'https://productivity.net',
-      title: '10 ways to be more…',
-      description: 'This website provides you 10 ways how you can focus better and be more productive…',
-      image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=200&h=200&fit=crop',
-      domain: 'productivity.net',
-    },
-  },
-]
+function initialsFrom(name: string): string {
+  return name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+const AVATAR_PALETTE = ['#2d2d2d', '#6364f6', '#22c55e', '#1d9bf0', '#f59e0b', '#ef4444']
+function avatarColor(id: number): string {
+  return AVATAR_PALETTE[id % AVATAR_PALETTE.length]
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function toThreadPost(item: UnifiedFeedItem, inReplyToName?: string): ThreadPost {
+  return {
+    id: item.id,
+    authorName: item.authorName,
+    authorHandle: item.authorWebId,
+    avatarInitials: initialsFrom(item.authorName),
+    avatarColor: avatarColor(item.id),
+    federationDomain: domainFromWebId(item.authorProviderEndpoint || item.authorWebId),
+    timeAgo: relativeTime(item.createdAt),
+    inReplyToName,
+    content: item.content,
+    likeCount: '0',
+    repostCount: '0',
+    poll: item.poll ?? undefined,
+  }
+}
+
+// -----------------------------------------------------------------------
+// Derived
+// -----------------------------------------------------------------------
+
+const rootPost = computed<ThreadPost | null>(() =>
+  rootItem.value ? toThreadPost(rootItem.value) : null,
+)
+
+const replies = computed<ThreadPost[]>(() => {
+  const rootAuthorName = rootItem.value?.authorName
+  return replyItems.value.map(item =>
+    toThreadPost(item, item.replyParentUri ? rootAuthorName : undefined),
+  )
+})
+
+// -----------------------------------------------------------------------
+// Load
+// -----------------------------------------------------------------------
+
+onMounted(async () => {
+  const rootUri = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
+  if (!rootUri) {
+    error.value = 'No thread URI provided.'
+    loading.value = false
+    return
+  }
+  try {
+    const ctx = await store.fetchThreadContext(rootUri)
+    if (!ctx) {
+      error.value = 'Thread not found.'
+    } else {
+      rootItem.value = ctx.root
+      replyItems.value = ctx.items
+    }
+  } catch (e) {
+    error.value = 'Failed to load thread.'
+  } finally {
+    loading.value = false
+  }
+})
 
 function formatCount(n: string | undefined): string {
   return n ?? '0'
@@ -174,6 +169,18 @@ function formatCount(n: string | undefined): string {
 
     <!-- Scrollable content -->
     <div class="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-3">
+
+      <!-- Loading state -->
+      <div v-if="loading" class="flex items-center justify-center py-16 text-dark-50 text-sm">
+        Loading thread…
+      </div>
+
+      <!-- Error state -->
+      <div v-else-if="error" class="rounded-[var(--radius-default,25px)] bg-white shadow-sm p-6 text-center text-dark-50 text-sm">
+        {{ error }}
+      </div>
+
+      <template v-else-if="rootPost">
 
       <!-- ── Root post card ── -->
       <div class="rounded-[var(--radius-default,25px)] bg-white shadow-sm p-4 flex flex-col gap-3">
@@ -365,6 +372,7 @@ function formatCount(n: string | undefined): string {
         </div>
       </div>
 
+      </template>
     </div>
   </div>
 </template>

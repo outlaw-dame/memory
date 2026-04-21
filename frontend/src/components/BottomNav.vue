@@ -8,7 +8,8 @@ const router = useRouter()
 const { t } = useI18n()
 
 const hiddenRoutes = new Set(['signin', 'signup', 'welcome', 'experience'])
-const show = computed(() => !hiddenRoutes.has(String(route.name)))
+// Hide bottom nav entirely on dashboard routes (they have their own sidebar)
+const show = computed(() => !hiddenRoutes.has(String(route.name)) && !route.path.startsWith('/dashboard'))
 
 interface NavItem { name: string; route: string; label: string }
 const items = computed<NavItem[]>(() => [
@@ -16,7 +17,7 @@ const items = computed<NavItem[]>(() => [
   { name: 'explore', route: '/explore', label: t('nav.explore') },
   { name: 'messages', route: '/messages', label: t('nav.messages') },
   { name: 'notifications', route: '/notifications', label: t('nav.notifications') },
-  { name: 'profile', route: '/profile', label: t('nav.profile') },
+  { name: 'dashboard', route: '/dashboard', label: 'Dashboard' },
 ])
 
 function isActive(item: NavItem): boolean {
@@ -63,6 +64,11 @@ function navigate(item: NavItem) {
       <!-- Profile -->
       <svg v-else-if="item.name === 'profile'" class="w-5 h-5" :style="isActive(item) ? 'color:rgb(99,100,246)' : 'color:rgba(55,55,55,0.5)'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <!-- Dashboard / grid -->
+      <svg v-else-if="item.name === 'dashboard'" class="w-5 h-5" :style="isActive(item) ? 'color:rgb(99,100,246)' : 'color:rgba(55,55,55,0.5)'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
       </svg>
     </button>
   </nav>

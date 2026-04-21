@@ -4,6 +4,7 @@ import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin,
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
 import { db } from './db/client'
 import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
+import { startAtBridgeRetentionService } from './services/AtBridgeRetentionService'
 
 export { db }
 
@@ -63,5 +64,7 @@ export const app = new Elysia({ aot: false })
   .listen(process.env.API_PORT || 8796)
 
 console.info(`Listening on port ${process.env.API_PORT}`)
+
+startAtBridgeRetentionService()
 
 export type App = typeof app

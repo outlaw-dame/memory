@@ -60,6 +60,7 @@ describe('CreatePostForm', () => {
 
     expect(createPostMock).toHaveBeenCalledWith({
       content: '## Heading\n\nLong-form body',
+      hashtags: [],
       poll: null,
       postType: 'article',
       name: 'My article title',

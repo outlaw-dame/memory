@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n'
 import HashtagText from './HashtagText.vue'
 import PostEmbedCard from './PostEmbedCard.vue'
 import PostPoll from './PostPoll.vue'
+import ThreadSummary from './ThreadSummary.vue'
 import type { EmbeddedPost } from './PostEmbedCard.vue'
 import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CarouselMediaItem } from './PostMediaCarousel.vue'
@@ -71,6 +72,14 @@ const articleUrl = computed(() => {
   } catch {
     return null
   }
+})
+
+const threadRootUri = computed(() => {
+  // For thread summaries, use the reply root URI if available, otherwise use the item's own URI
+  if (props.item.type === 'thread_summary') {
+    return props.item.replyRootUri || props.item.objectUri || props.item.atUri || `${props.item.source}:${props.item.id}`
+  }
+  return null
 })
 
 interface NormalizedQuotedPost {
@@ -370,6 +379,16 @@ async function onReplySubmit(content: string) {
     <div v-if="quotedEmbed" class="mt-3" @click.stop>
       <PostEmbedCard :post="quotedEmbed" />
     </div>
+
+    <!-- Thread summary (for thread_summary item type) -->
+    <ThreadSummary
+      v-if="props.item.type === 'thread_summary' && threadRootUri"
+      class="mt-3"
+      :item="props.item"
+      :root-uri="threadRootUri"
+      @hashtag-click="emit('hashtagClick', $event)"
+      @click.stop
+    />
 
     </div><!-- end tappable area -->
 

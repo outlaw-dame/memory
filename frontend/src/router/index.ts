@@ -5,6 +5,78 @@ import { useAuthStore } from '@/stores/authStore'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // ── Dashboard (provider admin panel) ──────────────────────────────────────
+    {
+      path: '/dashboard',
+      component: () => import('../views/dashboard/DashboardLayout.vue'),
+      meta: { titleKey: 'app.title.dashboard' },
+      children: [
+        {
+          path: '',
+          name: 'dashboard',
+          component: () => import('../views/dashboard/DashboardOverviewView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        // Top-level sections
+        {
+          path: 'network',
+          name: 'dashboard-network',
+          component: () => import('../views/dashboard/DashboardNetworkView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'applications',
+          name: 'dashboard-applications',
+          component: () => import('../views/dashboard/DashboardApplicationsView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'data',
+          name: 'dashboard-data',
+          component: () => import('../views/dashboard/DashboardDataView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        // Dashboard sub-section
+        {
+          path: 'pods',
+          name: 'dashboard-pods',
+          component: () => import('../views/dashboard/DashboardPodsView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'federation',
+          name: 'dashboard-federation',
+          component: () => import('../views/dashboard/DashboardFederationView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'incidents',
+          name: 'dashboard-incidents',
+          component: () => import('../views/dashboard/DashboardIncidentsView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'system-config',
+          name: 'dashboard-system-config',
+          component: () => import('../views/dashboard/DashboardSystemConfigView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'billing',
+          name: 'dashboard-billing',
+          component: () => import('../views/dashboard/DashboardBillingView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+        {
+          path: 'audit',
+          name: 'dashboard-audit',
+          component: () => import('../views/dashboard/DashboardAuditView.vue'),
+          meta: { titleKey: 'app.title.dashboard' },
+        },
+      ],
+    },
+
+    // ── Standard app routes ───────────────────────────────────────────────────
     {
       path: '/',
       name: 'home',
@@ -89,9 +161,10 @@ const router = createRouter({
   ]
 })
 
+const PUBLIC_ROUTES = new Set(['signin', 'signup', 'welcome', 'auth-callback'])
+
 router.beforeEach((to, _, next) => {
-  // if the user is not logged in, redirect to signin page
-  if (to.name !== 'signin' && to.name !== 'signup' && to.name !== 'welcome' && to.name !== 'auth-callback') {
+  if (!PUBLIC_ROUTES.has(String(to.name))) {
     const authStore = useAuthStore()
     if (!authStore.isLoggedIn) {
       return next({ name: 'welcome' })

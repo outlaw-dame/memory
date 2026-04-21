@@ -11,6 +11,15 @@ import { resolve } from 'node:path'
 export default defineConfig({
   css: { preprocessorOptions: { scss: { api: 'modern-compiler' } } },
   plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8794',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api/, ''),
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

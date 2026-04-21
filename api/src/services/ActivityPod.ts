@@ -276,14 +276,19 @@ export default abstract class ActivityPod {
    * A single attempt with a reasonable timeout is the correct policy here.
    */
   static async replyToObject(user: User, objectUri: string, content: string, isPublic = true) {
-    return ky
+    const response = await ky
       .post(`${user.endpoint}/api/reply-policies/reply`, {
         headers: { Authorization: `Bearer ${user.token}` },
         json: { objectUri, content, isPublic },
         timeout: DEFAULT_TIMEOUT
         // No retry: not idempotent.
       })
-      .json()
+      .json<any>()
+
+    return {
+      ...response,
+      replyObjectUri: extractObjectUri(response?.posted ?? response)
+    }
   }
 
   static async followActor(user: User, objectUri: string) {

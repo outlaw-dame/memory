@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '@/i18n'
-import type { UnifiedFeedItem } from '@/stores/atBridgeStore'
+import { useAtBridgeStore, type UnifiedFeedItem } from '@/stores/atBridgeStore'
 
 const props = defineProps<{ item: UnifiedFeedItem }>()
 const emit = defineEmits<{ close: [] }>()
 const { locale, t } = useI18n()
+const atBridgeStore = useAtBridgeStore()
 const currentLanguageLabel = computed(() => t(`common.languages.${locale.value}`))
+const actionError = ref<string | null>(null)
+const activeAction = ref<'block' | 'mute' | null>(null)
 
 function getPostLink(): string {
   return props.item.objectUri ?? props.item.atUri ?? window.location.href
@@ -19,6 +22,24 @@ async function copyLink() {
     /* ignore */
   }
   emit('close')
+}
+
+async function moderateAuthor(action: 'block' | 'mute') {
+  if (activeAction.value) return
+
+  activeAction.value = action
+  actionError.value = null
+
+  try {
+    const ok = await atBridgeStore.moderateAuthor(props.item, action)
+    if (!ok) {
+      actionError.value = atBridgeStore.error || `Failed to ${action} user`
+      return
+    }
+    emit('close')
+  } finally {
+    activeAction.value = null
+  }
 }
 </script>
 
@@ -42,6 +63,7 @@ async function copyLink() {
       <div class="px-6 pt-4 pb-5">
         <p class="text-h2 font-bold text-dark">{{ t('moreActions.title') }}</p>
         <p class="text-footnote text-dark-50 mt-0.5">{{ t('moreActions.description') }}</p>
+        <p v-if="actionError" class="mt-3 text-footnote font-medium text-red-600">{{ actionError }}</p>
       </div>
 
       <!-- Divider -->
@@ -96,7 +118,11 @@ async function copyLink() {
 
         <!-- Block user -->
         <li>
-          <button class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors" @click="emit('close')">
+          <button
+            class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="activeAction !== null"
+            @click="moderateAuthor('block')"
+          >
             <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 flex-shrink-0">
               <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>
@@ -106,6 +132,7 @@ async function copyLink() {
               <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.blockUser') }}</p>
               <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.blockUserDescription') }}</p>
             </div>
+            <span v-if="activeAction === 'block'" class="text-footnote font-semibold text-dark-50">Working…</span>
           </button>
         </li>
 
@@ -130,7 +157,11 @@ async function copyLink() {
 
         <!-- I'm not interested -->
         <li>
-          <button class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors" @click="emit('close')">
+          <button
+            class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="activeAction !== null"
+            @click="moderateAuthor('mute')"
+          >
             <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 flex-shrink-0">
               <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/>
@@ -140,6 +171,7 @@ async function copyLink() {
               <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.notInterested') }}</p>
               <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.notInterestedDescription') }}</p>
             </div>
+            <span v-if="activeAction === 'mute'" class="text-footnote font-semibold text-dark-50">Working…</span>
           </button>
         </li>
 

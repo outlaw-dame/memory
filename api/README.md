@@ -27,6 +27,7 @@ The API exposes ActivityPods interoperability resources and notification webhook
 - `ACTIVITYPODS_ENABLE_REGISTRATION_RESET_FALLBACK` (optional, default `false`): guarded self-healing fallback for persistent app-registration staleness.
 - `EXPECTED_FRONTEND_SESSION_MAX_AGE_MS` (optional, default `28800000`): expected frontend trusted-session max age surfaced by notification status.
 - `EXPECTED_FRONTEND_POD_REAUTH_DEFER_MS` (optional, default `14400000`): expected frontend reauth-defer window surfaced by notification status.
+- `AT_BRIDGE_RETENTION_ENABLED` and related `AT_BRIDGE_RETENTION_*` variables: bounded cleanup for local AT bridge history. See `AT_BRIDGE_RETENTION.md`.
 
 ### Default-safe behavior
 
