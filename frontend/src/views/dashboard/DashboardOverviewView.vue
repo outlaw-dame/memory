@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 
-// ── Time-range selector ───────────────────────────────────────────────────────
-const timeRange = ref<'1h' | '24h' | '7d' | '30d'>('24h')
-
 // ── Search ────────────────────────────────────────────────────────────────────
 const search = ref('')
 

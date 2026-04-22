@@ -189,7 +189,10 @@ function extractRecordCreatedAt(record: any): Date {
   const raw = record?.createdAt || record?.publishedAt || record?.published
   if (!raw || typeof raw !== 'string') return new Date()
   const parsed = new Date(raw)
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed
+  if (Number.isNaN(parsed.getTime())) return new Date()
+  // Clamp future-dated author timestamps to now to prevent sort-order manipulation.
+  const now = new Date()
+  return parsed > now ? now : parsed
 }
 
 function extractRecordContent(record: any): string | null {

@@ -1,7 +1,16 @@
 import { getLocale } from '../i18n'
 
 export function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_URL || '/api'
+  const configuredBaseUrl = (import.meta.env.VITE_API_URL || '/api').trim()
+  if (/^https?:\/\//i.test(configuredBaseUrl)) {
+    return configuredBaseUrl.replace(/\/$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    return new URL(configuredBaseUrl, window.location.origin).toString().replace(/\/$/, '')
+  }
+
+  return configuredBaseUrl
 }
 
 export function buildApiHeaders(

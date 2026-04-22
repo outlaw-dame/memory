@@ -11,7 +11,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { t } from '@/i18n'
 import { useAuthStore } from './authStore'

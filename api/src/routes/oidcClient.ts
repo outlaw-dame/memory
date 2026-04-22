@@ -14,7 +14,26 @@ import Elysia from 'elysia'
  */
 const oidcClientPlugin = new Elysia({ prefix: '/oauth' }).get('/client.json', ({ set }) => {
   const apiUrl = (process.env.API_URL || `http://localhost:${process.env.API_PORT || 8794}`).replace(/\/$/, '')
-  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:4000').replace(/\/$/, '')
+  const configuredFrontendUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '')
+  const configuredFrontendUrls = (process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/$/, ''))
+    .filter((value) => value.length > 0)
+
+  // Keep local dev resilient across common Vite ports and host variants.
+  const frontendOrigins = Array.from(
+    new Set([
+      configuredFrontendUrl,
+      ...configuredFrontendUrls,
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+    ].filter((value) => value.length > 0)),
+  )
+
+  const redirectUris = frontendOrigins.map((origin) => `${origin}/auth/callback`)
+  const postLogoutRedirectUris = frontendOrigins
 
   const clientId = `${apiUrl}/oauth/client.json`
 
@@ -26,8 +45,8 @@ const oidcClientPlugin = new Elysia({ prefix: '/oauth' }).get('/client.json', ({
     '@context': 'https://www.w3.org/ns/solid/oidc-context.jsonld',
     client_id: clientId,
     client_name: 'Memory',
-    redirect_uris: [`${frontendUrl}/auth/callback`],
-    post_logout_redirect_uris: [frontendUrl],
+    redirect_uris: redirectUris,
+    post_logout_redirect_uris: postLogoutRedirectUris,
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
     application_type: 'web',

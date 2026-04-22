@@ -3,8 +3,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
-const route = useRoute()
-const searchQuery = String(route.query.q ?? 'David Noé')
+useRoute()
 
 const showSources = ref(true)
 const speed = ref(1.0)

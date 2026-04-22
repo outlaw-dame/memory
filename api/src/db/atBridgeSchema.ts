@@ -124,6 +124,9 @@ export const atPosts = table('at_posts', {
 
   /** ATProto firehose sequence number for ordering and deduplication. */
   firehoseSeq: integer('firehose_seq'),
+
+  /** Pre-computed hashtag array extracted from facets (populated asynchronously). */
+  hashtags: text('hashtags').array().default(sql`ARRAY[]::text[]`),
 })
 
 // ---------------------------------------------------------------------------
@@ -173,6 +176,71 @@ export const atRecords = table('at_records', {
 
   /** ATProto firehose sequence number for ordering and deduplication. */
   firehoseSeq: integer('firehose_seq'),
+})
+
+// ---------------------------------------------------------------------------
+// AP Remote Posts (federated content from ActivityPub relays)
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores remote ActivityPub posts received via the fedify-sidecar relay
+ * subscription pipeline.  These are Note/Article objects announced by AP
+ * relays that the sidecar subscribes to, forwarded here via the AP bridge
+ * webhook so they appear in the unified memory feed alongside local and
+ * AT Protocol posts.
+ *
+ * Deduplication is on object_uri (the canonical AP object ID).
+ */
+export const apRemotePosts = table('ap_remote_posts', {
+  id: serial().primaryKey(),
+
+  /** Canonical AP object URI (e.g. https://mastodon.social/users/alice/statuses/123). */
+  objectUri: varchar('object_uri', { length: 3072 }).notNull().unique(),
+
+  /** AP actor URI of the author (attributedTo). */
+  authorWebId: varchar('author_web_id', { length: 2048 }).notNull(),
+
+  /** Display name extracted from the actor document, or domain-qualified username. */
+  authorName: varchar('author_name', { length: 512 }).notNull(),
+
+  /** Domain extracted from the author actor URI. */
+  authorDomain: varchar('author_domain', { length: 253 }),
+
+  /** Post text content (HTML or plain text as received). */
+  content: text('content').notNull(),
+
+  /** 'note' or 'article'. */
+  postType: varchar('post_type', { length: 16 }).notNull().default('note'),
+
+  /** Optional long-form title (Article). */
+  title: text('title'),
+
+  /** Optional summary / content warning. */
+  summary: text('summary'),
+
+  /** Optional canonical URL for long-form content. */
+  canonicalUrl: varchar('canonical_url', { length: 3072 }),
+
+  /** Whether the post is addressed to the public audience. */
+  isPublic: boolean('is_public').notNull().default(true),
+
+  /** URI of the direct parent post if this is a reply. */
+  replyParentUri: varchar('reply_parent_uri', { length: 3072 }),
+
+  /** URI of the root post in the reply thread. */
+  replyRootUri: varchar('reply_root_uri', { length: 3072 }),
+
+  /** Hashtags extracted from the content/tags. */
+  hashtags: text('hashtags').array().default(sql`ARRAY[]::text[]`),
+
+  /** ISO-8601 published timestamp from the AP object. */
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+
+  /** ISO-8601 timestamp of local ingestion. */
+  ingestedAt: timestamp('ingested_at', { withTimezone: true }).defaultNow(),
+
+  /** Relay actor URI that announced this post. */
+  sourceRelay: varchar('source_relay', { length: 512 }),
 })
 
 // ---------------------------------------------------------------------------
@@ -363,6 +431,30 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   FROM at_posts
   LEFT JOIN at_identities ON at_posts.author_did = at_identities.did
   WHERE at_posts.is_public = true
+
+  UNION ALL
+
+  SELECT
+    ap_remote_posts.id,
+    ap_remote_posts.content,
+    COALESCE(ap_remote_posts.hashtags, ARRAY[]::text[]) as hashtags,
+    ap_remote_posts.post_type,
+    ap_remote_posts.title,
+    ap_remote_posts.summary,
+    COALESCE(ap_remote_posts.canonical_url, ap_remote_posts.object_uri) as canonical_url,
+    ap_remote_posts.created_at,
+    ap_remote_posts.is_public,
+    NULL::integer as author_id,
+    ap_remote_posts.author_name as author_name,
+    ap_remote_posts.author_web_id as author_web_id,
+    COALESCE(ap_remote_posts.author_domain, '') as author_provider_endpoint,
+    'activitypods' as source,
+    NULL::varchar as at_uri,
+    ap_remote_posts.object_uri,
+    ap_remote_posts.reply_parent_uri,
+    ap_remote_posts.reply_root_uri
+  FROM ap_remote_posts
+  WHERE ap_remote_posts.is_public = true
 `)
 
 /**

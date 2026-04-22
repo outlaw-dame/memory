@@ -24,13 +24,16 @@ export class ApiClient {
 
   async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string | ApiErrors>> {
     try {
-      const response = await ky.post(`${this.baseUrl}/signup`, {
-        headers: buildApiHeaders({ includeJsonContentType: true }),
-        json: body
-      })
+      const response = await ky
+        .post(`${this.baseUrl}/signup`, {
+          headers: buildApiHeaders({ includeJsonContentType: true }),
+          json: body
+        })
+        .json<SignInResponse>()
+
       return {
-        data: 'Successfully signed up',
-        status: response.status
+        data: response,
+        status: 200
       }
     } catch (e) {
       return await this.handleError(e)

@@ -126,7 +126,7 @@ onMounted(async () => {
       rootItem.value = ctx.root
       replyItems.value = ctx.items
     }
-  } catch (e) {
+  } catch {
     error.value = 'Failed to load thread.'
   } finally {
     loading.value = false
@@ -282,7 +282,7 @@ function formatCount(n: string | undefined): string {
 
       <!-- ── Replies ── -->
       <div
-        v-for="(reply, idx) in replies"
+        v-for="reply in replies"
         :key="reply.id"
         class="relative"
       >

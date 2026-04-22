@@ -20,7 +20,6 @@ env.allowLocalModels = false
 type EmbedRequest = { id: number; texts: string[] }
 type EmbedSuccess = { id: number; embeddings: number[][] }
 type EmbedError = { id: number; error: string }
-type EmbedResponse = EmbedSuccess | EmbedError
 
 let extractorPromise: Promise<FeatureExtractionPipelineType> | null = null
 

@@ -36,10 +36,6 @@ const searchTerm = computed(() => {
   if (q.startsWith('#')) return q.slice(1).trim()
   return q
 })
-const resultSubtitle = computed(() => {
-  if (searchType.value === 'user') return `User-results for "${searchTerm.value}"`
-  return `Results for "${searchTerm.value}"`
-})
 // Mock "no results" — simulate by detecting long random strings (no spaces, >18 chars)
 const hasResults = computed(() => {
   const t = submittedQuery.value

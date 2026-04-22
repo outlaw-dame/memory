@@ -36,6 +36,20 @@
       "when": 1776800400000,
       "tag": "0004_thread_graph_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776900000000,
+      "tag": "0005_add_feed_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776900060000,
+      "tag": "0006_ap_remote_posts",
+      "breakpoints": true
     }
   ]
 }

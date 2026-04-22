@@ -56,6 +56,12 @@ services:
       API_PORT: 8794
       FRONTEND_URL: http://localhost:5174
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
+      AP_BRIDGE_SECRET: ${AP_BRIDGE_SECRET:-change-me-ap-secret}
+      POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://localhost:3000}
+      ACTIVITYPUB_PROXY_BASE_URL: ${ACTIVITYPUB_PROXY_BASE_URL:-http://localhost:3000}
+    networks:
+      - default
+      - activitypods-network
     healthcheck:
       test: ['CMD', 'bun', '-e', 'fetch("http://localhost:8794/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
       interval: 10s
@@ -100,7 +106,7 @@ services:
       # Preferred mode selector: mock | relay | jetstream
       FIREHOSE_MODE: ${FIREHOSE_MODE:-jetstream}
       # Optional override for Jetstream endpoint/filter params
-      JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post}
+      JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post&wantedCollections=app.bsky.actor.profile}
       # Optional smoke-mode cutoff for quick proof runs (empty = continuous)
       JETSTREAM_MAX_EVENTS: ${JETSTREAM_MAX_EVENTS:-}
       # Legacy fallback flag used by older scripts (true -> relay mode)
@@ -108,3 +114,11 @@ services:
 
 volumes:
   pg_data:
+
+networks:
+  # The api service joins activitypods-network so the fedify-sidecar can POST
+  # relay activities to /ap/webhook/ingress without going through the host.
+  # The network is owned by fedify-sidecar/docker-compose.yml; run that stack
+  # first (or run both with docker compose --project-directory).
+  activitypods-network:
+    external: true

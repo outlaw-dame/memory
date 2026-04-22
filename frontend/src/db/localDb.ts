@@ -54,6 +54,7 @@ export async function initLocalDb(): Promise<void> {
 
     // drizzle-orm/pglite accepts PGliteWorker as a drop-in for PGlite.
     // The worker wrapper type does not line up with drizzle's overloads cleanly.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _db = drizzle(_worker as any, { schema })
 
     await applySchema(_worker)

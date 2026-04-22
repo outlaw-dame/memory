@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 import { _createPost, _selectUsers } from './types'
 import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
+import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
 import { db } from './db/client'
 import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
 import { startAtBridgeRetentionService } from './services/AtBridgeRetentionService'
@@ -14,6 +15,7 @@ const publicRoutes = new Elysia({ aot: false })
   .use(oidcAuthPlugin)
   .use(oidcClientPlugin)
   .use(activityPodsAppPublicPlugin)
+  .use(apBridgeWebhookPlugin)
 
 const protectedRoutes = new Elysia({ aot: false })
   .use(setupPlugin)
@@ -61,7 +63,12 @@ export const app = new Elysia({ aot: false })
   .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
   .use(publicRoutes)
   .use(protectedRoutes)
-  .listen(process.env.API_PORT || 8796)
+  .listen({
+    port: Number(process.env.API_PORT || 8796),
+    // Unified feed aggregation can exceed Bun's short default request timeout
+    // during local cold-start and large replay windows.
+    idleTimeout: 30,
+  })
 
 console.info(`Listening on port ${process.env.API_PORT}`)
 

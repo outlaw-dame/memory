@@ -11,3 +11,5 @@ export { default as profilePlugin } from './profile'
 export { default as conversationsPlugin } from './conversations'
 export { default as activityPodsAppPublicPlugin } from './activityPodsAppPublic'
 export { default as activityPodsNotificationsPlugin } from './activityPodsNotifications'
+export { default as apBridgeWebhookPlugin } from './apBridgeWebhook'
+

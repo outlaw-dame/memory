@@ -27,6 +27,24 @@ const SAFE_RETRY: KyOptions['retry'] = {
  */
 const DEFAULT_TIMEOUT = 10_000
 const MAX_ACTIVITYPUB_RESPONSE_BYTES = 2_000_000
+const TRUSTED_ACTIVITYPUB_PROXY_ORIGINS = new Set(
+  [
+    process.env.ACTIVITYPUB_PROXY_BASE_URL,
+    process.env.POD_PROVIDER_BASE_URL,
+    ...(process.env.MEMORY_POD_PROVIDER_ENDPOINTS?.split(',') ?? []),
+  ]
+    .map(value => {
+      if (!value) return null
+
+      try {
+        const parsed = new URL(value.trim())
+        return parsed.origin
+      } catch {
+        return null
+      }
+    })
+    .filter((value): value is string => value !== null)
+)
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -65,6 +83,10 @@ const isAllowedRemoteFetchUrl = (value: string): boolean => {
     const parsed = new URL(value)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
     if (parsed.username.length > 0 || parsed.password.length > 0) return false
+
+    if (TRUSTED_ACTIVITYPUB_PROXY_ORIGINS.has(parsed.origin)) {
+      return true
+    }
 
     const hostname = parsed.hostname.toLowerCase()
     if (hostname === 'localhost' || hostname.endsWith('.localhost')) return false

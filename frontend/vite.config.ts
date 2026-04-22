@@ -10,7 +10,7 @@ import { resolve } from 'node:path'
 // https://vite.dev/config/
 export default defineConfig({
   css: { preprocessorOptions: { scss: { api: 'modern-compiler' } } },
-  plugins: [vue(), vueJsx(), vueDevTools(), tailwindcss()],
+  plugins: [vue({ template: { compilerOptions: { isCustomElement: tag => tag === 'box-icon' } } }), vueJsx(), vueDevTools(), tailwindcss()],
   server: {
     proxy: {
       '/api': {

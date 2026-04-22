@@ -145,7 +145,7 @@ const authPlugin = new Elysia({name: 'auth'})
             console.error('Error while checking if user is in the database: ', e)
             return error(500, translate(locale, 'auth.userCheckFailed'))
           }
-          const authToken = await jwt.sign({ webId: providerResponse.webId, token: providerResponse.token })
+          const authToken = await jwt.sign(getTokenObject(new User(userResponse[0], providerResponse.token)))
 
           return {
             token: authToken,

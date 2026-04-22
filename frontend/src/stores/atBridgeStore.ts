@@ -207,7 +207,7 @@ interface ThreadCacheEntry {
   cachedAt: number
 }
 
-const API_TIMEOUT_MS = 8000
+const API_TIMEOUT_MS = 30000
 const API_MAX_RETRIES = 2
 const API_RETRY_BASE_MS = 180
 const THREAD_CACHE_TTL_MS = 60_000
