@@ -1,6 +1,6 @@
 import Elysia, { t } from 'elysia'
 import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
-import { getMemoryApplicationDocument, getRequiredAccessNeedGroupDocument, getUserById, recordNotificationDelivery, verifyWebhookTarget } from '../services/ActivityPodsNotifications'
+import { getMemoryApplicationDocument, getRequiredAccessNeedGroupDocument, getUserById, maybePersistDirectMessage, recordNotificationDelivery, verifyWebhookTarget } from '../services/ActivityPodsNotifications'
 
 const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public' })
   .get('/activitypods/app', ({ set }) => {
@@ -68,6 +68,13 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
     }
 
     const result = await recordNotificationDelivery(userId, parsedBody)
+
+    // Best-effort: if the activity is a direct Note, persist into local chat DB.
+    // This runs after recording so delivery is never blocked by DM logic errors.
+    maybePersistDirectMessage(userId, parsedBody).catch(err => {
+      console.error('[InboxWebhook] DM persist error:', err instanceof Error ? err.message : String(err))
+    })
+
     return {
       duplicate: result.duplicate,
       received: true,

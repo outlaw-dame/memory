@@ -3,6 +3,7 @@ import ky from 'ky'
 import { desc, eq } from 'drizzle-orm'
 import { db } from '../db/client'
 import { notifications, users } from '../db/schema'
+import { chatConvos, chatMembers, chatMessages } from '../db/chatSchema'
 import type { SelectUsers } from '../types'
 
 const JSON_LD_ACCEPT = 'application/ld+json, application/json;q=0.9'
@@ -490,6 +491,166 @@ function sanitizeNotificationPayload(payload: Record<string, unknown>) {
   }
 
   return sanitized
+}
+
+// ---------------------------------------------------------------------------
+// Direct-message detection helpers
+// ---------------------------------------------------------------------------
+
+const AS_PUBLIC_IRIS = new Set([
+  'https://www.w3.org/ns/activitystreams#Public',
+  'as:Public',
+  'Public',
+])
+
+function toArrayValue(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value
+  if (value != null) return [value]
+  return []
+}
+
+function extractUriString(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  if (value && typeof value === 'object') {
+    const r = value as Record<string, unknown>
+    const id = r.id ?? r['@id']
+    if (typeof id === 'string' && id.trim().length > 0) return id.trim()
+  }
+  return null
+}
+
+function deriveConvoIdFromDids(dids: string[]): string {
+  const sorted = [...dids].sort()
+  return `convo_${crypto.createHash('sha256').update(sorted.join('|')).digest('hex').slice(0, 32)}`
+}
+
+/**
+ * Inspects a raw Solid Notifications webhook payload for an AP Create(Note) DM
+ * and, if detected, upserts the conversation + message into the local chat DB.
+ *
+ * Solid Notifications delivers an `Add` envelope:
+ *   { type: 'Add', object: '<activity-uri>', target: '<inbox-uri>' }
+ *
+ * The function:
+ *   1. Detects the `Add` envelope
+ *   2. Fetches the full AP activity from the pod using the user's podToken
+ *   3. Applies DM detection (Create(Note), no public audience)
+ *   4. Upserts convo + members + message atomically
+ *
+ * Called after `recordNotificationDelivery` — delivery recording is never
+ * blocked by DM persistence failures. Fully idempotent.
+ */
+export async function maybePersistDirectMessage(
+  userId: number,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  // 1. Solid Notifications inbox envelope is type 'Add'
+  const types = toArrayValue(payload.type)
+  const isAdd = types.some(t => t === 'Add')
+  if (!isAdd) return
+
+  // 2. Resolve the local recipient — needed for webId (and podToken if fetching)
+  const recipientUser = await getUserById(userId)
+  if (!recipientUser?.webId) return
+  const recipientWebId = recipientUser.webId
+
+  // 3. Determine the activity — two cases:
+  //    A. payload.object is an embedded AP activity object (transient/bridge path):
+  //       ActivityPods emits the full activity when the activity ID contains '#' (no LDP store)
+  //    B. payload.object is a plain HTTP(S) URI → fetch the LDP resource from the pod
+  const rawObject = payload.object
+  let activity: Record<string, unknown>
+
+  if (rawObject && typeof rawObject === 'object' && !Array.isArray(rawObject)) {
+    // Case A: embedded activity object — validate it's a real AP record
+    const embedded = rawObject as Record<string, unknown>
+    if (!embedded.type) return
+    activity = embedded
+  } else {
+    // Case B: URI reference — fetch from pod (requires podToken)
+    const activityUri = extractUriString(rawObject)
+    if (!activityUri || !/^https?:\/\//i.test(activityUri) || activityUri.length > 2048) return
+    if (!recipientUser.podToken) return
+
+    try {
+      activity = await fetchJson(activityUri, recipientUser.podToken) as Record<string, unknown>
+    } catch {
+      // Pod unreachable or access denied — drop silently, not retried here
+      return
+    }
+    if (!activity || typeof activity !== 'object' || Array.isArray(activity)) return
+  }
+
+  // 4. Must be a Create activity
+  const activityTypes = toArrayValue(activity.type)
+  const isCreate = activityTypes.some(t => t === 'Create')
+  if (!isCreate) return
+
+  // 5. Object must be an embedded Note (not a bare URI string)
+  const obj = activity.object
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return
+  const objRecord = obj as Record<string, unknown>
+  const objTypes = toArrayValue(objRecord.type)
+  if (!objTypes.some(t => t === 'Note')) return
+
+  // 6. Must be a direct message — no AS Public IRI in any recipient list
+  const allRecipients = [
+    ...toArrayValue(objRecord.to),
+    ...toArrayValue(objRecord.cc),
+    ...toArrayValue(activity.to),
+    ...toArrayValue(activity.cc),
+  ]
+  if (allRecipients.some(r => typeof r === 'string' && AS_PUBLIC_IRIS.has(r))) return
+
+  // 7. Extract sender — must be an absolute HTTP(S) URI
+  const actorUri = extractUriString(activity.actor)
+  if (!actorUri || !/^https?:\/\//i.test(actorUri) || actorUri.length > 2048) return
+
+  // Do not persist self-messages
+  if (actorUri === recipientWebId) return
+
+  // 8. Sanitise message content
+  const rawContent = typeof objRecord.content === 'string' ? objRecord.content : ''
+  const text = rawContent.replace(/\x00/g, '').trim().slice(0, 10_000)
+
+  // 9. Derive stable convoId
+  const convoId = deriveConvoIdFromDids([actorUri, recipientWebId])
+
+  // 10. Derive stable message ID from the activity's own IRI (globally unique in AP).
+  //     Fall back to a content hash — never use new Date() to avoid non-deterministic
+  //     IDs that would create duplicates on redelivery.
+  const fetchedActivityId = extractUriString(activity.id ?? activity['@id'])
+  const publishedRaw = typeof activity.published === 'string' ? activity.published : null
+  if (!fetchedActivityId && !publishedRaw) return // cannot derive a stable id; drop safely
+
+  const msgIdSource = fetchedActivityId ?? `${actorUri}|${recipientWebId}|${text}|${publishedRaw}`
+  const msgId = crypto.createHash('sha256').update(msgIdSource).digest('hex').slice(0, 36)
+
+  // 11. Parse sentAt — guard against malformed published value
+  const sentAt = publishedRaw ? new Date(publishedRaw) : new Date()
+  if (isNaN(sentAt.getTime())) return
+
+  // 12. Upsert convo + memberships + message atomically
+  await db.transaction(async (tx) => {
+    await tx.insert(chatConvos).values({
+      id: convoId,
+      convoType: 'direct',
+      name: null,
+      rev: 0,
+    }).onConflictDoNothing()
+
+    await tx.insert(chatMembers).values({ convoId, userDid: actorUri, role: 'member' }).onConflictDoNothing()
+    await tx.insert(chatMembers).values({ convoId, userDid: recipientWebId, role: 'member' }).onConflictDoNothing()
+
+    await tx.insert(chatMessages).values({
+      id: msgId,
+      convoId,
+      senderDid: actorUri,
+      text,
+      sentAt,
+      rev: 0,
+    }).onConflictDoNothing()
+  })
 }
 
 export async function recordNotificationDelivery(userId: number, payload: Record<string, unknown>) {

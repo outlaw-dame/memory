@@ -6,7 +6,7 @@ import { applyLocaleHeaders, localeFromHeaders } from '../i18n'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret'
 
-const setupPlugin = new Elysia()
+const setupPlugin = new Elysia({ name: 'setup' })
   .use(
     jwt({
       name: 'jwt',

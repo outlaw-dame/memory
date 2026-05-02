@@ -71,6 +71,13 @@
       "when": 1746000120000,
       "tag": "0009_ap_remote_reply_index",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777726993278,
+      "tag": "0010_chat_tables",
+      "breakpoints": true
     }
   ]
 }
