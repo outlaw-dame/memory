@@ -19,7 +19,7 @@
  */
 
 import { db } from '../db/client'
-import { apRemotePosts, atRecords } from '../db/atBridgeSchema'
+import { apRemotePosts, atRecords, apActorCache } from '../db/atBridgeSchema'
 import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import crypto from 'crypto'
 
@@ -31,6 +31,10 @@ const AS_PUBLIC = 'https://www.w3.org/ns/activitystreams#Public'
 const MAX_CONTENT_LENGTH = 100_000
 const MAX_URI_LENGTH = 3072
 const MAX_ACTIVITIES_PER_BATCH = 100
+const AP_ACTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+/** In-flight fetch guard — prevents concurrent duplicate fetches of the same actor. */
+const _actorFetchInFlight = new Set<string>()
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -244,6 +248,94 @@ function extractNoteObject(activity: Record<string, unknown>): Record<string, un
 }
 
 // ---------------------------------------------------------------------------
+// AP Actor Cache helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the AP actor document for `actorUri` and upsert into `ap_actor_cache`
+ * if the existing entry is missing or older than AP_ACTOR_CACHE_TTL_MS.
+ * Always fire-and-forget (never awaited by callers).
+ */
+async function cacheApActorIfStale(actorUri: string): Promise<void> {
+  if (_actorFetchInFlight.has(actorUri)) return
+  _actorFetchInFlight.add(actorUri)
+  try {
+    // Skip if a fresh entry already exists.
+    const threshold = new Date(Date.now() - AP_ACTOR_CACHE_TTL_MS)
+    const existing = await db
+      .select({ cachedAt: apActorCache.cachedAt })
+      .from(apActorCache)
+      .where(eq(apActorCache.actorUri, actorUri))
+      .limit(1)
+    if (existing.length > 0 && existing[0].cachedAt && existing[0].cachedAt > threshold) {
+      return
+    }
+
+    const resp = await fetch(actorUri, {
+      headers: { Accept: 'application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!resp.ok) return
+
+    const actor = await resp.json() as Record<string, unknown>
+
+    const preferredUsername = typeof actor['preferredUsername'] === 'string'
+      ? actor['preferredUsername'].slice(0, 512)
+      : null
+    const displayName = typeof actor['name'] === 'string'
+      ? actor['name'].slice(0, 640)
+      : null
+    const summary = typeof actor['summary'] === 'string'
+      ? actor['summary'].slice(0, 5000)
+      : null
+    const domain = extractDomain(actorUri)
+
+    // icon = avatar, image = banner
+    const iconObj = actor['icon']
+    const imageObj = actor['image']
+    function extractMediaUrl(obj: unknown): string | null {
+      if (typeof obj === 'string') return isHttpsUrl(obj) ? obj : null
+      if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+        const url = (obj as Record<string, unknown>)['url']
+        if (typeof url === 'string' && isHttpsUrl(url)) return url
+      }
+      return null
+    }
+    const avatarUrl = extractMediaUrl(iconObj)
+    const bannerUrl = extractMediaUrl(imageObj)
+
+    await db
+      .insert(apActorCache)
+      .values({
+        actorUri,
+        preferredUsername,
+        displayName,
+        avatarUrl,
+        bannerUrl,
+        summary,
+        domain,
+        cachedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: apActorCache.actorUri,
+        set: {
+          preferredUsername,
+          displayName,
+          avatarUrl,
+          bannerUrl,
+          summary,
+          domain,
+          cachedAt: new Date(),
+        },
+      })
+  } catch {
+    // Non-fatal — actor cache is best-effort
+  } finally {
+    _actorFetchInFlight.delete(actorUri)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main ingestion logic
 // ---------------------------------------------------------------------------
 
@@ -341,6 +433,8 @@ async function ingestSingleActivity(
       })
       .onConflictDoNothing({ target: apRemotePosts.objectUri })
     await recordAnnounceActivity(activity, objectId, sourceRelayUri)
+    // Fire-and-forget: refresh actor profile cache in the background.
+    cacheApActorIfStale(authorWebId).catch(() => undefined)
     return true
   } catch (err) {
     console.error('[ApRemoteIngestion] DB insert error:', err)

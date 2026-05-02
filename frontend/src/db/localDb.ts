@@ -81,6 +81,7 @@ async function applySchema(pg: PGliteWorker): Promise<void> {
       author_name              TEXT        NOT NULL,
       author_web_id            TEXT        NOT NULL,
       author_provider_endpoint TEXT        NOT NULL DEFAULT '',
+      author_avatar            TEXT,
       source                   TEXT        NOT NULL,
       at_uri                   TEXT,
       object_uri               TEXT,
@@ -90,6 +91,7 @@ async function applySchema(pg: PGliteWorker): Promise<void> {
     );
 
     ALTER TABLE local_posts ADD COLUMN IF NOT EXISTS object_uri TEXT;
+    ALTER TABLE local_posts ADD COLUMN IF NOT EXISTS author_avatar TEXT;
 
     CREATE TABLE IF NOT EXISTS sync_state (
       entity         TEXT        PRIMARY KEY,
@@ -106,6 +108,11 @@ async function applySchema(pg: PGliteWorker): Promise<void> {
       created_at   TIMESTAMPTZ DEFAULT now(),
       attempted_at TIMESTAMPTZ,
       fail_count   INTEGER     NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS local_follows (
+      object_uri  TEXT        PRIMARY KEY,
+      followed_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `)
 

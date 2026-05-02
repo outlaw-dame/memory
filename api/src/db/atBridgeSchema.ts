@@ -40,6 +40,15 @@ export const atIdentities = table('at_identities', {
   /** Current handle (e.g. alice.bsky.social). May be null if unresolved. */
   handle: varchar('handle', { length: 512 }),
 
+  /** Display name as set on the actor's profile. */
+  displayName: varchar('display_name', { length: 640 }),
+
+  /** Avatar image URL from the actor's profile blob. */
+  avatarUrl: varchar('avatar_url', { length: 3072 }),
+
+  /** Banner image URL from the actor's profile blob. */
+  bannerUrl: varchar('banner_url', { length: 3072 }),
+
   /** Full DID document as JSON. */
   didDocument: jsonb('did_document'),
 
@@ -250,6 +259,45 @@ export const apRemotePosts = table('ap_remote_posts', {
 })
 
 // ---------------------------------------------------------------------------
+// AP Actor Cache (remote ActivityPub actor profile data)
+// ---------------------------------------------------------------------------
+
+/**
+ * Caches remote ActivityPub actor profile data fetched during feed ingestion.
+ * Avoids live HTTP fetches per post when rendering feeds or threads.
+ *
+ * TTL is enforced at read time: rows older than AP_ACTOR_CACHE_TTL_HOURS
+ * (default 24 h) are considered stale and refreshed on next request.
+ */
+export const apActorCache = table('ap_actor_cache', {
+  id: serial().primaryKey(),
+
+  /** Canonical AP actor URI (e.g. https://mastodon.social/users/alice). */
+  actorUri: varchar('actor_uri', { length: 2048 }).notNull().unique(),
+
+  /** Preferred username / local part of the actor's URL. */
+  preferredUsername: varchar('preferred_username', { length: 512 }),
+
+  /** Display name (name field in the actor document). */
+  displayName: varchar('display_name', { length: 640 }),
+
+  /** Avatar image URL (icon.url from the actor document). */
+  avatarUrl: varchar('avatar_url', { length: 3072 }),
+
+  /** Header/banner image URL (image.url from the actor document). */
+  bannerUrl: varchar('banner_url', { length: 3072 }),
+
+  /** Short bio / summary HTML. */
+  summary: text('summary'),
+
+  /** Domain the actor belongs to (extracted from actorUri). */
+  domain: varchar('domain', { length: 253 }),
+
+  /** ISO-8601 timestamp of when this cache entry was last refreshed. */
+  cachedAt: timestamp('cached_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ---------------------------------------------------------------------------
 // AT Firehose Cursor State (for UI observability)
 // ---------------------------------------------------------------------------
 
@@ -373,6 +421,7 @@ export const unifiedFeedView = pgView('unified_feed_view', {
   authorName: text('author_name').notNull(),
   authorWebId: text('author_web_id').notNull(),
   authorProviderEndpoint: text('author_provider_endpoint').notNull(),
+  authorAvatar: varchar('author_avatar', { length: 3072 }),
   /** 'activitypods' | 'atproto' */
   source: varchar('source', { length: 32 }).notNull(),
   /** AT URI for ATProto posts, null for ActivityPods posts. */
@@ -396,6 +445,7 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     users.name as author_name,
     users.web_id as author_web_id,
     users.provider_endpoint as author_provider_endpoint,
+    NULL::varchar as author_avatar,
     'activitypods' as source,
     NULL::varchar as at_uri,
     posts.object_uri,
@@ -429,6 +479,7 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     COALESCE(at_identities.handle, at_posts.author_did) as author_name,
     at_posts.author_did as author_web_id,
     '' as author_provider_endpoint,
+    at_identities.avatar_url as author_avatar,
     'atproto' as source,
     at_posts.at_uri,
     NULL::text as object_uri,
@@ -454,12 +505,14 @@ export const unifiedFeedView = pgView('unified_feed_view', {
     ap_remote_posts.author_name as author_name,
     ap_remote_posts.author_web_id as author_web_id,
     COALESCE(ap_remote_posts.author_domain, '') as author_provider_endpoint,
+    ap_actor_cache.avatar_url as author_avatar,
     'activitypods' as source,
     NULL::varchar as at_uri,
     ap_remote_posts.object_uri,
     ap_remote_posts.reply_parent_uri,
     ap_remote_posts.reply_root_uri
   FROM ap_remote_posts
+  LEFT JOIN ap_actor_cache ON ap_remote_posts.author_web_id = ap_actor_cache.actor_uri
   WHERE ap_remote_posts.is_public = true
 `)
 
@@ -481,6 +534,7 @@ export const unifiedFeedCandidatesView = pgView('unified_feed_candidates_view', 
   authorName: text('author_name').notNull(),
   authorWebId: text('author_web_id').notNull(),
   authorProviderEndpoint: text('author_provider_endpoint').notNull(),
+  authorAvatar: varchar('author_avatar', { length: 3072 }),
   source: varchar('source', { length: 32 }).notNull(),
   atUri: varchar('at_uri', { length: 3072 }),
   objectUri: text('object_uri'),

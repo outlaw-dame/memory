@@ -137,6 +137,7 @@ export interface UnifiedFeedItem {
   authorName: string
   authorWebId: string
   authorProviderEndpoint: string
+  authorAvatar?: string | null
   source: 'activitypods' | 'atproto'
   atUri: string | null
   objectUri: string | null

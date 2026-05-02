@@ -1,7 +1,10 @@
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { t } from '@/i18n'
 import ky, { HTTPError } from 'ky'
+import { getLocalDb } from '@/db/localDb'
+import { localFollows } from '@/db/localSchema'
+import { eq } from 'drizzle-orm'
 
 const isAbsoluteHttpsUrl = (value: string): boolean => {
   try {
@@ -15,6 +18,17 @@ const isAbsoluteHttpsUrl = (value: string): boolean => {
 export function useFollow() {
   const followingSet = ref<Set<string>>(new Set())
   const followError = ref<string | null>(null)
+
+  // Rehydrate follow state from PGlite on composable init.
+  onMounted(async () => {
+    try {
+      const db = await getLocalDb()
+      const rows = await db.select({ objectUri: localFollows.objectUri }).from(localFollows)
+      followingSet.value = new Set(rows.map(r => r.objectUri))
+    } catch {
+      // Non-fatal — UI falls back to empty state
+    }
+  })
 
   async function follow(objectUri: string): Promise<boolean> {
     followError.value = null
@@ -33,6 +47,15 @@ export function useFollow() {
         json: { objectUri }
       })
       followingSet.value = new Set([...followingSet.value, objectUri])
+      // Persist so isFollowing survives a page reload.
+      getLocalDb()
+        .then(db =>
+          db
+            .insert(localFollows)
+            .values({ objectUri, followedAt: new Date() })
+            .onConflictDoNothing()
+        )
+        .catch(() => undefined)
       return true
     } catch (e) {
       if (e instanceof HTTPError) {

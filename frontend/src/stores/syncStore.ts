@@ -223,16 +223,17 @@ export const useSyncStore = defineStore('sync', () => {
       await pg.query(
         `INSERT INTO local_posts (
           id, content, created_at, is_public,
-          author_id, author_name, author_web_id, author_provider_endpoint,
+          author_id, author_name, author_web_id, author_provider_endpoint, author_avatar,
           source, at_uri, object_uri, synced_at, content_tsv
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(),
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(),
           to_tsvector('english', $2)
         )
         ON CONFLICT (id) DO UPDATE SET
           content                  = EXCLUDED.content,
           created_at               = EXCLUDED.created_at,
           author_name              = EXCLUDED.author_name,
+          author_avatar            = EXCLUDED.author_avatar,
           object_uri               = EXCLUDED.object_uri,
           synced_at                = now(),
           content_tsv              = to_tsvector('english', EXCLUDED.content)`,
@@ -245,6 +246,7 @@ export const useSyncStore = defineStore('sync', () => {
           item.authorName,
           item.authorWebId,
           item.authorProviderEndpoint,
+          item.authorAvatar ?? null,
           item.source,
           item.atUri ?? null,
           item.objectUri ?? null,

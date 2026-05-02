@@ -56,6 +56,7 @@ export const localPosts = table('local_posts', {
   authorName: text('author_name').notNull(),
   authorWebId: text('author_web_id').notNull(),
   authorProviderEndpoint: text('author_provider_endpoint').notNull().default(''),
+  authorAvatar: text('author_avatar'),
   source: text('source').notNull(), // 'activitypods' | 'atproto'
   atUri: text('at_uri'),
   objectUri: text('object_uri'),
@@ -94,3 +95,19 @@ export const pendingWrites = table('pending_writes', {
 export type LocalPost = typeof localPosts.$inferSelect
 export type NewLocalPost = typeof localPosts.$inferInsert
 export type PendingWrite = typeof pendingWrites.$inferSelect
+
+// ---------------------------------------------------------------------------
+// local_follows — persisted follow state (survives page reload)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tracks ActivityPub actors that the local user has followed.
+ * Populated by useFollow on success; consulted to restore isFollowing state.
+ * `objectUri` is the canonical AP actor URI that was passed to POST /follows.
+ */
+export const localFollows = table('local_follows', {
+  objectUri: text('object_uri').primaryKey(),
+  followedAt: timestamp('followed_at', { withTimezone: true }).default(sql`now()`).notNull(),
+})
+
+export type LocalFollow = typeof localFollows.$inferSelect

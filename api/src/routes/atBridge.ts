@@ -20,7 +20,7 @@
 
 import Elysia, { t } from 'elysia'
 import { db } from '../db/client'
-import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords, unifiedFeedCandidatesView, apRemotePosts } from '../db/atBridgeSchema'
+import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords, unifiedFeedCandidatesView, apRemotePosts, apActorCache } from '../db/atBridgeSchema'
 import { desc, eq, and, sql, ilike, or, gt, inArray, type SQL } from 'drizzle-orm'
 import setupPlugin from './setup'
 import { extractHashtagsFromFacets, normalizeHashtag } from '../utils/hashtags'
@@ -68,6 +68,7 @@ type UnifiedFeedRow = {
   authorName: string
   authorWebId: string
   authorProviderEndpoint: string
+  authorAvatar: string | null
   source: 'activitypods' | 'atproto'
   atUri: string | null
   objectUri: string | null
@@ -455,22 +456,46 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
         console.warn('[AT Bridge] getProfiles returned', resp.status, 'for batch', batch.slice(0, 3))
         continue
       }
-      const data = await resp.json() as { profiles?: Array<{ did: string; handle: string; displayName?: string }> }
+      const data = await resp.json() as {
+        profiles?: Array<{
+          did: string
+          handle: string
+          displayName?: string
+          avatar?: string
+          banner?: string
+        }>
+      }
       const profiles = data?.profiles ?? []
       for (const profile of profiles) {
         if (!profile.did || !profile.handle) continue
         resolved.set(profile.did, profile.handle)
       }
-      // Upsert resolved handles into at_identities cache (fire-and-forget; don't block response).
+      // Upsert resolved handles + profile data into at_identities cache (fire-and-forget; don't block response).
       const upsertValues = profiles
         .filter(p => p.did && p.handle)
-        .map(p => ({ did: p.did, handle: p.handle, isActive: true, resolvedAt: new Date(), updatedAt: new Date() }))
+        .map(p => ({
+          did: p.did,
+          handle: p.handle,
+          displayName: p.displayName ?? null,
+          avatarUrl: p.avatar ?? null,
+          bannerUrl: p.banner ?? null,
+          isActive: true,
+          resolvedAt: new Date(),
+          updatedAt: new Date(),
+        }))
       if (upsertValues.length > 0) {
         db.insert(atIdentities)
           .values(upsertValues)
           .onConflictDoUpdate({
             target: atIdentities.did,
-            set: { handle: sql`EXCLUDED.handle`, resolvedAt: new Date(), updatedAt: new Date() },
+            set: {
+              handle: sql`EXCLUDED.handle`,
+              displayName: sql`EXCLUDED.display_name`,
+              avatarUrl: sql`EXCLUDED.avatar_url`,
+              bannerUrl: sql`EXCLUDED.banner_url`,
+              resolvedAt: new Date(),
+              updatedAt: new Date(),
+            },
           })
           .catch(err => console.warn('[AT Bridge] Failed to cache resolved handles:', err))
       }
@@ -548,6 +573,7 @@ function mapDbRowToFeedRow(row: Record<string, unknown>): UnifiedFeedRow {
     authorName: row['author_name'] as string,
     authorWebId: row['author_web_id'] as string,
     authorProviderEndpoint: row['author_provider_endpoint'] as string,
+    authorAvatar: (row['author_avatar'] as string | null) ?? null,
     source: row['source'] as 'activitypods' | 'atproto',
     atUri: row['at_uri'] as string | null,
     objectUri: row['object_uri'] as string | null,
@@ -1875,6 +1901,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
               authorName: t.String(),
               authorWebId: t.String(),
               authorProviderEndpoint: t.String(),
+              authorAvatar: t.Union([t.String(), t.Null()]),
               source: t.Union([t.Literal('activitypods'), t.Literal('atproto')]),
               atUri: t.Union([t.String(), t.Null()]),
               objectUri: t.Union([t.String(), t.Null()]),
@@ -1897,6 +1924,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
             authorName: t.String(),
             authorWebId: t.String(),
             authorProviderEndpoint: t.String(),
+            authorAvatar: t.Union([t.String(), t.Null()]),
             source: t.Union([t.Literal('activitypods'), t.Literal('atproto')]),
             atUri: t.Union([t.String(), t.Null()]),
             objectUri: t.Union([t.String(), t.Null()]),
