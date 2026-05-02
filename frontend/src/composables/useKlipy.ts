@@ -71,6 +71,15 @@ export interface KlipyCategory {
   preview?: string
 }
 
+interface KlipyCategoriesEnvelope {
+  locale?: string
+  categories?: Array<{
+    category?: string
+    query?: string
+    preview_url?: string
+  }>
+}
+
 // ---------------------------------------------------------------------------
 // Internal fetch helper
 // ---------------------------------------------------------------------------
@@ -139,18 +148,44 @@ export function useKlipy(customerId: string) {
   async function categories(locale?: string): Promise<KlipyCategory[]> {
     assertConfigured(appKey)
     const params = locale ? `?locale=${locale}` : ''
-    const result = await klipyFetch<KlipyCategory[]>(`/api/v1/${appKey}/gifs/categories${params}`)
-    return Array.isArray(result) ? result : []
+    const result = await klipyFetch<KlipyCategoriesEnvelope>(`/api/v1/${appKey}/gifs/categories${params}`)
+    const items = Array.isArray(result?.categories) ? result.categories : []
+    return items
+      .map(item => {
+        const label = typeof item.category === 'string' && item.category.trim().length > 0
+          ? item.category.trim()
+          : (typeof item.query === 'string' && item.query.trim().length > 0 ? item.query.trim() : null)
+        if (!label) return null
+
+        const normalized: KlipyCategory = {
+          slug: (typeof item.query === 'string' && item.query.trim().length > 0 ? item.query.trim() : label),
+          title: label,
+        }
+
+        if (typeof item.preview_url === 'string') {
+          normalized.preview = item.preview_url
+        }
+
+        return normalized
+      })
+      .filter((item): item is KlipyCategory => item !== null)
   }
 
   /**
    * Track a GIF share (call when user inserts a GIF into a post).
    * Fire-and-forget — errors are silently swallowed.
    */
-  async function trackShare(slug: string): Promise<void> {
+  async function trackShare(slug: string, q?: string): Promise<void> {
     if (!appKey) return
     try {
-      await fetch(`${BASE}/api/v1/${appKey}/gifs/share/${slug}`, { method: 'POST' })
+      await fetch(`${BASE}/api/v1/${appKey}/gifs/share/${slug}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: customerId,
+          ...(typeof q === 'string' && q.trim().length > 0 ? { q: q.trim() } : {}),
+        }),
+      })
     } catch {
       // non-critical
     }
