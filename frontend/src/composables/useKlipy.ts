@@ -9,6 +9,14 @@
 const BASE = 'https://api.klipy.com'
 const APP_KEY = import.meta.env.VITE_KLIPY_APP_KEY as string
 
+function requireKlipyAppKey(): string {
+  const key = typeof APP_KEY === 'string' ? APP_KEY.trim() : ''
+  if (!key) {
+    throw new Error('Klipy API key is missing. Set VITE_KLIPY_APP_KEY.')
+  }
+  return key
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -74,6 +82,8 @@ async function klipyFetch<T>(path: string, options?: RequestInit): Promise<T> {
 // ---------------------------------------------------------------------------
 
 export function useKlipy(customerId: string) {
+  const appKey = requireKlipyAppKey()
+
   /**
    * Trending GIFs — updated throughout the day.
    */
@@ -84,7 +94,7 @@ export function useKlipy(customerId: string) {
       customer_id: customerId,
       format_filter: 'webp,gif',
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${APP_KEY}/gifs/trending?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/trending?${params}`)
   }
 
   /**
@@ -99,7 +109,7 @@ export function useKlipy(customerId: string) {
       format_filter: 'webp,gif',
       content_filter: 'medium',
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${APP_KEY}/gifs/search?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/search?${params}`)
   }
 
   /**
@@ -110,7 +120,7 @@ export function useKlipy(customerId: string) {
       page: String(page),
       per_page: String(perPage),
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${APP_KEY}/gifs/recent/${customerId}?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/recent/${customerId}?${params}`)
   }
 
   /**
@@ -118,7 +128,7 @@ export function useKlipy(customerId: string) {
    */
   async function categories(locale?: string): Promise<KlipyCategory[]> {
     const params = locale ? `?locale=${locale}` : ''
-    const result = await klipyFetch<KlipyCategory[]>(`/api/v1/${APP_KEY}/gifs/categories${params}`)
+    const result = await klipyFetch<KlipyCategory[]>(`/api/v1/${appKey}/gifs/categories${params}`)
     return Array.isArray(result) ? result : []
   }
 
@@ -128,7 +138,7 @@ export function useKlipy(customerId: string) {
    */
   async function trackShare(slug: string): Promise<void> {
     try {
-      await fetch(`${BASE}/api/v1/${APP_KEY}/gifs/share/${slug}`, { method: 'POST' })
+      await fetch(`${BASE}/api/v1/${appKey}/gifs/share/${slug}`, { method: 'POST' })
     } catch {
       // non-critical
     }
@@ -140,7 +150,7 @@ export function useKlipy(customerId: string) {
   async function removeRecent(slug: string): Promise<void> {
     const params = new URLSearchParams({ slug })
     await fetch(
-      `${BASE}/api/v1/${APP_KEY}/gifs/recent/${customerId}?${params}`,
+      `${BASE}/api/v1/${appKey}/gifs/recent/${customerId}?${params}`,
       { method: 'DELETE' },
     )
   }
@@ -164,12 +174,12 @@ export function getThumbUrl(gif: KlipyGif): string {
 
 /**
  * Pick the best full-size URL for embedding in a post.
- * Prefers md.webp → md.gif → hd.gif.
+ * Prefer GIF first so downstream pipelines can preserve GIF semantics.
  */
 export function getEmbedUrl(gif: KlipyGif): string {
   return (
-    gif.file.md?.webp?.url ??
     gif.file.md?.gif?.url ??
+    gif.file.md?.webp?.url ??
     gif.file.hd?.gif?.url ??
     ''
   )

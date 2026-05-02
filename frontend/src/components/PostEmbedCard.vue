@@ -82,9 +82,9 @@ function open() {
       <PostLinkPreview :preview="post.linkPreview" />
     </div>
 
-    <!-- Media (carousel, first items only) -->
+    <!-- Media (carousel) -->
     <div v-if="post.media?.length" class="px-3.5 pb-3">
-      <PostMediaCarousel :items="post.media.slice(0, 3)" />
+      <PostMediaCarousel :items="post.media" />
     </div>
 
     <!-- Footer -->
