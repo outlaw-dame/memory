@@ -85,6 +85,9 @@ describe('atBridge viewer projection helpers', () => {
           includeHashtagVariants: true,
         },
       ],
+      sensitiveMediaAction: 'off',
+      atprotoLabelerAction: 'off',
+      hasEnabledAtprotoLabelers: false,
     }
 
     const visible = buildRow({
@@ -123,6 +126,9 @@ describe('atBridge viewer projection helpers', () => {
     const moderationState: ViewerModerationState = {
       hiddenSubjectKeys: new Set(['https://pods.example/users/blocked']),
       filters: [],
+      sensitiveMediaAction: 'off',
+      atprotoLabelerAction: 'off',
+      hasEnabledAtprotoLabelers: false,
     }
 
     const batch = [

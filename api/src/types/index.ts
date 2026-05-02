@@ -9,11 +9,17 @@ export interface NoteCreateRequest {
   type: string
   attributedTo: string
   content: string
-  tag?: Array<{
-    type: 'Hashtag'
-    name: string
-    href: string
+  tag?: Array<
+    | { type: 'Hashtag'; name: string; href: string }
+    | { type: 'Mention'; href: string; name?: string }
+  >
+  attachment?: Array<{
+    type: string
+    mediaType?: string
+    url: string
+    name?: string
   }>
+  inReplyTo?: string
   name?: string
   summary?: string
   url?: string | Record<string, unknown> | Array<string | Record<string, unknown>>

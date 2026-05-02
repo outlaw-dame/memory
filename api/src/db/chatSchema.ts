@@ -31,7 +31,9 @@ import {
   varchar,
   index,
   primaryKey,
+  jsonb,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
 // chat_convos
@@ -118,6 +120,21 @@ export const chatMessages = table(
     /** Message body, sanitised at write time. Max 10,000 chars. */
     text: text('text').notNull(),
 
+    /** Member-scoped mentions (DID/WebID) included in this message. */
+    mentions: jsonb('mentions').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+
+    /** Non-indexed hashtags captured for DM/group-chat UX only. */
+    hashtags: text('hashtags').array().notNull().default(sql`ARRAY[]::text[]`),
+
+    /** Attachment descriptors (image/video/audio/gif/file), never trusted as executable input. */
+    attachments: jsonb('attachments').$type<Array<Record<string, unknown>>>().notNull().default(sql`'[]'::jsonb`),
+
+    /** Optional local message ID that this message replies to. */
+    inReplyToMessageId: varchar('in_reply_to_message_id', { length: 36 }),
+
+    /** Optional local message ID this message quotes. */
+    quoteMessageId: varchar('quote_message_id', { length: 36 }),
+
     sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
 
     /** Snapshot of conversation rev at send time. */
@@ -134,5 +151,8 @@ export const chatMessages = table(
     index('chat_messages_convo_sent_idx').on(t.convoId, t.sentAt),
     // Used when resolving a single message by ID within a convo.
     index('chat_messages_convo_id_idx').on(t.convoId, t.id),
+    // Reply / quote graph traversal inside a conversation.
+    index('chat_messages_in_reply_to_idx').on(t.convoId, t.inReplyToMessageId),
+    index('chat_messages_quote_idx').on(t.convoId, t.quoteMessageId),
   ],
 )

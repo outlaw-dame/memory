@@ -70,6 +70,14 @@ describe('maybePersistDirectMessage', () => {
           to: ['https://alice.example/profile/card#me'],
           cc: [],
           content: '  hello\u0000world  ',
+          tag: [
+            { type: 'Mention', href: 'https://alice.example/profile/card#me' },
+            { type: 'Mention', href: 'https://mallory.example/profile/card#me' },
+            { type: 'Hashtag', name: '#PrivateTag' },
+          ],
+          attachment: [
+            { type: 'Link', url: 'https://cdn.example/files/demo.png', mediaType: 'image/png' },
+          ],
         },
       },
       target: 'https://alice.example/inbox',
@@ -85,12 +93,18 @@ describe('maybePersistDirectMessage', () => {
       text: string
       id: string
       convoId: string
+      mentions: string[]
+      hashtags: string[]
+      attachments: Array<Record<string, unknown>>
     }
 
     expect(chatMessageInsert.senderDid).toBe('https://bob.example/profile/card#me')
     expect(chatMessageInsert.text).toBe('helloworld')
     expect(chatMessageInsert.id.length).toBe(36)
     expect(chatMessageInsert.convoId.startsWith('convo_')).toBe(true)
+    expect(chatMessageInsert.mentions).toEqual(['https://alice.example/profile/card#me'])
+    expect(chatMessageInsert.hashtags).toEqual(['privatetag'])
+    expect(chatMessageInsert.attachments.length).toBe(1)
   })
 
   it('does nothing for non-Add payloads', async () => {

@@ -29,12 +29,14 @@ import { applyFollowedReplyThreadBumps, type ThreadBumpMeta } from '../utils/thr
 import crypto from 'crypto'
 import {
   applyViewerThreadMetrics,
+  applyViewerWarningFlags,
   appendVisibleThreadWindow,
   buildViewerThreadMetrics,
   filterViewerModeratedRows as filterViewerModeratedRowsBase,
   finalizeVisibleThreadWindow,
   getThreadRootUri,
   isRowHiddenForViewer,
+  type ModerationVisibilityAction,
   type ViewerModerationFilter,
   type ViewerModerationState,
   type ViewerThreadMetrics,
@@ -55,6 +57,11 @@ type UnifiedFeedRow = {
   title: string | null
   summary: string | null
   canonicalUrl: string | null
+  hasMedia?: boolean
+  moderationWarning?: {
+    reason: 'sensitive-media' | 'atproto-labeler'
+    message: string
+  } | null
   createdAt: Date | null
   isPublic: boolean
   authorId: number | null
@@ -237,7 +244,7 @@ function getUserDashboardBaseUrl(user: { endpoint?: string | null }): string | n
 
 async function fetchViewerDashboardList(
   user: { endpoint?: string | null; token?: string | null },
-  container: 'blocks' | 'mutes' | 'filters',
+  container: 'blocks' | 'mutes' | 'filters' | 'preferences' | 'trust-sources',
 ): Promise<Array<Record<string, unknown>>> {
   const baseUrl = getUserDashboardBaseUrl(user)
   const accessToken = normalizeString(user.token)
@@ -290,6 +297,32 @@ function normalizeViewerFilter(value: Record<string, unknown>): ViewerModeration
   }
 }
 
+function normalizeVisibilityAction(value: unknown, fallback: ModerationVisibilityAction): ModerationVisibilityAction {
+  if (value === 'off' || value === 'warn' || value === 'hide') {
+    return value
+  }
+  return fallback
+}
+
+function getStringPreference(
+  preferences: Array<Record<string, unknown>>,
+  category: string,
+): string | null {
+  for (const item of preferences) {
+    if (normalizeString(item.category) !== category) continue
+    return normalizeString(item.value)
+  }
+  return null
+}
+
+function hasEnabledAtprotoLabelerSource(trustSources: Array<Record<string, unknown>>): boolean {
+  return trustSources.some(source => {
+    if (normalizeString(source.sourceType) !== 'atproto-labeler') return false
+    if (source.enabled === false) return false
+    return true
+  })
+}
+
 async function resolveViewerModerationState(
   user: { endpoint?: string | null; token?: string | null },
 ): Promise<ViewerModerationState | null> {
@@ -299,10 +332,12 @@ async function resolveViewerModerationState(
     return null
   }
 
-  const [blocks, mutes, filters] = await Promise.all([
+  const [blocks, mutes, filters, preferences, trustSources] = await Promise.all([
     fetchViewerDashboardList(user, 'blocks'),
     fetchViewerDashboardList(user, 'mutes'),
     fetchViewerDashboardList(user, 'filters'),
+    fetchViewerDashboardList(user, 'preferences'),
+    fetchViewerDashboardList(user, 'trust-sources'),
   ])
 
   const hiddenSubjectKeys = new Set<string>()
@@ -311,11 +346,25 @@ async function resolveViewerModerationState(
     if (key) hiddenSubjectKeys.add(key)
   }
 
+  const sensitiveMediaAction = normalizeVisibilityAction(
+    getStringPreference(preferences, 'sensitive-media-display'),
+    'warn',
+  )
+
+  const atprotoLabelerAction = normalizeVisibilityAction(
+    getStringPreference(preferences, 'atproto-labeler-default-action')
+      ?? getStringPreference(preferences, 'atproto-labeler-action'),
+    sensitiveMediaAction,
+  )
+
   return {
     hiddenSubjectKeys,
     filters: filters
       .map(normalizeViewerFilter)
       .filter((value): value is ViewerModerationFilter => value !== null),
+    sensitiveMediaAction,
+    atprotoLabelerAction,
+    hasEnabledAtprotoLabelers: hasEnabledAtprotoLabelerSource(trustSources),
   }
 }
 
@@ -370,6 +419,47 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
   return resolved
 }
 
+function hasEmbedsMedia(embeds: unknown): boolean {
+  if (!embeds) return false
+  if (Array.isArray(embeds)) return embeds.length > 0
+  if (typeof embeds === 'object') return Object.keys(embeds as Record<string, unknown>).length > 0
+  return false
+}
+
+async function applyAtprotoMediaFlags(rows: UnifiedFeedRow[]): Promise<UnifiedFeedRow[]> {
+  const atUris = [...new Set(
+    rows
+      .filter(row => row.source === 'atproto' && typeof row.atUri === 'string' && row.atUri.length > 0)
+      .map(row => row.atUri as string),
+  )]
+
+  if (atUris.length === 0) {
+    return rows.map(row => ({ ...row, hasMedia: row.hasMedia === true }))
+  }
+
+  const atRows = await db
+    .select({ atUri: atPosts.atUri, embeds: atPosts.embeds })
+    .from(atPosts)
+    .where(inArray(atPosts.atUri, atUris))
+
+  const mediaByUri = new Map<string, boolean>()
+  for (const row of atRows) {
+    mediaByUri.set(row.atUri, hasEmbedsMedia(row.embeds))
+  }
+
+  return rows.map(row => {
+    if (row.source !== 'atproto') {
+      return { ...row, hasMedia: row.hasMedia === true }
+    }
+
+    const uri = row.atUri ?? ''
+    return {
+      ...row,
+      hasMedia: mediaByUri.get(uri) === true,
+    }
+  })
+}
+
 /**
  * Maps a raw node-postgres row (snake_case keys) to the typed UnifiedFeedRow shape.
  */
@@ -389,6 +479,7 @@ function mapDbRowToFeedRow(row: Record<string, unknown>): UnifiedFeedRow {
     title: row['title'] as string | null,
     summary: row['summary'] as string | null,
     canonicalUrl: row['canonical_url'] as string | null,
+    hasMedia: row['has_media'] === true,
     createdAt: parseDate(row['created_at']),
     isPublic: row['is_public'] as boolean,
     authorId: row['author_id'] as number | null,
@@ -585,7 +676,13 @@ async function queryFeedCandidates(params: {
     cteFragments.push(sql`at_limited AS MATERIALIZED (
       SELECT
         ap.id, ap.content, COALESCE(ap.hashtags, ARRAY[]::text[]) AS hashtags,
-        ap.post_type, ap.title, ap.summary, ap.canonical_url, ap.created_at, ap.is_public,
+        ap.post_type, ap.title, ap.summary, ap.canonical_url,
+        (CASE
+          WHEN jsonb_typeof(ap.embeds) = 'array' THEN jsonb_array_length(ap.embeds) > 0
+          WHEN jsonb_typeof(ap.embeds) = 'object' THEN jsonb_object_length(ap.embeds) > 0
+          ELSE false
+        END) AS has_media,
+        ap.created_at, ap.is_public,
         NULL::integer AS author_id,
         COALESCE(ai.handle, ap.author_did) AS author_name,
         ap.author_did AS author_web_id,
@@ -609,6 +706,7 @@ async function queryFeedCandidates(params: {
         p.id, p.content, p.hashtags,
         p.post_type, p.name AS title, p.summary,
         COALESCE(p.canonical_url, p.object_uri) AS canonical_url,
+        false AS has_media,
         p.created_at, p.is_public, p.author_id,
         u.name AS author_name, u.web_id AS author_web_id,
         u.provider_endpoint AS author_provider_endpoint,
@@ -630,6 +728,7 @@ async function queryFeedCandidates(params: {
         COALESCE(apr.hashtags, ARRAY[]::text[]) AS hashtags,
         apr.post_type, apr.title, apr.summary,
         COALESCE(apr.canonical_url, apr.object_uri) AS canonical_url,
+        false AS has_media,
         LEAST(apr.created_at, NOW()) AS created_at,
         apr.is_public, NULL::integer AS author_id,
         apr.author_name, apr.author_web_id,
@@ -1511,8 +1610,10 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         const bumpedResults = await applyReplyThreadBumps(candidateRows, user)
         console.log('[AT Bridge /feed] Thread bumps applied', { duration: Date.now() - bumpStartTime, results: bumpedResults.length })
 
-        const { visible: results } = filterViewerModeratedRows(bumpedResults, moderationState)
-        console.log('[AT Bridge /feed] Moderation filtered', { visible: results.length, hidden: bumpedResults.length - results.length })
+        const mediaFlaggedResults = await applyAtprotoMediaFlags(bumpedResults)
+        const warningResults = applyViewerWarningFlags(mediaFlaggedResults, moderationState)
+        const { visible: results } = filterViewerModeratedRows(warningResults, moderationState)
+        console.log('[AT Bridge /feed] Moderation filtered', { visible: results.length, hidden: warningResults.length - results.length })
 
         let output = timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto'
           ? results.slice(offset, offset + limit)

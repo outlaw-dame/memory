@@ -463,6 +463,44 @@ describe('POST /chat/sendMessage', () => {
     expect(res.status).toBe(403)
   })
 
+  it('rejects mentions that are outside the conversation membership', async () => {
+    const dbLike = db as unknown as DbLike
+    const origSelect = dbLike.select
+
+    let callCount = 0
+    dbLike.select = () => {
+      callCount += 1
+      if (callCount === 1) return createQueryChain([{ role: 'member' }])
+      // member list does not include mallory
+      return createQueryChain([{ userDid: ALICE_DID }, { userDid: BOB_DID }])
+    }
+
+    stub = {
+      rows: [],
+      transactionResult: null,
+      restore: () => {
+        dbLike.select = origSelect
+      },
+    }
+
+    const app = createAuthenticatedChatApp(ALICE_DID)
+    const res = await app.handle(
+      new Request('http://localhost/chat/sendMessage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          convoId: ALICE_BOB_CONVO_ID,
+          text: 'hello',
+          mentions: ['did:plc:mallory'],
+        }),
+      }),
+    )
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/outside this conversation/i)
+  })
+
   it('strips null bytes from message text', async () => {
     let capturedText: string | null = null
     const dbLike = db as unknown as DbLike
@@ -509,6 +547,54 @@ describe('POST /chat/sendMessage', () => {
 
     expect(capturedText).not.toBeNull()
     expect(capturedText!).toBe('HelloWorld')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /chat/memberAutocomplete
+// ---------------------------------------------------------------------------
+
+describe('GET /chat/memberAutocomplete', () => {
+  let stub: DbStub
+
+  afterEach(() => stub?.restore())
+
+  it('returns suggestions scoped to conversation members', async () => {
+    const dbLike = db as unknown as DbLike
+    const origSelect = dbLike.select
+
+    let callCount = 0
+    dbLike.select = () => {
+      callCount += 1
+      if (callCount === 1) return createQueryChain([{ userDid: ALICE_DID }]) // membership check
+      return createQueryChain([{ userDid: ALICE_DID }, { userDid: BOB_DID }])
+    }
+
+    stub = {
+      rows: [],
+      transactionResult: null,
+      restore: () => {
+        dbLike.select = origSelect
+      },
+    }
+
+    const app = createAuthenticatedChatApp(ALICE_DID)
+    const res = await app.handle(
+      new Request(`http://localhost/chat/memberAutocomplete?convoId=${ALICE_BOB_CONVO_ID}&q=did:plc`),
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.suggestions).toEqual([ALICE_DID, BOB_DID])
+  })
+
+  it('returns 403 when caller is not a member', async () => {
+    stub = stubDb([])
+    const app = createAuthenticatedChatApp(ALICE_DID)
+    const res = await app.handle(
+      new Request(`http://localhost/chat/memberAutocomplete?convoId=${ALICE_BOB_CONVO_ID}&q=alice`),
+    )
+    expect(res.status).toBe(403)
   })
 })
 

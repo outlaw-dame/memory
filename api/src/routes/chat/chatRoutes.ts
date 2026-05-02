@@ -14,7 +14,7 @@
 
 import Elysia, { t } from 'elysia'
 import { createHash, randomUUID } from 'node:crypto'
-import { eq, and, desc, lt, sql } from 'drizzle-orm'
+import { eq, and, desc, lt, sql, ilike } from 'drizzle-orm'
 import { db } from '../../db/client'
 import { chatConvos, chatMembers, chatMessages } from '../../db/chatSchema'
 import type { NoteCreateRequest } from '../../types'
@@ -29,7 +29,12 @@ const MAX_TEXT_LENGTH = 10_000
 const MAX_DID_LENGTH = 2048
 const MAX_GROUP_MEMBERS = 256
 const MIN_GROUP_MEMBERS = 2
+const MAX_MENTIONS = 64
+const MAX_HASHTAGS = 64
+const MAX_ATTACHMENTS = 16
+const MAX_AUTOCOMPLETE_LIMIT = 25
 const CONVO_ID_RE = /^convo_[0-9a-f]{32}$/
+const MESSAGE_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/
 const AS_CONTEXT = 'https://www.w3.org/ns/activitystreams'
 
 // ---------------------------------------------------------------------------
@@ -54,6 +59,46 @@ function isWebId(value: string): boolean {
   return value.startsWith('http://') || value.startsWith('https://')
 }
 
+function sanitizeDid(value: string): string {
+  return value.replace(/\x00/g, '').trim()
+}
+
+function normalizeMentionList(mentions: string[] | undefined): string[] {
+  if (!mentions) return []
+  const deduped = new Set<string>()
+  for (const raw of mentions) {
+    if (typeof raw !== 'string') continue
+    const did = sanitizeDid(raw)
+    if (!did || did.length > MAX_DID_LENGTH) continue
+    deduped.add(did)
+    if (deduped.size >= MAX_MENTIONS) break
+  }
+  return [...deduped]
+}
+
+function normalizeHashtagList(hashtags: string[] | undefined): string[] {
+  if (!hashtags) return []
+  const deduped = new Set<string>()
+  for (const raw of hashtags) {
+    if (typeof raw !== 'string') continue
+    const normalized = raw.replace(/\x00/g, '').trim().replace(/^#/, '').toLowerCase()
+    if (!normalized || normalized.length > 128) continue
+    deduped.add(normalized)
+    if (deduped.size >= MAX_HASHTAGS) break
+  }
+  return [...deduped]
+}
+
+function isValidMessageRefId(value: string | null | undefined): value is string {
+  if (!value) return false
+  const trimmed = value.trim()
+  return MESSAGE_ID_RE.test(trimmed)
+}
+
+function escapeLike(raw: string): string {
+  return raw.replace(/[\\%_]/g, m => `\\${m}`)
+}
+
 // ---------------------------------------------------------------------------
 // Best-effort outgoing DM delivery via ActivityPods outbox
 // ---------------------------------------------------------------------------
@@ -63,6 +108,11 @@ async function postDmToOutbox(
   convoId: string,
   text: string,
   msgId: string,
+  opts?: {
+    mentions?: string[]
+    inReplyToMessageId?: string | null
+    attachments?: Array<Record<string, unknown>>
+  },
 ): Promise<void> {
   // Guard: skip for non-pod users and tests (endpoint/token not set)
   if (!user.endpoint || !user.token || !user.userName) return
@@ -85,12 +135,39 @@ async function postDmToOutbox(
   if (recipientWebIds.length === 0) return
 
   try {
+    const mentionTags = (opts?.mentions ?? [])
+      .filter(isWebId)
+      .map(href => ({ type: 'Mention' as const, href }))
+
+    const attachmentItems = Array.isArray(opts?.attachments)
+      ? opts!.attachments
+          .map(item => {
+            if (!item || typeof item !== 'object') return null
+            const obj = item as Record<string, unknown>
+            const url = typeof obj.url === 'string' ? obj.url : ''
+            if (!/^https?:\/\//i.test(url)) return null
+            const type = typeof obj.type === 'string' ? obj.type : 'Link'
+            const mediaType = typeof obj.mimeType === 'string' ? obj.mimeType : undefined
+            const name = typeof obj.name === 'string' ? obj.name : undefined
+            return {
+              type,
+              mediaType,
+              url,
+              name,
+            }
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null)
+      : []
+
     const post: NoteCreateRequest = {
       '@context': AS_CONTEXT,
       type: 'Note',
       attributedTo: actorUri,
       to: recipientWebIds,
       content: text,
+      ...(mentionTags.length > 0 ? { tag: mentionTags } : {}),
+      ...(attachmentItems.length > 0 ? { attachment: attachmentItems } : {}),
+      ...(opts?.inReplyToMessageId ? { inReplyTo: opts.inReplyToMessageId } : {}),
     }
     await ActivityPod.createPost(user as Parameters<typeof ActivityPod.createPost>[0], post)
   } catch (err) {
@@ -204,6 +281,52 @@ export const chatRoutes = new Elysia()
   })
 
   // ---------------------------------------------------------------------------
+  // GET /chat/memberAutocomplete
+  // Only returns members of the target conversation. Prevents accidental
+  // mentions of users outside the chat.
+  // ---------------------------------------------------------------------------
+  .get('/chat/memberAutocomplete', async ({ user, query, set }) => {
+    const { convoId, q } = query
+    if (!convoId || !isValidConvoId(convoId)) {
+      set.status = 400
+      return { error: 'Invalid convoId format' }
+    }
+
+    const effectiveLimit = Math.min(Math.max(Number(query.limit) || 10, 1), MAX_AUTOCOMPLETE_LIMIT)
+    const callerDid = user.atprotoDid ?? user.getWebId()
+
+    const [membership] = await db
+      .select({ userDid: chatMembers.userDid })
+      .from(chatMembers)
+      .where(and(eq(chatMembers.convoId, convoId), eq(chatMembers.userDid, callerDid)))
+      .limit(1)
+
+    if (!membership) {
+      set.status = 403
+      return { error: 'Not a member of this conversation' }
+    }
+
+    const search = typeof q === 'string' ? sanitizeDid(q) : ''
+    const rows = await db
+      .select({ userDid: chatMembers.userDid })
+      .from(chatMembers)
+      .where(
+        search
+          ? and(eq(chatMembers.convoId, convoId), ilike(chatMembers.userDid, `%${escapeLike(search)}%`))
+          : eq(chatMembers.convoId, convoId),
+      )
+      .limit(effectiveLimit)
+
+    return { suggestions: rows.map(r => r.userDid) }
+  }, {
+    query: t.Object({
+      convoId: t.Optional(t.String()),
+      q: t.Optional(t.String()),
+      limit: t.Optional(t.String()),
+    }),
+  })
+
+  // ---------------------------------------------------------------------------
   // GET /chat/getMessages
   // ---------------------------------------------------------------------------
   .get('/chat/getMessages', async ({ user, query, set }) => {
@@ -251,6 +374,11 @@ export const chatRoutes = new Elysia()
       convoId: msg.convoId,
       senderDid: msg.senderDid,
       text: msg.deletedAt ? '' : msg.text,
+      mentions: Array.isArray(msg.mentions) ? msg.mentions : [],
+      hashtags: Array.isArray(msg.hashtags) ? msg.hashtags : [],
+      attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+      inReplyToMessageId: msg.inReplyToMessageId ?? null,
+      quoteMessageId: msg.quoteMessageId ?? null,
       sentAt: msg.sentAt instanceof Date ? msg.sentAt.toISOString() : String(msg.sentAt),
       rev: msg.rev,
       ...(msg.deletedAt ? { deleted: true } : {}),
@@ -272,7 +400,15 @@ export const chatRoutes = new Elysia()
   // POST /chat/sendMessage
   // ---------------------------------------------------------------------------
   .post('/chat/sendMessage', async ({ user, body, set }) => {
-    const { convoId, text: rawText } = body
+    const {
+      convoId,
+      text: rawText,
+      mentions: rawMentions,
+      hashtags: rawHashtags,
+      attachments: rawAttachments,
+      inReplyToMessageId,
+      quoteMessageId,
+    } = body
 
     if (!convoId || !isValidConvoId(convoId)) {
       set.status = 400
@@ -290,6 +426,23 @@ export const chatRoutes = new Elysia()
       return { error: 'text exceeds maximum length' }
     }
 
+    const mentions = normalizeMentionList(rawMentions)
+    const hashtags = normalizeHashtagList(rawHashtags)
+    const attachments = Array.isArray(rawAttachments) ? rawAttachments.slice(0, MAX_ATTACHMENTS) : []
+
+    const normalizedInReplyToMessageId = isValidMessageRefId(inReplyToMessageId) ? inReplyToMessageId.trim() : null
+    const normalizedQuoteMessageId = isValidMessageRefId(quoteMessageId) ? quoteMessageId.trim() : null
+
+    if (inReplyToMessageId && !normalizedInReplyToMessageId) {
+      set.status = 400
+      return { error: 'Invalid inReplyToMessageId format' }
+    }
+
+    if (quoteMessageId && !normalizedQuoteMessageId) {
+      set.status = 400
+      return { error: 'Invalid quoteMessageId format' }
+    }
+
     const callerDid = user.atprotoDid ?? user.getWebId()
 
     const [membership] = await db
@@ -303,9 +456,62 @@ export const chatRoutes = new Elysia()
       return { error: 'Not a member of this conversation' }
     }
 
+    // Mention scoping: all mentions must be members of this conversation.
+    if (mentions.length > 0) {
+      const memberRows = await db
+        .select({ userDid: chatMembers.userDid })
+        .from(chatMembers)
+        .where(eq(chatMembers.convoId, convoId))
+
+      const memberSet = new Set(memberRows.map(r => r.userDid))
+      const invalidMention = mentions.find(m => !memberSet.has(m))
+      if (invalidMention) {
+        set.status = 400
+        return { error: `Mention is outside this conversation: ${invalidMention}` }
+      }
+    }
+
+    // Ensure reply/quote message references are local to the same conversation.
+    if (normalizedInReplyToMessageId) {
+      const [replyTarget] = await db
+        .select({ id: chatMessages.id })
+        .from(chatMessages)
+        .where(and(eq(chatMessages.id, normalizedInReplyToMessageId), eq(chatMessages.convoId, convoId)))
+        .limit(1)
+      if (!replyTarget) {
+        set.status = 400
+        return { error: 'inReplyToMessageId not found in this conversation' }
+      }
+    }
+
+    if (normalizedQuoteMessageId) {
+      const [quoteTarget] = await db
+        .select({ id: chatMessages.id })
+        .from(chatMessages)
+        .where(and(eq(chatMessages.id, normalizedQuoteMessageId), eq(chatMessages.convoId, convoId)))
+        .limit(1)
+      if (!quoteTarget) {
+        set.status = 400
+        return { error: 'quoteMessageId not found in this conversation' }
+      }
+    }
+
     const msgId = randomUUID()
 
-    let txResult: { id: string; convoId: string; senderDid: string; text: string; sentAt: string; rev: string } | null = null
+    let txResult: {
+      id: string
+      convoId: string
+      senderDid: string
+      text: string
+      mentions: string[]
+      hashtags: string[]
+      attachments: Array<Record<string, unknown>>
+      inReplyToMessageId: string | null
+      quoteMessageId: string | null
+      sentAt: string
+      rev: string
+    } | null = null
+
     try {
       txResult = await db.transaction(async (tx) => {
         const [updated] = await tx
@@ -324,11 +530,28 @@ export const chatRoutes = new Elysia()
           convoId,
           senderDid: callerDid,
           text: sanitized,
+          mentions,
+          hashtags,
+          attachments,
+          inReplyToMessageId: normalizedInReplyToMessageId,
+          quoteMessageId: normalizedQuoteMessageId,
           sentAt,
           rev: msgRev,
         })
 
-        return { id: msgId, convoId, senderDid: callerDid, text: sanitized, sentAt: sentAt.toISOString(), rev: String(msgRev) }
+        return {
+          id: msgId,
+          convoId,
+          senderDid: callerDid,
+          text: sanitized,
+          mentions,
+          hashtags,
+          attachments,
+          inReplyToMessageId: normalizedInReplyToMessageId,
+          quoteMessageId: normalizedQuoteMessageId,
+          sentAt: sentAt.toISOString(),
+          rev: String(msgRev),
+        }
       })
     } catch (err) {
       if (err instanceof Error && err.message === 'CONVO_NOT_FOUND') {
@@ -339,13 +562,22 @@ export const chatRoutes = new Elysia()
     }
 
     // Best-effort AP delivery via ActivityPods outbox (non-blocking)
-    postDmToOutbox(user, convoId, sanitized, msgId).catch(() => {})
+    postDmToOutbox(user, convoId, sanitized, msgId, {
+      mentions,
+      inReplyToMessageId: normalizedInReplyToMessageId,
+      attachments,
+    }).catch(() => {})
 
     return { message: txResult }
   }, {
     body: t.Object({
       convoId: t.String(),
       text: t.String(),
+      mentions: t.Optional(t.Array(t.String())),
+      hashtags: t.Optional(t.Array(t.String())),
+      attachments: t.Optional(t.Array(t.Record(t.String(), t.Any()))),
+      inReplyToMessageId: t.Optional(t.String()),
+      quoteMessageId: t.Optional(t.String()),
     }),
   })
 

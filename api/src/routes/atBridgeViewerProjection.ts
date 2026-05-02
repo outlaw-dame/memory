@@ -7,9 +7,19 @@ export type ViewerModerationFilter = {
   includeHashtagVariants: boolean
 }
 
+export type ModerationVisibilityAction = 'off' | 'warn' | 'hide'
+
 export type ViewerModerationState = {
   hiddenSubjectKeys: Set<string>
   filters: ViewerModerationFilter[]
+  sensitiveMediaAction: ModerationVisibilityAction
+  atprotoLabelerAction: ModerationVisibilityAction
+  hasEnabledAtprotoLabelers: boolean
+}
+
+export type ModerationWarning = {
+  reason: 'sensitive-media' | 'atproto-labeler'
+  message: string
 }
 
 export type ThreadProjectionRow = {
@@ -22,6 +32,8 @@ export type ThreadProjectionRow = {
   title: string | null
   summary: string | null
   hashtags: string[]
+  hasMedia?: boolean | null
+  moderationWarning?: ModerationWarning | null
   createdAt: Date | null
   replyParentUri?: string | null
   replyRootUri?: string | null
@@ -139,6 +151,52 @@ function matchesViewerKeywordFilter(row: ThreadProjectionRow, filters: ViewerMod
   return false
 }
 
+function rowHasMedia(row: ThreadProjectionRow): boolean {
+  return row.hasMedia === true
+}
+
+function shouldHideForMediaPolicy(row: ThreadProjectionRow, state: ViewerModerationState): boolean {
+  if (!rowHasMedia(row)) return false
+
+  if (state.sensitiveMediaAction === 'hide') {
+    return true
+  }
+
+  if (
+    state.hasEnabledAtprotoLabelers &&
+    row.source === 'atproto' &&
+    state.atprotoLabelerAction === 'hide'
+  ) {
+    return true
+  }
+
+  return false
+}
+
+function resolveWarningForRow(row: ThreadProjectionRow, state: ViewerModerationState): ModerationWarning | null {
+  if (!rowHasMedia(row)) return null
+
+  if (
+    state.hasEnabledAtprotoLabelers &&
+    row.source === 'atproto' &&
+    state.atprotoLabelerAction === 'warn'
+  ) {
+    return {
+      reason: 'atproto-labeler',
+      message: 'Hidden preview: trusted ATProto labelers flagged this media as sensitive.',
+    }
+  }
+
+  if (state.sensitiveMediaAction === 'warn') {
+    return {
+      reason: 'sensitive-media',
+      message: 'Hidden preview: your sensitive media preference is set to warn.',
+    }
+  }
+
+  return null
+}
+
 export function isRowHiddenForViewer(row: ThreadProjectionRow, state: ViewerModerationState | null): boolean {
   if (!state) return false
 
@@ -147,7 +205,10 @@ export function isRowHiddenForViewer(row: ThreadProjectionRow, state: ViewerMode
     if (state.hiddenSubjectKeys.has(key)) return true
   }
 
-  return matchesViewerKeywordFilter(row, state.filters)
+  if (matchesViewerKeywordFilter(row, state.filters)) return true
+  if (shouldHideForMediaPolicy(row, state)) return true
+
+  return false
 }
 
 export function filterViewerModeratedRows<T extends ThreadProjectionRow>(
@@ -170,6 +231,21 @@ export function filterViewerModeratedRows<T extends ThreadProjectionRow>(
   }
 
   return { visible, hiddenCount }
+}
+
+export function applyViewerWarningFlags<T extends ThreadProjectionRow>(
+  rows: T[],
+  state: ViewerModerationState | null,
+): T[] {
+  if (!state || rows.length === 0) return rows
+
+  return rows.map(row => {
+    const warning = resolveWarningForRow(row, state)
+    return {
+      ...row,
+      moderationWarning: warning,
+    }
+  })
 }
 
 export function getThreadRootUri(row: ThreadProjectionRow): string | null {

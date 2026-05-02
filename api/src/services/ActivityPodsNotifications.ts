@@ -524,6 +524,55 @@ function deriveConvoIdFromDids(dids: string[]): string {
   return `convo_${crypto.createHash('sha256').update(sorted.join('|')).digest('hex').slice(0, 32)}`
 }
 
+function extractMentionsAndHashtags(tags: unknown): { mentions: string[]; hashtags: string[] } {
+  const mentionSet = new Set<string>()
+  const hashtagSet = new Set<string>()
+
+  for (const tag of toArrayValue(tags)) {
+    if (!tag || typeof tag !== 'object' || Array.isArray(tag)) continue
+    const record = tag as Record<string, unknown>
+    const typeValues = toArrayValue(record.type)
+    const isMention = typeValues.some(t => t === 'Mention')
+    const isHashtag = typeValues.some(t => t === 'Hashtag')
+
+    if (isMention) {
+      const mentionUri = extractUriString(record.href ?? record.id)
+      if (mentionUri && /^https?:\/\//i.test(mentionUri) && mentionUri.length <= 2048) {
+        mentionSet.add(mentionUri)
+      }
+    }
+
+    if (isHashtag && typeof record.name === 'string') {
+      const normalized = record.name.replace(/^#/, '').trim().toLowerCase()
+      if (normalized && normalized.length <= 128) {
+        hashtagSet.add(normalized)
+      }
+    }
+  }
+
+  return { mentions: [...mentionSet], hashtags: [...hashtagSet] }
+}
+
+function extractAttachments(attachmentsRaw: unknown): Array<Record<string, unknown>> {
+  const attachments: Array<Record<string, unknown>> = []
+  for (const item of toArrayValue(attachmentsRaw).slice(0, 16)) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+    const r = item as Record<string, unknown>
+    const url = extractUriString(r.url ?? r.href)
+    if (!url || !/^https?:\/\//i.test(url) || url.length > 2048) continue
+
+    const entry: Record<string, unknown> = {
+      type: typeof r.type === 'string' ? r.type : 'Link',
+      url,
+    }
+
+    if (typeof r.mediaType === 'string') entry.mimeType = r.mediaType
+    if (typeof r.name === 'string') entry.name = r.name.slice(0, 256)
+    attachments.push(entry)
+  }
+  return attachments
+}
+
 /**
  * Inspects a raw Solid Notifications webhook payload for an AP Create(Note) DM
  * and, if detected, upserts the conversation + message into the local chat DB.
@@ -613,6 +662,13 @@ export async function maybePersistDirectMessage(
   const rawContent = typeof objRecord.content === 'string' ? objRecord.content : ''
   const text = rawContent.replace(/\x00/g, '').trim().slice(0, 10_000)
 
+  const { mentions: rawMentions, hashtags } = extractMentionsAndHashtags(objRecord.tag)
+  const attachments = extractAttachments(objRecord.attachment)
+
+  // Mention scoping: direct-message mentions must remain inside the chat participants.
+  const allowedMentionUris = new Set([actorUri, recipientWebId])
+  const mentions = rawMentions.filter(uri => allowedMentionUris.has(uri))
+
   // 9. Derive stable convoId
   const convoId = deriveConvoIdFromDids([actorUri, recipientWebId])
 
@@ -647,6 +703,11 @@ export async function maybePersistDirectMessage(
       convoId,
       senderDid: actorUri,
       text,
+      mentions,
+      hashtags,
+      attachments,
+      inReplyToMessageId: null,
+      quoteMessageId: null,
       sentAt,
       rev: 0,
     }).onConflictDoNothing()

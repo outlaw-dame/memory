@@ -123,6 +123,12 @@ const router = createRouter({
       meta: { titleKey: 'app.title.feedControls' }
     },
     {
+      path: '/settings/moderation',
+      name: 'settings-moderation',
+      component: () => import('../views/ModerationSettingsView.vue'),
+      meta: { titleKey: 'app.title.moderation' }
+    },
+    {
       path: '/settings/profile',
       name: 'settings-profile',
       component: () => import('../views/SettingsProfileView.vue'),

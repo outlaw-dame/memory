@@ -49,6 +49,7 @@ const { t } = useI18n()
 const actor = ref<ActorProfile | null>(null)
 const name = ref('')
 const summary = ref('')
+const limitExternalDiscovery = ref(true)
 const statusDraft = ref<ActorStatusDraft>(clearActorStatusDraft())
 const attributionDomains = ref<string[]>([])
 const metadataFields = ref<ProfileField[]>([])
@@ -79,6 +80,24 @@ const authHeaders = computed(() =>
   })
 )
 
+const parseBoolean = (value: unknown): boolean | null => {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return null
+
+  const normalized = value.trim().toLowerCase()
+  if (['true', '1', 'yes', 'on'].includes(normalized)) return true
+  if (['false', '0', 'no', 'off'].includes(normalized)) return false
+  return null
+}
+
+const isExternalDiscoveryLimited = (profile: ActorProfile): boolean => {
+  const indexable = parseBoolean(profile.indexable)
+  const noindex = parseBoolean(profile.noindex)
+  const discoverable = parseBoolean(profile.discoverable)
+
+  return noindex === true || indexable !== true || discoverable === false
+}
+
 const loadProfile = async () => {
   isLoading.value = true
   errorMessage.value = ''
@@ -94,6 +113,7 @@ const loadProfile = async () => {
     actor.value = profile
     name.value = typeof profile.name === 'string' ? profile.name : ''
     summary.value = typeof profile.summary === 'string' ? profile.summary : ''
+    limitExternalDiscovery.value = isExternalDiscoveryLimited(profile)
     statusDraft.value = parseActorStatusDraft(profile.status)
     attributionDomains.value = parseActorAttributionDomains(profile)
     metadataFields.value = extractProfileFields(profile.attachment)
@@ -125,6 +145,9 @@ const saveProfile = async () => {
       name: name.value.trim(),
       'foaf:name': name.value.trim(),
       summary: summary.value.trim(),
+      indexable: !limitExternalDiscovery.value,
+      noindex: limitExternalDiscovery.value,
+      discoverable: !limitExternalDiscovery.value,
       status: buildActorStatusPayload(statusDraft.value),
       attachment: mergeProfileFieldsIntoAttachment(actor.value.attachment, metadataFields.value)
     }
@@ -149,6 +172,7 @@ const saveProfile = async () => {
     actor.value = profile
     name.value = typeof profile.name === 'string' ? profile.name : ''
     summary.value = typeof profile.summary === 'string' ? profile.summary : ''
+    limitExternalDiscovery.value = isExternalDiscoveryLimited(profile)
     statusDraft.value = parseActorStatusDraft(profile.status)
     attributionDomains.value = parseActorAttributionDomains(profile)
     metadataFields.value = extractProfileFields(profile.attachment)
@@ -242,6 +266,18 @@ onMounted(() => {
           rows="4"
           class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
         />
+      </label>
+
+      <label class="flex items-start gap-3 rounded bg-white p-3 text-sm shadow-sm">
+        <input
+          v-model="limitExternalDiscovery"
+          type="checkbox"
+          class="mt-1"
+        />
+        <span class="flex flex-col gap-1">
+          <span class="font-semibold">{{ t('settings.profile.discovery.limitExternalDiscovery') }}</span>
+          <span class="text-caption">{{ t('settings.profile.discovery.description') }}</span>
+        </span>
       </label>
 
       <div class="flex flex-col gap-3 rounded bg-white p-3 shadow-sm">

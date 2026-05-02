@@ -46,5 +46,12 @@ function onLocaleChange(event: Event) {
       <h3 class="text-base font-semibold">{{ t('settings.cards.feedControls.title') }}</h3>
       <p class="text-caption mt-1">{{ t('settings.cards.feedControls.description') }}</p>
     </RouterLink>
+    <RouterLink
+      to="/settings/moderation"
+      class="rounded-default bg-pastel-light p-[var(--padding-main)] hover:bg-blue-100 transition-colors"
+    >
+      <h3 class="text-base font-semibold">{{ t('settings.cards.moderation.title') }}</h3>
+      <p class="text-caption mt-1">{{ t('settings.cards.moderation.description') }}</p>
+    </RouterLink>
   </div>
 </template>
