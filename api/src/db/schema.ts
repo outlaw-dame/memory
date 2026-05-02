@@ -1,5 +1,5 @@
 import { relations, eq, sql } from 'drizzle-orm'
-import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb } from 'drizzle-orm/pg-core'
+import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb, index } from 'drizzle-orm/pg-core'
 
 export const users = table('users', {
   id: serial().primaryKey(),
@@ -109,4 +109,72 @@ export const notifications = table('notifications', {
   payload: jsonb('payload').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  /** Whether the user has read this notification. */
+  isRead: boolean('is_read').notNull().default(false),
+  /** Timestamp of when the user marked this notification read. */
+  readAt: timestamp('read_at', { withTimezone: true }),
 })
+
+// ---------------------------------------------------------------------------
+// Bookmarks — per-user saved posts (cross-protocol)
+// ---------------------------------------------------------------------------
+
+/**
+ * Persists bookmark state so it survives page reloads and works offline.
+ * Mirrors the semantics of Mastodon's bookmarks table and Bluesky's
+ * private bookmark records: visible only to the owner, never to others.
+ *
+ * Exactly one of atUri or objectUri will be set, depending on source.
+ * The uniqueness constraint is on (user_id, COALESCE(at_uri, object_uri)).
+ */
+export const bookmarks = table('bookmarks', {
+  id: serial().primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  /** AT URI for ATProto posts; null for AP posts. */
+  atUri: varchar('at_uri', { length: 3072 }),
+  /** AP object URI for ActivityPods/AP posts; null for AT posts. */
+  objectUri: text('object_uri'),
+  /** Feed source tag for faster client-side filtering. */
+  source: varchar('source', { length: 32 }).notNull(),
+  bookmarkedAt: timestamp('bookmarked_at', { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index('bookmarks_user_at_uri_idx').on(t.userId, t.atUri),
+  index('bookmarks_user_object_uri_idx').on(t.userId, t.objectUri),
+])
+// ---------------------------------------------------------------------------
+// Viewer Relationship Cache — persisted follow/mute/block state
+// ---------------------------------------------------------------------------
+
+/**
+ * Caches the viewer's per-actor relationship state so the feed and profile
+ * endpoints don't need to hit the ActivityPods dashboard on every request.
+ *
+ * Mirrors the pattern used by both Mastodon (follows/blocks/mutes tables) and
+ * Bluesky (viewer state embedded in getProfile/getAuthorFeed responses).
+ *
+ * TTL is enforced by `refreshedAt`; stale entries are re-fetched in the
+ * background and the cached value is used for the current response.
+ */
+export const viewerRelationshipCache = table('viewer_relationship_cache', {
+  id: serial().primaryKey(),
+  /** Local user whose perspective this row represents. */
+  viewerUserId: integer('viewer_user_id').notNull().references(() => users.id),
+  /** Canonical actor URI of the remote subject (AP actor URI or AT DID). */
+  subjectUri: varchar('subject_uri', { length: 2048 }).notNull(),
+  /** Protocol of the subject actor. */
+  subjectProtocol: varchar('subject_protocol', { length: 16 }).notNull().default('activitypods'),
+  /** Whether the viewer is following this actor. */
+  isFollowing: boolean('is_following').notNull().default(false),
+  /** Whether this actor follows the viewer back. */
+  isFollowedBy: boolean('is_followed_by').notNull().default(false),
+  /** Whether the viewer has muted this actor. */
+  isMuted: boolean('is_muted').notNull().default(false),
+  /** Whether the viewer has blocked this actor. */
+  isBlocked: boolean('is_blocked').notNull().default(false),
+  /** Whether this actor has blocked the viewer. */
+  isBlockedBy: boolean('is_blocked_by').notNull().default(false),
+  /** ISO-8601 timestamp of last refresh from the upstream source. */
+  refreshedAt: timestamp('refreshed_at', { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index('viewer_rel_cache_viewer_subject_idx').on(t.viewerUserId, t.subjectUri),
+])

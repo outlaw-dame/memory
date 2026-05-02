@@ -114,6 +114,11 @@ async function applySchema(pg: PGliteWorker): Promise<void> {
       object_uri  TEXT        PRIMARY KEY,
       followed_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    CREATE TABLE IF NOT EXISTS local_bookmarks (
+      post_id       TEXT        PRIMARY KEY,
+      bookmarked_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `)
 
   // HNSW index for approximate nearest-neighbour vector search (cosine)

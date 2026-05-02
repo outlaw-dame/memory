@@ -49,6 +49,15 @@ export const atIdentities = table('at_identities', {
   /** Banner image URL from the actor's profile blob. */
   bannerUrl: varchar('banner_url', { length: 3072 }),
 
+  /** Number of accounts following this actor (from getProfiles). */
+  followersCount: integer('followers_count'),
+
+  /** Number of accounts this actor follows (from getProfiles). */
+  followsCount: integer('follows_count'),
+
+  /** Number of posts authored by this actor (from getProfiles). */
+  postsCount: integer('posts_count'),
+
   /** Full DID document as JSON. */
   didDocument: jsonb('did_document'),
 
@@ -292,6 +301,15 @@ export const apActorCache = table('ap_actor_cache', {
 
   /** Domain the actor belongs to (extracted from actorUri). */
   domain: varchar('domain', { length: 253 }),
+
+  /** Follower count from the actor's followers collection (if exposed inline). */
+  followersCount: integer('followers_count'),
+
+  /** Following count from the actor's following collection (if exposed inline). */
+  followingCount: integer('following_count'),
+
+  /** Status/post count from the actor's outbox collection (if exposed inline). */
+  postsCount: integer('posts_count'),
 
   /** ISO-8601 timestamp of when this cache entry was last refreshed. */
   cachedAt: timestamp('cached_at', { withTimezone: true }).defaultNow().notNull(),

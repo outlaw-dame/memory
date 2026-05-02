@@ -111,3 +111,19 @@ export const localFollows = table('local_follows', {
 })
 
 export type LocalFollow = typeof localFollows.$inferSelect
+
+// ---------------------------------------------------------------------------
+// local_bookmarks — persisted bookmark state (survives page reload)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tracks posts that the local user has bookmarked.
+ * `postId` uses the composite '{source}:{server_id}' format matching local_posts.id.
+ * Populated by useBookmark on success; consulted to restore isBookmarked state.
+ */
+export const localBookmarks = table('local_bookmarks', {
+  postId: text('post_id').primaryKey(),
+  bookmarkedAt: timestamp('bookmarked_at', { withTimezone: true }).default(sql`now()`).notNull(),
+})
+
+export type LocalBookmark = typeof localBookmarks.$inferSelect

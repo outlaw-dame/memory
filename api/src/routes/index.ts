@@ -15,3 +15,4 @@ export { default as activityPodsNotificationsPlugin } from './activityPodsNotifi
 export { default as apBridgeWebhookPlugin } from './apBridgeWebhook'
 export { default as chatPlugin } from './chat'
 export { default as linkPreviewPlugin } from './linkPreview'
+export { default as bookmarksPlugin } from './bookmarks'

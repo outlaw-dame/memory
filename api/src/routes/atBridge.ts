@@ -463,6 +463,9 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
           displayName?: string
           avatar?: string
           banner?: string
+          followersCount?: number
+          followsCount?: number
+          postsCount?: number
         }>
       }
       const profiles = data?.profiles ?? []
@@ -479,6 +482,9 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
           displayName: p.displayName ?? null,
           avatarUrl: p.avatar ?? null,
           bannerUrl: p.banner ?? null,
+          followersCount: typeof p.followersCount === 'number' ? p.followersCount : null,
+          followsCount: typeof p.followsCount === 'number' ? p.followsCount : null,
+          postsCount: typeof p.postsCount === 'number' ? p.postsCount : null,
           isActive: true,
           resolvedAt: new Date(),
           updatedAt: new Date(),
@@ -493,6 +499,9 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
               displayName: sql`EXCLUDED.display_name`,
               avatarUrl: sql`EXCLUDED.avatar_url`,
               bannerUrl: sql`EXCLUDED.banner_url`,
+              followersCount: sql`EXCLUDED.followers_count`,
+              followsCount: sql`EXCLUDED.follows_count`,
+              postsCount: sql`EXCLUDED.posts_count`,
               resolvedAt: new Date(),
               updatedAt: new Date(),
             },

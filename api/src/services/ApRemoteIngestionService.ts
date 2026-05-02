@@ -304,6 +304,21 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
     const avatarUrl = extractMediaUrl(iconObj)
     const bannerUrl = extractMediaUrl(imageObj)
 
+    // Extract follower/following/post counts when the actor document exposes
+    // them as collection objects with totalItems (Misskey, Pleroma, some others).
+    // Most Mastodon instances only expose URIs here; those remain null.
+    function extractCollectionCount(obj: unknown): number | null {
+      if (typeof obj === 'number' && Number.isFinite(obj) && obj >= 0) return Math.trunc(obj)
+      if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+        const ti = (obj as Record<string, unknown>)['totalItems']
+        if (typeof ti === 'number' && Number.isFinite(ti) && ti >= 0) return Math.trunc(ti)
+      }
+      return null
+    }
+    const followersCount = extractCollectionCount(actor['followers'])
+    const followingCount = extractCollectionCount(actor['following'])
+    const postsCount = extractCollectionCount(actor['outbox'])
+
     await db
       .insert(apActorCache)
       .values({
@@ -314,6 +329,9 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
         bannerUrl,
         summary,
         domain,
+        followersCount,
+        followingCount,
+        postsCount,
         cachedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -325,6 +343,9 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
           bannerUrl,
           summary,
           domain,
+          followersCount,
+          followingCount,
+          postsCount,
           cachedAt: new Date(),
         },
       })
