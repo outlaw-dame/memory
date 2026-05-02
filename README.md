@@ -49,6 +49,8 @@ From the repository root, you can also run:
 #### Running the frontend
 - go into the directory `cd frontend`
 - run `bun install` to install the dependencies
+- copy env template: `cp .env.example .env`
+- set `VITE_KLIPY_APP_KEY` in `frontend/.env` to enable Klipy GIF search/trending/recent
 - run `bun dev` to start the frontend
 
 ### Building the app for android

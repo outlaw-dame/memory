@@ -9,12 +9,19 @@
 const BASE = 'https://api.klipy.com'
 const APP_KEY = import.meta.env.VITE_KLIPY_APP_KEY as string
 
-function requireKlipyAppKey(): string {
+function resolveKlipyAppKey(): string {
   const key = typeof APP_KEY === 'string' ? APP_KEY.trim() : ''
-  if (!key) {
+  return key
+}
+
+function assertConfigured(appKey: string): void {
+  if (!appKey) {
     throw new Error('Klipy API key is missing. Set VITE_KLIPY_APP_KEY.')
   }
-  return key
+}
+
+export function isKlipyConfigured(): boolean {
+  return resolveKlipyAppKey().length > 0
 }
 
 // ---------------------------------------------------------------------------
@@ -82,12 +89,13 @@ async function klipyFetch<T>(path: string, options?: RequestInit): Promise<T> {
 // ---------------------------------------------------------------------------
 
 export function useKlipy(customerId: string) {
-  const appKey = requireKlipyAppKey()
+  const appKey = resolveKlipyAppKey()
 
   /**
    * Trending GIFs — updated throughout the day.
    */
   async function trending(page = 1, perPage = 24): Promise<KlipyPage> {
+    assertConfigured(appKey)
     const params = new URLSearchParams({
       page: String(page),
       per_page: String(perPage),
@@ -101,6 +109,7 @@ export function useKlipy(customerId: string) {
    * Search GIFs by keyword.
    */
   async function search(q: string, page = 1, perPage = 24): Promise<KlipyPage> {
+    assertConfigured(appKey)
     const params = new URLSearchParams({
       q,
       page: String(page),
@@ -116,6 +125,7 @@ export function useKlipy(customerId: string) {
    * Recently used GIFs for this customer.
    */
   async function recent(page = 1, perPage = 24): Promise<KlipyPage> {
+    assertConfigured(appKey)
     const params = new URLSearchParams({
       page: String(page),
       per_page: String(perPage),
@@ -127,6 +137,7 @@ export function useKlipy(customerId: string) {
    * GIF categories / browse tags.
    */
   async function categories(locale?: string): Promise<KlipyCategory[]> {
+    assertConfigured(appKey)
     const params = locale ? `?locale=${locale}` : ''
     const result = await klipyFetch<KlipyCategory[]>(`/api/v1/${appKey}/gifs/categories${params}`)
     return Array.isArray(result) ? result : []
@@ -137,6 +148,7 @@ export function useKlipy(customerId: string) {
    * Fire-and-forget — errors are silently swallowed.
    */
   async function trackShare(slug: string): Promise<void> {
+    if (!appKey) return
     try {
       await fetch(`${BASE}/api/v1/${appKey}/gifs/share/${slug}`, { method: 'POST' })
     } catch {
@@ -148,6 +160,7 @@ export function useKlipy(customerId: string) {
    * Remove a GIF from the user's recent history.
    */
   async function removeRecent(slug: string): Promise<void> {
+    assertConfigured(appKey)
     const params = new URLSearchParams({ slug })
     await fetch(
       `${BASE}/api/v1/${appKey}/gifs/recent/${customerId}?${params}`,
