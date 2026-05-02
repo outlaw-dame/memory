@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import HashtagText from '@/components/HashtagText.vue'
+import PostMediaCarousel from '@/components/PostMediaCarousel.vue'
+import type { CarouselMediaItem } from '@/components/PostMediaCarousel.vue'
 import { useConversationsStore } from '@/stores/conversationsStore'
 import { useI18n } from '@/i18n'
 import { parseHashtagInput } from '@/utils/hashtags'
@@ -100,6 +102,53 @@ function formatTimestamp(value: string | null): string {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+  })
+}
+
+function inferMediaType(attachment: Record<string, unknown>): CarouselMediaItem['type'] | null {
+  const rawMime = typeof attachment.mimeType === 'string'
+    ? attachment.mimeType.toLowerCase()
+    : (typeof attachment.mediaType === 'string' ? attachment.mediaType.toLowerCase() : '')
+  const url = typeof attachment.url === 'string' ? attachment.url.toLowerCase() : ''
+  const declaredType = typeof attachment.type === 'string' ? attachment.type.toLowerCase() : ''
+
+  if (rawMime.startsWith('video/') || declaredType === 'video' || /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(url)) {
+    return 'video'
+  }
+  if (rawMime === 'image/gif' || declaredType === 'gif' || /\.gif(\?|#|$)/i.test(url)) {
+    return 'gif'
+  }
+  if (rawMime.startsWith('image/') || declaredType === 'image' || /\.(png|jpe?g|webp|avif|heic|bmp|svg)(\?|#|$)/i.test(url)) {
+    return 'image'
+  }
+  return null
+}
+
+function extractMediaAttachments(attachments: Array<Record<string, unknown>>): CarouselMediaItem[] {
+  const media: CarouselMediaItem[] = []
+  for (const attachment of attachments) {
+    if (!attachment || typeof attachment !== 'object') continue
+    const url = typeof attachment.url === 'string' ? attachment.url : ''
+    if (!/^https?:\/\//i.test(url)) continue
+    const mediaType = inferMediaType(attachment)
+    if (!mediaType) continue
+
+    media.push({
+      type: mediaType,
+      url,
+      alt: typeof attachment.alt === 'string' ? attachment.alt : undefined,
+      attribution: typeof attachment.attribution === 'string' ? attachment.attribution : undefined,
+      poster: typeof attachment.poster === 'string' ? attachment.poster : undefined,
+      filename: typeof attachment.name === 'string' ? attachment.name : undefined,
+    })
+  }
+  return media
+}
+
+function extractNonMediaAttachments(attachments: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return attachments.filter(attachment => {
+    if (!attachment || typeof attachment !== 'object') return false
+    return inferMediaType(attachment) === null
   })
 }
 
@@ -385,9 +434,17 @@ function onComposerKeydown(event: KeyboardEvent): void {
             <p v-if="message.deleted" class="italic text-dark-40">{{ t('messages.deletedPreview') }}</p>
             <HashtagText v-else :text="message.text" />
 
-            <div v-if="message.attachments.length > 0" class="mt-3 flex flex-wrap gap-2">
+            <div v-if="extractMediaAttachments(message.attachments).length > 1" class="mt-3">
+              <PostMediaCarousel :items="extractMediaAttachments(message.attachments)" />
+            </div>
+
+            <div v-if="extractMediaAttachments(message.attachments).length === 1" class="mt-3">
+              <PostMediaCarousel :items="extractMediaAttachments(message.attachments)" />
+            </div>
+
+            <div v-if="extractNonMediaAttachments(message.attachments).length > 0" class="mt-3 flex flex-wrap gap-2">
               <a
-                v-for="(attachment, index) in message.attachments"
+                v-for="(attachment, index) in extractNonMediaAttachments(message.attachments)"
                 :key="`${message.id}-${index}`"
                 :href="typeof attachment.url === 'string' ? attachment.url : '#'
                 "

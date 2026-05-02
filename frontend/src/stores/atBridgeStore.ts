@@ -19,6 +19,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { useAuthStore } from './authStore'
+import type { CarouselMediaItem } from '@/components/PostMediaCarousel.vue'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -154,6 +155,7 @@ export interface UnifiedFeedItem {
   quoteCount?: number | null
   quotedPost?: QuotedPost
   linkPreview?: QuotedPost['linkPreview']
+  media?: CarouselMediaItem[]
   /** Present when this feed item is a poll (FEP-9967 Question object). */
   poll?: FeedPoll | null
 }

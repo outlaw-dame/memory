@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n'
 import HashtagText from './HashtagText.vue'
 import PostEmbedCard from './PostEmbedCard.vue'
 import PostLinkPreview from './PostLinkPreview.vue'
+import PostMediaCarousel from './PostMediaCarousel.vue'
 import PostPoll from './PostPoll.vue'
 import ThreadSummary from './ThreadSummary.vue'
 import type { EmbeddedPost } from './PostEmbedCard.vue'
@@ -464,6 +465,10 @@ async function onRepostClick() {
 
     <div v-if="resolvedLinkPreview" class="mt-3" @click.stop>
       <PostLinkPreview :preview="resolvedLinkPreview" />
+    </div>
+
+    <div v-if="Array.isArray(item.media) && item.media.length > 0" class="mt-3" @click.stop>
+      <PostMediaCarousel :items="item.media" />
     </div>
 
     <!-- Poll (FEP-9967) -->

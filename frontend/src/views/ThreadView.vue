@@ -3,8 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import PostAudioPlayer from '@/components/PostAudioPlayer.vue'
 import PostPoll from '@/components/PostPoll.vue'
-import PostImageGrid from '@/components/PostImageGrid.vue'
-import type { GridImage } from '@/components/PostImageGrid.vue'
+import PostMediaCarousel from '@/components/PostMediaCarousel.vue'
+import type { CarouselMediaItem } from '@/components/PostMediaCarousel.vue'
 import PostLinkPreview from '@/components/PostLinkPreview.vue'
 import type { LinkPreviewData } from '@/components/PostLinkPreview.vue'
 import AiInterpolatorCard from '@/components/AiInterpolatorCard.vue'
@@ -38,7 +38,7 @@ interface ThreadPost {
   repostCount: string
   audio?: { filename: string; duration: number }
   poll?: FeedPoll
-  images?: GridImage[]
+  media?: CarouselMediaItem[]
   linkPreview?: LinkPreviewData
 }
 
@@ -93,6 +93,7 @@ function toThreadPost(item: UnifiedFeedItem, inReplyToName?: string): ThreadPost
     likeCount: '0',
     repostCount: '0',
     poll: item.poll ?? undefined,
+    media: Array.isArray(item.media) ? item.media : undefined,
     linkPreview: inlinePreview ?? undefined,
   }
 }
@@ -269,6 +270,9 @@ function formatCount(n: string | undefined): string {
         <!-- Link preview -->
         <PostLinkPreview v-if="rootPost.linkPreview" :preview="rootPost.linkPreview" />
 
+        <!-- Media carousel -->
+        <PostMediaCarousel v-if="rootPost.media?.length" :items="rootPost.media" />
+
         <!-- View count -->
         <p v-if="rootPost.viewCount" class="text-caption text-dark-50">{{ rootPost.viewCount }} views</p>
 
@@ -372,8 +376,8 @@ function formatCount(n: string | undefined): string {
           <!-- Poll -->
           <PostPoll v-if="reply.poll" :poll="reply.poll" />
 
-          <!-- Image grid -->
-          <PostImageGrid v-if="reply.images?.length" :images="reply.images" />
+          <!-- Media carousel -->
+          <PostMediaCarousel v-if="reply.media?.length" :items="reply.media" />
 
           <!-- Link preview -->
           <PostLinkPreview v-if="reply.linkPreview" :preview="reply.linkPreview" />
