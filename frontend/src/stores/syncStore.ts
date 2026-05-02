@@ -17,7 +17,7 @@ import { ref, computed } from 'vue'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { getLocalDb, getWorker } from '@/db/localDb'
 import { syncState, pendingWrites } from '@/db/localSchema'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { useAuthStore } from './authStore'
 import type { UnifiedFeedItem } from './atBridgeStore'
 
@@ -76,6 +76,7 @@ const SYNC_ENTITY = 'unified_feed'
 const EMBED_BATCH_SIZE = 8
 const SYNC_LIMIT = 200       // posts fetched per sync pass
 const MAX_WRITE_RETRIES = 3
+const LOCAL_POSTS_MAX_ROWS = 5000
 
 export const useSyncStore = defineStore('sync', () => {
   const authStore = useAuthStore()
@@ -180,6 +181,7 @@ export const useSyncStore = defineStore('sync', () => {
       }
 
       await upsertPosts(items)
+      await pruneLocalPostCache()
 
       // Advance cursor to the newest post's timestamp
       const newest = items.reduce((acc, item) => {
@@ -249,6 +251,29 @@ export const useSyncStore = defineStore('sync', () => {
         ],
       )
     }
+  }
+
+  async function pruneLocalPostCache(maxRows = LOCAL_POSTS_MAX_ROWS): Promise<void> {
+    const pg = await getWorker()
+
+    const { rows } = await pg.query<{ count: number }>(
+      `SELECT count(*)::int AS count FROM local_posts`,
+      [],
+    )
+
+    const total = rows[0]?.count ?? 0
+    if (total <= maxRows) return
+
+    await pg.query(
+      `DELETE FROM local_posts
+       WHERE id IN (
+         SELECT id
+         FROM local_posts
+         ORDER BY COALESCE(created_at, synced_at, to_timestamp(0)) DESC, id DESC
+         OFFSET $1
+       )`,
+      [maxRows],
+    )
   }
 
   // ---------------------------------------------------------------------------
@@ -335,7 +360,10 @@ export const useSyncStore = defineStore('sync', () => {
     if (!isOnline.value || !authStore.token) return
 
     const db = await getLocalDb()
-    const writes = await db.select().from(pendingWrites)
+    const writes = await db
+      .select()
+      .from(pendingWrites)
+      .orderBy(asc(pendingWrites.createdAt))
 
     const apiBase = getApiBaseUrl()
 

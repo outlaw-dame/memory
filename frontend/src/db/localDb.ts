@@ -121,4 +121,23 @@ async function applySchema(pg: PGliteWorker): Promise<void> {
     CREATE INDEX IF NOT EXISTS local_posts_tsv_gin
       ON local_posts USING gin (content_tsv);
   `)
+
+  // Keep timeline reads and cursor-style scans fast as local cache grows.
+  await pg.exec(`
+    CREATE INDEX IF NOT EXISTS local_posts_created_at_idx
+      ON local_posts (created_at DESC);
+  `)
+
+  // Speeds up background embedding selection/count of rows still missing vectors.
+  await pg.exec(`
+    CREATE INDEX IF NOT EXISTS local_posts_embedding_pending_idx
+      ON local_posts (id)
+      WHERE embedding IS NULL;
+  `)
+
+  // Preserves FIFO replay order for offline mutations and avoids full scans.
+  await pg.exec(`
+    CREATE INDEX IF NOT EXISTS pending_writes_created_at_idx
+      ON pending_writes (created_at ASC);
+  `)
 }

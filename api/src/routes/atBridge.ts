@@ -104,6 +104,18 @@ type ThreadContextResponse = {
   lastActivityAt: Date | null
 }
 
+type FeedCursorPayload = {
+  v: 1
+  createdAt: string
+  id: number
+}
+
+type FeedPageResponse = {
+  items: UnifiedFeedResponseItem[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
 type TimelineMode = 'chronological' | 'balanced'
 
 type LexiconFamily = 'bsky' | 'standard.site' | 'other'
@@ -217,6 +229,56 @@ function decodeCursor(cursor: string | undefined): number {
   } catch {
     return 0
   }
+}
+
+function encodeFeedCursor(row: UnifiedFeedRow): string | null {
+  const createdAt = row.feedSortAt ?? row.createdAt
+  if (!(createdAt instanceof Date) || Number.isNaN(createdAt.getTime())) return null
+
+  const payload: FeedCursorPayload = {
+    v: 1,
+    createdAt: createdAt.toISOString(),
+    id: row.id,
+  }
+
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url')
+}
+
+function decodeFeedCursor(cursor: string | undefined): FeedCursorPayload | null {
+  if (!cursor) return null
+
+  try {
+    const raw = Buffer.from(cursor, 'base64url').toString('utf8')
+    const parsed = JSON.parse(raw) as Partial<FeedCursorPayload>
+    if (parsed?.v !== 1) return null
+    if (typeof parsed.createdAt !== 'string') return null
+
+    const parsedId = parsed.id
+    if (typeof parsedId !== 'number' || !Number.isFinite(parsedId)) return null
+
+    const date = new Date(parsed.createdAt)
+    if (Number.isNaN(date.getTime())) return null
+
+    return {
+      v: 1,
+      createdAt: date.toISOString(),
+      id: Math.floor(parsedId),
+    }
+  } catch {
+    return null
+  }
+}
+
+function isBeforeFeedCursor(row: UnifiedFeedRow, cursor: FeedCursorPayload): boolean {
+  const sortAt = row.feedSortAt ?? row.createdAt
+  if (!(sortAt instanceof Date) || Number.isNaN(sortAt.getTime())) return false
+
+  const cursorTime = new Date(cursor.createdAt).getTime()
+  const rowTime = sortAt.getTime()
+
+  if (rowTime < cursorTime) return true
+  if (rowTime > cursorTime) return false
+  return row.id < cursor.id
 }
 
 function mapFeedItemType(row: UnifiedFeedRow): FeedItemType {
@@ -1512,6 +1574,7 @@ const recordsQuery = t.Object({
 const feedQuery = t.Object({
   limit: t.Integer({ default: 20, maximum: 50, minimum: 1 }),
   offset: t.Integer({ default: 0, minimum: 0 }),
+  cursor: t.Optional(t.String({ minLength: 1, maxLength: 512 })),
   source: t.Optional(t.Union([t.Literal('activitypods'), t.Literal('atproto'), t.Literal('all')])),
   hashtag: t.Optional(t.String({ minLength: 2, maxLength: 65 })),
   mode: t.Optional(t.Union([t.Literal('chronological'), t.Literal('balanced')])),
@@ -1558,17 +1621,21 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   // -------------------------------------------------------------------------
   .get(
     '/feed',
-    async ({ query: { limit, offset, source, hashtag, mode, apWeight, atWeight, excludeViewed, since }, user }) => {
+    async ({ query: { limit, offset, cursor, source, hashtag, mode, apWeight, atWeight, excludeViewed, since }, user }) => {
       const feedStartTime = Date.now()
       try {
-        console.log('[AT Bridge /feed] Request started', { limit, offset, source, hashtag, mode })
+        console.log('[AT Bridge /feed] Request started', { limit, offset, cursor: !!cursor, source, hashtag, mode })
 
         const moderationState = await safeResolveViewerModerationState(user, 'feed')
         const timelineMode: TimelineMode = mode ?? 'balanced'
         const normalizedApWeight = apWeight ?? 50
         const normalizedAtWeight = atWeight ?? 50
+        const keysetCursor = decodeFeedCursor(cursor)
+        const useCursorPaging = keysetCursor !== null
         // Keep the initial candidate window modest for local dev responsiveness.
-        const fetchLimit = Math.min(200, Math.max(40, offset + limit * 3))
+        const fetchLimit = useCursorPaging
+          ? Math.min(300, Math.max(60, limit * 6))
+          : Math.min(200, Math.max(40, offset + limit * 3))
 
         const queryStartTime = Date.now()
 
@@ -1615,9 +1682,20 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         const { visible: results } = filterViewerModeratedRows(warningResults, moderationState)
         console.log('[AT Bridge /feed] Moderation filtered', { visible: results.length, hidden: warningResults.length - results.length })
 
-        let output = timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto'
-          ? results.slice(offset, offset + limit)
-          : buildBalancedFeed(results, limit, offset, normalizedApWeight, normalizedAtWeight)
+        const cursorScopedResults = useCursorPaging
+          ? results.filter(row => isBeforeFeedCursor(row, keysetCursor!))
+          : results
+
+        const rawPage = timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto'
+          ? (useCursorPaging
+            ? cursorScopedResults.slice(0, limit + 1)
+            : cursorScopedResults.slice(offset, offset + limit))
+          : (useCursorPaging
+            ? buildBalancedFeed(cursorScopedResults, limit + 1, 0, normalizedApWeight, normalizedAtWeight)
+            : buildBalancedFeed(cursorScopedResults, limit, offset, normalizedApWeight, normalizedAtWeight))
+
+        const hasMore = useCursorPaging ? rawPage.length > limit : false
+        let output = useCursorPaging ? rawPage.slice(0, limit) : rawPage
 
         if (excludeViewed && isViewershipIntegrationEnabled()) {
           const objectIds = [...new Set(output.map(feedItemObjectId).filter((value): value is string => !!value))]
@@ -1647,13 +1725,29 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         }
 
         const finalOutput = applyViewerThreadMetrics(output, metricsByRootUri).map(mapFeedItemForResponse)
+        const nextCursor = useCursorPaging && hasMore && output.length > 0
+          ? encodeFeedCursor(output[output.length - 1])
+          : null
+
         const totalDuration = Date.now() - feedStartTime
         console.log('[AT Bridge /feed] Response ready', {
           items: finalOutput.length,
           totalDuration,
           timeline: timelineMode,
-          source: source ?? 'all'
+          source: source ?? 'all',
+          hasMore,
+          cursorMode: useCursorPaging,
         })
+
+        if (useCursorPaging) {
+          const paged: FeedPageResponse = {
+            items: finalOutput,
+            nextCursor,
+            hasMore: hasMore && nextCursor !== null,
+          }
+          return paged
+        }
+
         return finalOutput
       } catch (err) {
         const totalDuration = Date.now() - feedStartTime
