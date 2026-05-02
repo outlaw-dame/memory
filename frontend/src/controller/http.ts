@@ -6,11 +6,16 @@ export function getApiBaseUrl(): string {
     return configuredBaseUrl.replace(/\/$/, '')
   }
 
-  if (typeof window !== 'undefined') {
-    return new URL(configuredBaseUrl, window.location.origin).toString().replace(/\/$/, '')
+  const windowOrigin =
+    typeof window !== 'undefined' && typeof window.location?.origin === 'string'
+      ? window.location.origin
+      : undefined
+
+  if (windowOrigin) {
+    return new URL(configuredBaseUrl, windowOrigin).toString().replace(/\/$/, '')
   }
 
-  return configuredBaseUrl
+  return configuredBaseUrl.replace(/\/$/, '')
 }
 
 export function buildApiHeaders(

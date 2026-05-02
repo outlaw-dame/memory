@@ -241,6 +241,12 @@ export const apRemotePosts = table('ap_remote_posts', {
 
   /** Relay actor URI that announced this post. */
   sourceRelay: varchar('source_relay', { length: 512 }),
+
+  /**
+   * URI of the post being quote-replied to (AP `quoteUrl` / `_misskey_quote`
+   * / FEP-e232 `quote` field).  NULL for non-quote posts.
+   */
+  quotedPostUri: varchar('quoted_post_uri', { length: 3072 }),
 })
 
 // ---------------------------------------------------------------------------

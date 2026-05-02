@@ -241,6 +241,33 @@ export default abstract class ActivityPod {
     }
   }
 
+  static async announceObject(user: User, objectUri: string) {
+    const actorUri = user.getWebId()
+    const response = await ky
+      .post(`${user.endpoint}/${user.userName}/outbox`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        json: {
+          '@context': 'https://www.w3.org/ns/activitystreams',
+          type: 'Announce',
+          actor: actorUri,
+          attributedTo: actorUri,
+          object: objectUri,
+          to: [
+            `${user.endpoint}/${user.userName}/followers`,
+            'https://www.w3.org/ns/activitystreams#Public',
+          ],
+        },
+        timeout: DEFAULT_TIMEOUT
+        // No retry: announcing is not idempotent.
+      })
+      .json<any>()
+
+    return {
+      raw: response,
+      objectUri: extractObjectUri(response)
+    }
+  }
+
   static async getProfile(user: User) {
     return ky
       .get(user.getWebId(), {

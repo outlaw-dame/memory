@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "typecheck:api": "bun run --cwd api typecheck",
+    "check:api": "bun run --cwd api check"
+  },
   "dependencies": {},
   "devDependencies": {
     "prettier": "3.4.2"

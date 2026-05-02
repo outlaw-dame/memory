@@ -6,6 +6,7 @@ import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
 import { db } from './db/client'
 import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
 import { startAtBridgeRetentionService } from './services/AtBridgeRetentionService'
+import { startApRemoteReconciliationService } from './services/ApRemoteIngestionService'
 
 export { db }
 
@@ -73,5 +74,6 @@ export const app = new Elysia({ aot: false })
 console.info(`Listening on port ${process.env.API_PORT}`)
 
 startAtBridgeRetentionService()
+startApRemoteReconciliationService()
 
 export type App = typeof app

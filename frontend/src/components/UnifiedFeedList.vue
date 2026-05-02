@@ -7,14 +7,41 @@
  *   - Infinite scroll (load more on button click)
  *   - Loading and error states
  */
-import { onMounted, ref, watch } from 'vue'
-import { useAtBridgeStore, type FeedSource, type TimelineMode } from '@/stores/atBridgeStore'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useI18n } from '@/i18n'
+import { useAtBridgeStore, type FeedSource, type TimelineMode, type UnifiedFeedItem as UnifiedFeedItemModel } from '@/stores/atBridgeStore'
 import UnifiedFeedItem from './UnifiedFeedItem.vue'
+
+// Engagement scoring weights — adjust after observing real usage data.
+const ENGAGEMENT_WEIGHTS = Object.freeze({
+  reply: 3,
+  repost: 2,
+  quote: 2.5,
+  like: 1,
+} as const)
 
 const props = defineProps<{ mode?: TimelineMode }>()
 
 const store = useAtBridgeStore()
+const router = useRouter()
+const { t } = useI18n()
 const hashtagInput = ref('')
+
+interface PopularFeedItem {
+  id: string
+  /** Canonical URI used for thread navigation (atUri or objectUri). */
+  uri: string
+  source: UnifiedFeedItemModel['source']
+  authorName: string
+  content: string
+  createdAt: string | null
+  replies: number
+  reposts: number
+  quotes: number
+  likes: number
+  score: number
+}
 
 onMounted(async () => {
   if (props.mode) store.timelineMode = props.mode
@@ -53,6 +80,96 @@ async function clearHashtagFilter(): Promise<void> {
 async function onHashtagClick(hashtag: string): Promise<void> {
   hashtagInput.value = hashtag
   await store.setHashtagFilter(hashtag)
+}
+
+async function onRepostToggle(item: UnifiedFeedItemModel): Promise<void> {
+  await store.toggleRepost(item)
+}
+
+function toNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function getQuoteCount(item: UnifiedFeedItemModel): number {
+  const explicit = toNumber((item as unknown as Record<string, unknown>).quoteCount)
+  if (explicit > 0) return explicit
+  return item.quotedPost ? 1 : 0
+}
+
+function getLikeCount(item: UnifiedFeedItemModel): number {
+  return toNumber((item as unknown as Record<string, unknown>).likeCount)
+}
+
+function getReplyCount(item: UnifiedFeedItemModel): number {
+  return toNumber(item.threadReplyCount)
+}
+
+function getRepostCount(item: UnifiedFeedItemModel): number {
+  return toNumber(item.repostCount)
+}
+
+function engagementScore(item: UnifiedFeedItemModel): number {
+  const replies = getReplyCount(item)
+  const reposts = getRepostCount(item)
+  const quotes = getQuoteCount(item)
+  const likes = getLikeCount(item)
+  return (
+    replies * ENGAGEMENT_WEIGHTS.reply +
+    reposts * ENGAGEMENT_WEIGHTS.repost +
+    quotes * ENGAGEMENT_WEIGHTS.quote +
+    likes * ENGAGEMENT_WEIGHTS.like
+  )
+}
+
+const popularPosts = computed<PopularFeedItem[]>(() => {
+  const ranked = store.unifiedFeed
+    .filter(item => item.type !== 'thread_summary')
+    .map(item => {
+      const replies = getReplyCount(item)
+      const reposts = getRepostCount(item)
+      const quotes = getQuoteCount(item)
+      const likes = getLikeCount(item)
+      const uri = item.atUri ?? item.objectUri ?? ''
+      return {
+        id: `${item.source}-${item.id}`,
+        uri,
+        source: item.source,
+        authorName: item.authorName,
+        content: item.content,
+        createdAt: item.createdAt,
+        replies,
+        reposts,
+        quotes,
+        likes,
+        score: engagementScore(item),
+      }
+    })
+    .filter(item => item.uri.length > 0)
+    .filter(item => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      const aTs = a.createdAt ? Date.parse(a.createdAt) : 0
+      const bTs = b.createdAt ? Date.parse(b.createdAt) : 0
+      return bTs - aTs
+    })
+
+  return ranked.slice(0, 8)
+})
+
+const showPopularCarousel = computed(() => popularPosts.value.length >= 3)
+
+function navigateToPost(item: PopularFeedItem): void {
+  void router.push({ name: 'thread', params: { id: item.uri } })
+}
+
+function toPopularLabel(item: PopularFeedItem): string {
+  const metrics = [
+    `${item.replies}R`,
+    `${item.reposts}RP`,
+    `${item.quotes}Q`,
+    `${item.likes}L`,
+  ]
+  return metrics.join(' · ')
 }
 </script>
 
@@ -167,12 +284,64 @@ async function onHashtagClick(hashtag: string): Promise<void> {
       </button>
     </div>
 
+    <!-- Popular posts carousel (current feed scope) -->
+    <section
+      v-if="showPopularCarousel"
+      class="rounded-default bg-white shadow-sm p-4 flex flex-col gap-3"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex flex-col">
+          <h3 class="text-subHeader font-bold text-dark">{{ t('feed.popular.heading') }}</h3>
+          <p class="text-footnote text-dark-50">{{ t('feed.popular.subtitle') }}</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <div class="flex gap-3 pb-1 min-w-max">
+          <article
+            v-for="item in popularPosts"
+            :key="item.id"
+            class="w-[260px] rounded-xl border border-dark-10 bg-white p-3 flex flex-col gap-2 cursor-pointer hover:border-indigo-300 transition-colors"
+            role="button"
+            :aria-label="item.authorName"
+            tabindex="0"
+            @click="navigateToPost(item)"
+            @keydown.enter="navigateToPost(item)"
+            @keydown.space.prevent="navigateToPost(item)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-footnote font-semibold text-dark truncate">{{ item.authorName }}</p>
+              <span
+                class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                :class="item.source === 'atproto' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'"
+              >
+                {{ item.source === 'atproto' ? 'AT' : 'AP' }}
+              </span>
+            </div>
+
+            <p class="text-sm text-dark leading-relaxed line-clamp-3">{{ item.content }}</p>
+
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-dark-50">{{ toPopularLabel(item) }}</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                style="background: rgba(99,100,246,0.12); color: rgb(99,100,246);"
+              >
+                Score {{ item.score.toFixed(1) }}
+              </span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- Feed items -->
     <UnifiedFeedItem
       v-for="item in store.unifiedFeed"
       :key="`${item.source}-${item.id}`"
       :item="item"
       @hashtag-click="onHashtagClick"
+      @repost-toggle="onRepostToggle"
     />
 
     <!-- Load more -->

@@ -50,6 +50,27 @@
       "when": 1776900060000,
       "tag": "0006_ap_remote_posts",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1746000000000,
+      "tag": "0007_engagement_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1746000060000,
+      "tag": "0008_ap_remote_quote_uri",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1746000120000,
+      "tag": "0009_ap_remote_reply_index",
+      "breakpoints": true
     }
   ]
 }

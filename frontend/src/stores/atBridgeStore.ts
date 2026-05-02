@@ -106,6 +106,23 @@ export interface FeedPoll {
   votedOptions?: string[]
 }
 
+export interface RepostActor {
+  actorId: string
+  displayName: string
+  sourceProtocol: 'activitypub' | 'atproto' | 'canonical'
+  boostedAt: string
+  repostUri: string
+}
+
+export interface RepostGroup {
+  subjectUri: string
+  count: number
+  boostedAt: string
+  actors: RepostActor[]
+  actorLimitExceeded: boolean
+  viewerHasReposted: boolean
+}
+
 export interface UnifiedFeedItem {
   id: number
   content: string
@@ -130,6 +147,11 @@ export interface UnifiedFeedItem {
   threadLastActivityAt?: string | null
   threadParentAuthorId?: string | null
   threadRootAuthorId?: string | null
+  repostGroup?: RepostGroup | null
+  repostCount?: number | null
+  viewerHasReposted?: boolean
+  likeCount?: number | null
+  quoteCount?: number | null
   quotedPost?: QuotedPost
   /** Present when this feed item is a poll (FEP-9967 Question object). */
   poll?: FeedPoll | null
@@ -153,6 +175,14 @@ interface ViewerModerationResponse {
   action: ViewerModerationAction
   subjectCanonicalId: string
   subjectProtocol: string
+}
+
+interface RepostResponse {
+  ok: boolean
+  subjectUri: string
+  repostUri: string
+  reposted: boolean
+  nativeAnnounced?: boolean
 }
 
 export interface FirehoseStatus {
@@ -566,6 +596,106 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     }
   }
 
+  function getRepostTarget(item: UnifiedFeedItem): { atUri?: string; objectUri?: string } | null {
+    if (item.atUri) return { atUri: item.atUri }
+    if (item.objectUri) return { objectUri: item.objectUri }
+    return null
+  }
+
+  function viewerDisplayName(): string {
+    const currentUser = authStore.user
+    return currentUser?.name || currentUser?.webId || 'You'
+  }
+
+  function viewerActorId(): string {
+    const currentUser = authStore.user
+    return currentUser?.atprotoDid || currentUser?.webId || 'viewer'
+  }
+
+  function applyLocalRepostState(item: UnifiedFeedItem, response: RepostResponse): void {
+    const index = unifiedFeed.value.findIndex(candidate =>
+      (item.atUri && candidate.atUri === item.atUri)
+      || (item.objectUri && candidate.objectUri === item.objectUri)
+      || candidate.id === item.id,
+    )
+    if (index < 0) return
+
+    const current = unifiedFeed.value[index]
+    const currentGroup = current.repostGroup
+    const existingActors = currentGroup?.actors ?? []
+    const actorId = viewerActorId()
+
+    if (!response.reposted) {
+      const actors = existingActors.filter(actor => actor.actorId !== actorId)
+      const nextCount = Math.max(0, (currentGroup?.count ?? current.repostCount ?? 1) - 1)
+      unifiedFeed.value[index] = {
+        ...current,
+        repostGroup: currentGroup
+          ? {
+              ...currentGroup,
+              count: nextCount,
+              actors,
+              viewerHasReposted: false,
+              actorLimitExceeded: nextCount > actors.length,
+            }
+          : null,
+        repostCount: nextCount,
+        viewerHasReposted: false,
+      }
+      return
+    }
+
+    const viewerActor: RepostActor = {
+      actorId,
+      displayName: viewerDisplayName(),
+      sourceProtocol: current.source === 'atproto' ? 'atproto' : 'activitypub',
+      boostedAt: new Date().toISOString(),
+      repostUri: response.repostUri,
+    }
+    const actors = [viewerActor, ...existingActors.filter(actor => actor.actorId !== actorId)].slice(0, 3)
+    const nextCount = currentGroup?.viewerHasReposted
+      ? currentGroup.count
+      : (currentGroup?.count ?? current.repostCount ?? 0) + 1
+
+    unifiedFeed.value[index] = {
+      ...current,
+      repostGroup: {
+        subjectUri: response.subjectUri,
+        count: nextCount,
+        boostedAt: viewerActor.boostedAt,
+        actors,
+        actorLimitExceeded: nextCount > actors.length,
+        viewerHasReposted: true,
+      },
+      repostCount: nextCount,
+      viewerHasReposted: true,
+    }
+  }
+
+  async function toggleRepost(item: UnifiedFeedItem): Promise<boolean> {
+    const target = getRepostTarget(item)
+    if (!target) {
+      error.value = 'This item cannot be reposted yet'
+      return false
+    }
+
+    const isReposted = item.viewerHasReposted || item.repostGroup?.viewerHasReposted
+    const path = isReposted ? '/at/reposts/remove' : '/at/reposts'
+
+    try {
+      const response = await apiFetch<RepostResponse>(path, {
+        method: 'POST',
+        body: JSON.stringify(target),
+      })
+      applyLocalRepostState(item, response)
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unable to update repost'
+      console.error('[AtBridgeStore] toggleRepost error:', err)
+      return false
+    }
+  }
+
   /**
    * Subscribe to a new AT firehose source.
    */
@@ -670,6 +800,7 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     fetchFirehoseStatus,
     fetchThreadContext,
     moderateAuthor,
+    toggleRepost,
     subscribeToSource,
     setFeedSource,
     setTimelineMode,

@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   hashtagClick: [hashtag: string]
+  repostToggle: [item: UnifiedFeedItem]
 }>()
 
 const { follow, isFollowing } = useFollow()
@@ -32,6 +33,29 @@ const isReplying = ref(false)
 const isMoreActionsOpen = ref(false)
 const replyPolicy = ref<ReplyPolicyResolution | null>(null)
 const replyComposer = ref<InstanceType<typeof InlineReplyComposer> | null>(null)
+const isRepostProcessing = ref(false)
+
+const repostGroup = computed(() => props.item.repostGroup ?? null)
+const repostCount = computed(() => props.item.repostCount ?? repostGroup.value?.count ?? 0)
+const viewerHasReposted = computed(() => props.item.viewerHasReposted || repostGroup.value?.viewerHasReposted === true)
+const repostLabel = computed(() => viewerHasReposted.value ? t('feed.reposts.reposted') : t('feed.reposts.action'))
+const repostSummary = computed(() => {
+  const group = repostGroup.value
+  if (!group || group.count <= 0 || group.actors.length === 0) return null
+
+  const names = group.actors.map(actor => actor.displayName)
+  if (group.count === 1) {
+    return t('feed.reposts.byOne', { name: names[0] })
+  }
+
+  if (group.count === 2 && names.length >= 2) {
+    return t('feed.reposts.byTwo', { first: names[0], second: names[1] })
+  }
+
+  const visibleNames = names.slice(0, 2).join(', ')
+  const remainingCount = Math.max(1, group.count - Math.min(2, names.length))
+  return t('feed.reposts.byMany', { names: visibleNames, count: remainingCount })
+})
 
 const quotedEmbed = computed<EmbeddedPost | null>(() => {
   const q = resolveQuotedPost(props.item)
@@ -260,10 +284,31 @@ async function onReplySubmit(content: string) {
     replyComposer.value?.applyResult(result as ReplySubmissionResult)
   }
 }
+
+async function onRepostClick() {
+  if (isRepostProcessing.value) return
+  isRepostProcessing.value = true
+  emit('repostToggle', props.item)
+  setTimeout(() => {
+    isRepostProcessing.value = false
+  }, 350)
+}
 </script>
 
 <template>
   <div class="rounded-default bg-white p-[var(--padding-main)] flex flex-col gap-3 shadow-sm">
+
+    <div v-if="repostSummary" class="flex items-center gap-2 text-footnote font-semibold text-emerald-700">
+      <span
+        class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+        style="background: rgba(34,197,94,0.12);"
+      >
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3"/>
+        </svg>
+      </span>
+      <span class="min-w-0 truncate">{{ repostSummary }}</span>
+    </div>
 
     <!-- Tappable area → thread view -->
     <div class="cursor-pointer" @click="navigateToThread">
@@ -421,12 +466,16 @@ async function onReplySubmit(content: string) {
       <!-- Repost -->
       <button
         class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-footnote font-semibold transition-opacity hover:opacity-80"
-        style="background: rgba(34,197,94,0.12); color: #16a34a;"
+        :class="viewerHasReposted ? 'text-white' : ''"
+        :disabled="isRepostProcessing"
+        :style="viewerHasReposted ? 'background: #16a34a;' : 'background: rgba(34,197,94,0.12); color: #16a34a;'"
+        @click="onRepostClick"
       >
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3"/>
         </svg>
-        <span>Repost</span>
+        <span>{{ repostLabel }}</span>
+        <span v-if="repostCount > 0" class="tabular-nums">{{ repostCount }}</span>
       </button>
 
       <!-- More (horizontal dots) -->

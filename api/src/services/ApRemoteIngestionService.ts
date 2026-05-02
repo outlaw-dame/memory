@@ -19,8 +19,9 @@
  */
 
 import { db } from '../db/client'
-import { apRemotePosts } from '../db/atBridgeSchema'
-import { sql } from 'drizzle-orm'
+import { apRemotePosts, atRecords } from '../db/atBridgeSchema'
+import { eq, and, isNull, isNotNull } from 'drizzle-orm'
+import crypto from 'crypto'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -70,6 +71,16 @@ function extractString(obj: Record<string, unknown>, key: string): string | null
   return null
 }
 
+function extractActorUri(activity: Record<string, unknown>): string | null {
+  const actor = activity['actor']
+  if (typeof actor === 'string' && isHttpsUrl(actor)) return actor
+  if (typeof actor === 'object' && actor !== null && !Array.isArray(actor)) {
+    const id = extractString(actor as Record<string, unknown>, 'id')
+    if (id && isHttpsUrl(id)) return id
+  }
+  return null
+}
+
 function extractTags(noteObject: Record<string, unknown>): string[] {
   const tags = noteObject['tag']
   if (!Array.isArray(tags)) return []
@@ -98,12 +109,114 @@ function parsePublished(value: unknown): Date {
   return clampToNow(parsed)
 }
 
+function stableRepostId(actorUri: string, objectUri: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(`${actorUri}\0${objectUri}`)
+    .digest('hex')
+    .slice(0, 32)
+}
+
+async function recordAnnounceActivity(
+  activity: Record<string, unknown>,
+  objectUri: string,
+  sourceRelayUri?: string,
+): Promise<void> {
+  if (activity['type'] !== 'Announce') return
+
+  const actorUri = extractActorUri(activity)
+  if (!actorUri) return
+
+  const createdAt = parsePublished(activity['published'])
+  const repostId = stableRepostId(actorUri, objectUri)
+  const repostUri = `canonical://share/${repostId}`
+  const record = {
+    kind: 'ShareAdd',
+    sourceProtocol: 'activitypub',
+    sourceEventId: repostUri,
+    sourceAccountRef: {
+      canonicalAccountId: actorUri,
+      activityPubActorUri: actorUri,
+      webId: actorUri,
+      handle: actorUri,
+    },
+    object: {
+      canonicalObjectId: objectUri,
+      activityPubObjectId: objectUri,
+    },
+    createdAt: createdAt.toISOString(),
+    observedAt: new Date().toISOString(),
+    visibility: { public: true },
+    provenance: {
+      originProtocol: 'activitypub',
+      originEventId: extractString(activity, 'id') ?? repostUri,
+      projectionMode: 'native',
+    },
+    warnings: [],
+    _ingestContract: 'ActivityPubAnnounce',
+  }
+
+  await db
+    .insert(atRecords)
+    .values({
+      authorDid: actorUri,
+      collection: 'canonical.share',
+      rkey: repostId,
+      atUri: repostUri,
+      cid: null,
+      operation: 'create',
+      record,
+      isActive: true,
+      createdAt,
+      ingestedAt: new Date(),
+      sourceRelay: sourceRelayUri ?? 'activitypub:relay',
+      firehoseSeq: null,
+    })
+    .onConflictDoUpdate({
+      target: atRecords.atUri,
+      set: {
+        operation: 'create',
+        record,
+        isActive: true,
+        createdAt,
+        ingestedAt: new Date(),
+        sourceRelay: sourceRelayUri ?? 'activitypub:relay',
+      },
+    })
+}
+
 function extractInReplyTo(noteObject: Record<string, unknown>): string | null {
   const inReplyTo = noteObject['inReplyTo']
   if (typeof inReplyTo === 'string' && isHttpsUrl(inReplyTo)) return inReplyTo
   if (Array.isArray(inReplyTo)) {
     const first = inReplyTo.find(v => typeof v === 'string' && isHttpsUrl(v))
     return (first as string | undefined) ?? null
+  }
+  return null
+}
+
+/**
+ * Extract an AP-native quote URI from a Note/Article object.
+ *
+ * Vendor field precedence (most-standard → most-legacy):
+ *   1. `quote`         — FEP-e232 draft standard
+ *   2. `quoteUrl`      — Misskey / Calckey
+ *   3. `quoteUri`      — alternate spelling used by some servers
+ *   4. `_misskey_quote` — legacy Misskey field
+ *
+ * Returns a validated https/http URI or null.
+ */
+export function extractQuotedPostUri(noteObject: Record<string, unknown>): string | null {
+  const candidates = [
+    noteObject['quote'],
+    noteObject['quoteUrl'],
+    noteObject['quoteUri'],
+    noteObject['_misskey_quote'],
+  ]
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && isHttpsUrl(candidate)) {
+      return candidate
+    }
   }
   return null
 }
@@ -182,6 +295,7 @@ async function ingestSingleActivity(
   const publishedAt = parsePublished(noteObject['published'])
   const hashtags = extractTags(noteObject)
   const replyParentUri = extractInReplyTo(noteObject)
+  const quotedPostUri = extractQuotedPostUri(noteObject)
   const authorDomain = extractDomain(authorWebId)
 
   // Derive display name: prefer name/preferredUsername from actor embedded info,
@@ -220,11 +334,13 @@ async function ingestSingleActivity(
         isPublic: true,
         replyParentUri,
         replyRootUri: null,
+        quotedPostUri,
         hashtags,
         createdAt: publishedAt,
         sourceRelay: sourceRelayUri ?? null,
       })
       .onConflictDoNothing({ target: apRemotePosts.objectUri })
+    await recordAnnounceActivity(activity, objectId, sourceRelayUri)
     return true
   } catch (err) {
     console.error('[ApRemoteIngestion] DB insert error:', err)
@@ -268,4 +384,141 @@ export async function ingestApRemoteActivities(
   }
 
   return result
+}
+
+// ---------------------------------------------------------------------------
+// Reply root reconciliation
+// ---------------------------------------------------------------------------
+
+const MAX_RECONCILE_BATCH = 500
+/** Max chain depth to walk before treating the chain as broken / circular. */
+const MAX_CHAIN_DEPTH = 50
+
+/**
+ * Walk the `ap_remote_posts` chain upward from `startParentUri` to find the
+ * thread root.  Returns the root `object_uri`, or `null` if the root is not
+ * in our local DB (i.e. the chain leads to an external URI we never ingested).
+ *
+ * Protects against cycles by capping depth at MAX_CHAIN_DEPTH.
+ */
+async function resolveReplyRoot(startParentUri: string): Promise<string | null> {
+  let currentUri: string = startParentUri
+  const seen = new Set<string>()
+
+  for (let depth = 0; depth < MAX_CHAIN_DEPTH; depth++) {
+    if (seen.has(currentUri)) return null // cycle detected
+    seen.add(currentUri)
+
+    const rows = await db
+      .select({
+        objectUri: apRemotePosts.objectUri,
+        replyParentUri: apRemotePosts.replyParentUri,
+      })
+      .from(apRemotePosts)
+      .where(eq(apRemotePosts.objectUri, currentUri))
+      .limit(1)
+
+    const row = rows[0]
+    if (!row) return null // not in our DB — chain is external
+
+    if (!row.replyParentUri) {
+      // This row is a root post (no parent)
+      return row.objectUri
+    }
+
+    currentUri = row.replyParentUri
+  }
+
+  return null // depth limit exceeded — treat as unresolvable
+}
+
+/**
+ * Idempotent sweep that resolves `reply_root_uri` for AP remote posts that
+ * are part of a thread but whose root was not known at ingest time.
+ *
+ * Safe to run multiple times; only processes rows where:
+ *   - `reply_parent_uri IS NOT NULL` (it's a reply)
+ *   - `reply_root_uri IS NULL` (root not yet resolved)
+ *
+ * Designed to run as a periodic background job.
+ *
+ * @returns number of rows updated
+ */
+export async function reconcileApRemoteReplyRoots(): Promise<number> {
+  // Fetch a batch of unresolved reply posts
+  const unresolvedRows = await db
+    .select({
+      id: apRemotePosts.id,
+      objectUri: apRemotePosts.objectUri,
+      replyParentUri: apRemotePosts.replyParentUri,
+    })
+    .from(apRemotePosts)
+    .where(
+      and(
+        isNotNull(apRemotePosts.replyParentUri),
+        isNull(apRemotePosts.replyRootUri),
+      ),
+    )
+    .limit(MAX_RECONCILE_BATCH)
+
+  if (unresolvedRows.length === 0) return 0
+
+  let updated = 0
+
+  for (const row of unresolvedRows) {
+    if (!row.replyParentUri) continue
+
+    try {
+      const rootUri = await resolveReplyRoot(row.replyParentUri)
+      if (!rootUri) continue // root not in our DB yet — skip for now
+
+      await db
+        .update(apRemotePosts)
+        .set({ replyRootUri: rootUri })
+        .where(
+          and(
+            eq(apRemotePosts.id, row.id),
+            isNull(apRemotePosts.replyRootUri), // idempotency guard
+          ),
+        )
+
+      updated++
+    } catch (err) {
+      console.error('[ApRemoteIngestion] reconcileApRemoteReplyRoots error for', row.objectUri, err)
+    }
+  }
+
+  console.log('[ApRemoteIngestion] reconcileApRemoteReplyRoots', {
+    processed: unresolvedRows.length,
+    updated,
+  })
+
+  return updated
+}
+
+/**
+ * Start a periodic background sweep that resolves `reply_root_uri` for AP
+ * remote posts.  Runs once immediately on startup, then on the configured
+ * interval.
+ *
+ * @param intervalMs - how often to run (default: 5 minutes)
+ * @returns NodeJS timer handle (can be used to stop the sweep via clearInterval)
+ */
+export function startApRemoteReconciliationService(intervalMs = 5 * 60 * 1000): ReturnType<typeof setInterval> {
+  const execute = async () => {
+    try {
+      await reconcileApRemoteReplyRoots()
+    } catch (err) {
+      console.error('[ApRemoteIngestion] reconcileApRemoteReplyRoots background run failed:', err)
+    }
+  }
+
+  void execute()
+  const timer = setInterval(() => {
+    void execute()
+  }, intervalMs)
+
+  console.info('[ApRemoteIngestion] Reply root reconciliation service started', { intervalMs })
+
+  return timer
 }

@@ -24,7 +24,9 @@ import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords, u
 import { desc, eq, and, sql, ilike, or, gt, inArray, type SQL } from 'drizzle-orm'
 import setupPlugin from './setup'
 import { extractHashtagsFromFacets, normalizeHashtag } from '../utils/hashtags'
+import { mapFeedMetricCounts } from '../utils/feedMetrics'
 import { applyFollowedReplyThreadBumps, type ThreadBumpMeta } from '../utils/threadBumps'
+import crypto from 'crypto'
 import {
   applyViewerThreadMetrics,
   appendVisibleThreadWindow,
@@ -37,6 +39,13 @@ import {
   type ViewerModerationState,
   type ViewerThreadMetrics,
 } from './atBridgeViewerProjection'
+import {
+  groupRepostsBySubject,
+  REPOST_RECORD_COLLECTIONS,
+  type RepostGroup,
+  type RepostRecordInput,
+} from '../utils/repostGroups'
+import ActivityPod from '../services/ActivityPod'
 
 type UnifiedFeedRow = {
   id: number
@@ -63,11 +72,17 @@ type UnifiedFeedRow = {
   threadReplyCount?: number | null
   threadParticipantCount?: number | null
   threadLastActivityAt?: Date | null
+  repostGroup?: RepostGroup | null
+  repostCount?: number | null
+  likeCount?: number | null
+  quoteCount?: number | null
+  viewerHasReposted?: boolean
+  feedSortAt?: Date | null
 }
 
 type FeedItemType = 'post' | 'thread_summary'
 
-type UnifiedFeedResponseItem = UnifiedFeedRow & {
+type UnifiedFeedResponseItem = Omit<UnifiedFeedRow, 'feedSortAt'> & {
   type: FeedItemType
 }
 
@@ -207,8 +222,9 @@ function mapFeedItemType(row: UnifiedFeedRow): FeedItemType {
 }
 
 function mapFeedItemForResponse(row: UnifiedFeedRow): UnifiedFeedResponseItem {
+  const { feedSortAt: _feedSortAt, ...responseRow } = row
   return {
-    ...row,
+    ...responseRow,
     type: mapFeedItemType(row),
   }
 }
@@ -358,6 +374,7 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
  * Maps a raw node-postgres row (snake_case keys) to the typed UnifiedFeedRow shape.
  */
 function mapDbRowToFeedRow(row: Record<string, unknown>): UnifiedFeedRow {
+  const metrics = mapFeedMetricCounts(row)
   const parseDate = (v: unknown): Date | null => {
     if (!v) return null
     if (v instanceof Date) return v
@@ -389,7 +406,143 @@ function mapDbRowToFeedRow(row: Record<string, unknown>): UnifiedFeedRow {
     threadReplyCount: row['thread_reply_count'] as number | null,
     threadParticipantCount: row['thread_participant_count'] as number | null,
     threadLastActivityAt: parseDate(row['thread_last_activity_at']),
+    likeCount: metrics.likeCount,
+    quoteCount: metrics.quoteCount,
   }
+}
+
+function feedRowUri(row: UnifiedFeedRow): string | null {
+  return normalizeString(row.atUri) ?? normalizeString(row.objectUri) ?? normalizeString(row.candidateUri)
+}
+
+function applyRepostGroupToRow(row: UnifiedFeedRow, repostGroup: RepostGroup): UnifiedFeedRow {
+  return {
+    ...row,
+    repostGroup,
+    repostCount: repostGroup.count,
+    viewerHasReposted: repostGroup.viewerHasReposted,
+    feedSortAt: repostGroup.boostedAt > (row.feedSortAt ?? row.createdAt ?? new Date(0))
+      ? repostGroup.boostedAt
+      : row.feedSortAt,
+  }
+}
+
+function mergeRepostRows(baseRows: UnifiedFeedRow[], repostRows: UnifiedFeedRow[], fetchLimit: number): UnifiedFeedRow[] {
+  const byUri = new Map<string, UnifiedFeedRow>()
+  const fallbackRows: UnifiedFeedRow[] = []
+
+  for (const row of baseRows) {
+    const uri = feedRowUri(row)
+    const normalized = { ...row, feedSortAt: row.feedSortAt ?? row.createdAt }
+    if (uri) byUri.set(uri, normalized)
+    else fallbackRows.push(normalized)
+  }
+
+  for (const row of repostRows) {
+    const uri = feedRowUri(row)
+    if (!uri) {
+      fallbackRows.push(row)
+      continue
+    }
+
+    const existing = byUri.get(uri)
+    if (!existing) {
+      byUri.set(uri, row)
+      continue
+    }
+
+    if (row.repostGroup) {
+      byUri.set(uri, applyRepostGroupToRow(existing, row.repostGroup))
+    }
+  }
+
+  return [...byUri.values(), ...fallbackRows]
+    .sort((a, b) => feedSortTimestamp(b) - feedSortTimestamp(a))
+    .slice(0, fetchLimit)
+}
+
+async function loadRepostCandidateRows(params: {
+  fetchLimit: number
+  source?: string | null
+  hashtag?: string | null
+  sinceDate?: Date | null
+  viewerIds?: ReadonlySet<string>
+}): Promise<UnifiedFeedRow[]> {
+  const { fetchLimit, source, hashtag, sinceDate, viewerIds = new Set<string>() } = params
+
+  const recordFilters: SQL[] = [
+    eq(atRecords.isActive, true),
+    inArray(atRecords.collection, [...REPOST_RECORD_COLLECTIONS]),
+  ]
+  if (sinceDate) {
+    recordFilters.push(gt(atRecords.createdAt, sinceDate))
+  }
+
+  const boostRecords = await db
+    .select({
+      authorId: atRecords.authorDid,
+      authorDisplayName: atIdentities.handle,
+      collection: atRecords.collection,
+      record: atRecords.record,
+      createdAt: atRecords.createdAt,
+      repostUri: atRecords.atUri,
+    })
+    .from(atRecords)
+    .leftJoin(atIdentities, eq(atRecords.authorDid, atIdentities.did))
+    .where(and(...recordFilters))
+    .orderBy(desc(atRecords.createdAt))
+    .limit(Math.min(500, fetchLimit * 5))
+
+  const repostGroups = groupRepostsBySubject(boostRecords as RepostRecordInput[], viewerIds)
+  if (repostGroups.size === 0) return []
+
+  const subjectUris = [...repostGroups.keys()]
+  const atSubjects = subjectUris.filter(uri => uri.startsWith('at://'))
+  const apSubjects = subjectUris.filter(uri => !uri.startsWith('at://'))
+  const subjectConditions: SQL[] = []
+
+  if (atSubjects.length > 0) subjectConditions.push(inArray(unifiedFeedCandidatesView.atUri, atSubjects))
+  if (apSubjects.length > 0) subjectConditions.push(inArray(unifiedFeedCandidatesView.objectUri, apSubjects))
+  if (subjectConditions.length === 0) return []
+
+  const rowFilters: SQL[] = [
+    subjectConditions.length === 1 ? subjectConditions[0] : or(...subjectConditions)!,
+    eq(unifiedFeedCandidatesView.isPublic, true),
+  ]
+
+  if (source && source !== 'all') {
+    rowFilters.push(eq(unifiedFeedCandidatesView.source, source))
+  }
+
+  const normalizedTag = hashtag ? normalizeHashtag(hashtag) : null
+  if (normalizedTag) {
+    const tagPattern = `%${normalizedTag}%`
+    rowFilters.push(or(
+      ilike(unifiedFeedCandidatesView.content, tagPattern),
+      sql`${unifiedFeedCandidatesView.hashtags} @> ARRAY[${normalizedTag}]::text[]`,
+    )!)
+  }
+
+  const rows = (await db
+    .select()
+    .from(unifiedFeedCandidatesView)
+    .where(and(...rowFilters))) as UnifiedFeedRow[]
+
+  const repostRows: UnifiedFeedRow[] = []
+  for (const row of rows) {
+    const uri = feedRowUri(row)
+    const repostGroup = uri ? repostGroups.get(uri) : null
+    if (!repostGroup) continue
+    repostRows.push({
+        ...row,
+        repostGroup,
+        repostCount: repostGroup.count,
+        viewerHasReposted: repostGroup.viewerHasReposted,
+        feedSortAt: repostGroup.boostedAt,
+    })
+  }
+
+  return repostRows
 }
 
 /**
@@ -402,8 +555,9 @@ async function queryFeedCandidates(params: {
   source?: string | null
   hashtag?: string | null
   sinceDate?: Date | null
+  viewerIds?: ReadonlySet<string>
 }): Promise<UnifiedFeedRow[]> {
-  const { fetchLimit, source, hashtag, sinceDate } = params
+  const { fetchLimit, source, hashtag, sinceDate, viewerIds } = params
   const includeAt = !source || source === 'all' || source === 'atproto'
   const includeAp = !source || source === 'all' || source === 'activitypods'
   const normalizedTag = hashtag ? normalizeHashtag(hashtag) : null
@@ -496,6 +650,63 @@ async function queryFeedCandidates(params: {
     ${sql.join(unionArms, sql` UNION ALL `)}
   )`)
 
+  cteFragments.push(sql`candidate_uris AS MATERIALIZED (
+    SELECT DISTINCT c.candidate_uri
+    FROM combined c
+    WHERE c.candidate_uri IS NOT NULL
+  )`)
+
+  cteFragments.push(sql`like_counts AS MATERIALIZED (
+    SELECT
+      ar.record #>> '{subject,uri}' AS subject_uri,
+      COUNT(*)::integer AS like_count
+    FROM at_records ar
+    WHERE ar.is_active = true
+      AND ar.collection = 'app.bsky.feed.like'
+      AND (ar.record #>> '{subject,uri}') IN (SELECT candidate_uri FROM candidate_uris)
+    GROUP BY 1
+  )`)
+
+  cteFragments.push(sql`quote_counts AS MATERIALIZED (
+    SELECT subject_uri, SUM(quote_count)::integer AS quote_count
+    FROM (
+      -- AT Protocol quote-posts (embed paths)
+      SELECT
+        COALESCE(
+          ap.embeds #>> '{record,uri}',
+          ap.embeds #>> '{record,record,uri}',
+          ap.embeds #>> '{embed,record,uri}',
+          ap.embeds #>> '{embed,record,record,uri}'
+        ) AS subject_uri,
+        COUNT(*)::integer AS quote_count
+      FROM at_posts ap
+      WHERE ap.is_public = true
+        AND COALESCE(
+          ap.embeds #>> '{record,uri}',
+          ap.embeds #>> '{record,record,uri}',
+          ap.embeds #>> '{embed,record,uri}',
+          ap.embeds #>> '{embed,record,record,uri}'
+        ) IS NOT NULL
+        AND COALESCE(
+          ap.embeds #>> '{record,uri}',
+          ap.embeds #>> '{record,record,uri}',
+          ap.embeds #>> '{embed,record,uri}',
+          ap.embeds #>> '{embed,record,record,uri}'
+        ) IN (SELECT candidate_uri FROM candidate_uris)
+      GROUP BY 1
+      UNION ALL
+      -- ActivityPub native quote-posts (quoteUrl / FEP-e232 / Misskey fields)
+      SELECT
+        apr.quoted_post_uri AS subject_uri,
+        COUNT(*)::integer AS quote_count
+      FROM ap_remote_posts apr
+      WHERE apr.quoted_post_uri IS NOT NULL
+        AND apr.quoted_post_uri IN (SELECT candidate_uri FROM candidate_uris)
+      GROUP BY 1
+    ) sub
+    GROUP BY subject_uri
+  )`)
+
   const fullQuery = sql`
     WITH ${sql.join(cteFragments, sql`, `)}
     SELECT
@@ -504,17 +715,30 @@ async function queryFeedCandidates(params: {
       te.root_author_id   AS thread_root_author_id,
       ts.reply_count      AS thread_reply_count,
       ts.participant_count AS thread_participant_count,
-      ts.last_activity_at AS thread_last_activity_at
+      ts.last_activity_at AS thread_last_activity_at,
+      COALESCE(lc.like_count, 0)::integer AS like_count,
+      COALESCE(qc.quote_count, 0)::integer AS quote_count
     FROM combined c
     LEFT JOIN thread_edges te ON te.item_uri = c.candidate_uri
     LEFT JOIN thread_stats  ts ON ts.root_uri = COALESCE(te.root_uri, c.candidate_uri)
+    LEFT JOIN like_counts lc ON lc.subject_uri = c.candidate_uri
+    LEFT JOIN quote_counts qc ON qc.subject_uri = c.candidate_uri
     ORDER BY LEAST(c.created_at, NOW()) DESC
     LIMIT ${fetchLimit}
   `
 
   const result = await db.execute(fullQuery)
   const rows = (result as unknown as { rows: Record<string, unknown>[] }).rows
-  return rows.map(mapDbRowToFeedRow)
+  const postRows = rows.map(mapDbRowToFeedRow)
+  const repostRows = await loadRepostCandidateRows({
+    fetchLimit,
+    source,
+    hashtag,
+    sinceDate,
+    viewerIds,
+  })
+
+  return mergeRepostRows(postRows, repostRows, fetchLimit)
 }
 
 function filterViewerModeratedRows(
@@ -709,6 +933,73 @@ function feedItemObjectId(row: UnifiedFeedRow): string | null {
   return null
 }
 
+function isRepostableTargetUri(value: string): boolean {
+  if (value.startsWith('at://')) return parseAtUri(value) !== null
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function normalizeRepostTarget(body: { objectUri?: string | null; atUri?: string | null }): string | null {
+  const target = normalizeString(body.atUri) ?? normalizeString(body.objectUri)
+  if (!target || !isRepostableTargetUri(target)) return null
+  return target
+}
+
+function stableRepostId(actorId: string, subjectUri: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(`${actorId}\0${subjectUri}`)
+    .digest('hex')
+    .slice(0, 32)
+}
+
+function canonicalRepostUri(actorId: string, subjectUri: string): string {
+  return `canonical://share/${stableRepostId(actorId, subjectUri)}`
+}
+
+function buildCanonicalShareRecord(
+  user: { atprotoDid?: string | null; userName?: string | null; getWebId?: (() => string) | undefined },
+  subjectUri: string,
+  kind: 'ShareAdd' | 'ShareRemove',
+  createdAt: Date,
+): Record<string, unknown> {
+  const actorWebId = typeof user.getWebId === 'function' ? user.getWebId() : null
+  const actorIdentity = normalizeString(user.atprotoDid) ?? normalizeString(actorWebId) ?? 'unknown-actor'
+  const actorHandle = normalizeString(user.userName) ?? normalizeString(actorWebId) ?? actorIdentity
+
+  return {
+    kind,
+    sourceProtocol: subjectUri.startsWith('at://') ? 'atproto' : 'activitypub',
+    sourceEventId: canonicalRepostUri(actorIdentity, subjectUri),
+    sourceAccountRef: {
+      canonicalAccountId: actorIdentity,
+      did: normalizeString(user.atprotoDid),
+      webId: normalizeString(actorWebId),
+      activityPubActorUri: normalizeString(actorWebId),
+      handle: actorHandle,
+    },
+    object: {
+      canonicalObjectId: subjectUri,
+      atUri: subjectUri.startsWith('at://') ? subjectUri : null,
+      activityPubObjectId: subjectUri.startsWith('at://') ? null : subjectUri,
+    },
+    createdAt: createdAt.toISOString(),
+    observedAt: createdAt.toISOString(),
+    visibility: { public: true },
+    provenance: {
+      originProtocol: subjectUri.startsWith('at://') ? 'atproto' : 'activitypub',
+      originEventId: subjectUri,
+      projectionMode: 'native',
+    },
+    warnings: [],
+    _ingestContract: 'MemoryRepost',
+  }
+}
+
 function getLexiconFamily(collection: string): LexiconFamily {
   if (collection.startsWith('app.bsky.')) return 'bsky'
   if (collection.startsWith('standard.site.')) return 'standard.site'
@@ -839,6 +1130,10 @@ function mapRecordForResponse(row: typeof atRecords.$inferSelect, includeRaw: bo
 function toTimestamp(value: Date | null): number {
   if (!value) return 0
   return value.getTime()
+}
+
+function feedSortTimestamp(item: UnifiedFeedRow): number {
+  return toTimestamp(item.feedSortAt ?? item.createdAt)
 }
 
 function parseAtUri(value: string): { did: string; collection?: string; rkey?: string } | null {
@@ -1031,7 +1326,7 @@ function buildBalancedFeed(
   apWeight: number,
   atWeight: number,
 ): UnifiedFeedRow[] {
-  const sorted = [...items].sort((a, b) => toTimestamp(b.createdAt) - toTimestamp(a.createdAt))
+  const sorted = [...items].sort((a, b) => feedSortTimestamp(b) - feedSortTimestamp(a))
   const apQueue = sorted.filter(item => item.source === 'activitypods')
   const atQueue = sorted.filter(item => item.source === 'atproto')
   const result: UnifiedFeedRow[] = []
@@ -1140,6 +1435,11 @@ const feedViewedBody = t.Object({
   viewedAt: t.Optional(t.String({ minLength: 1, maxLength: 64 }))
 })
 
+const repostBody = t.Object({
+  objectUri: t.Optional(t.Union([t.String({ minLength: 1, maxLength: 3072 }), t.Null()])),
+  atUri: t.Optional(t.Union([t.String({ minLength: 1, maxLength: 3072 }), t.Null()])),
+})
+
 const subscribeBody = t.Object({
   sourceId: t.String({ minLength: 1, maxLength: 512 }),
   url: t.String({ minLength: 7, maxLength: 512 }),
@@ -1182,6 +1482,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
           source: source && source !== 'all' ? source : null,
           hashtag: hashtag?.trim().length ? hashtag : null,
           sinceDate,
+          viewerIds: extractCurrentUserIds(user),
         })
         const queryDuration = Date.now() - queryStartTime
         console.log('[AT Bridge /feed] Query executed', { duration: queryDuration, rows: candidateRows.length })
@@ -1416,6 +1717,146 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         }),
         400: t.String(),
         500: t.String(),
+      },
+    },
+  )
+
+  .post(
+    '/reposts',
+    async ({ body, user, error }) => {
+      const targetUri = normalizeRepostTarget(body)
+      if (!targetUri) {
+        return error(400, 'Choose a valid ActivityPub object URL or AT URI to repost')
+      }
+
+      const actorId = normalizeString(user.atprotoDid) ?? user.getWebId()
+      const now = new Date()
+      const repostUri = canonicalRepostUri(actorId, targetUri)
+      const record = buildCanonicalShareRecord(user, targetUri, 'ShareAdd', now)
+      let nativeAnnounced = false
+
+      if (!targetUri.startsWith('at://')) {
+        try {
+          await ActivityPod.announceObject(user, targetUri)
+          nativeAnnounced = true
+        } catch (err) {
+          console.warn('[AT Bridge] Native ActivityPub announce failed; preserving canonical repost:', err)
+        }
+      }
+
+      await db
+        .insert(atRecords)
+        .values({
+          authorDid: actorId,
+          collection: 'canonical.share',
+          rkey: stableRepostId(actorId, targetUri),
+          atUri: repostUri,
+          cid: null,
+          operation: 'create',
+          record,
+          isActive: true,
+          createdAt: now,
+          ingestedAt: now,
+          sourceRelay: 'memory:ui',
+          firehoseSeq: null,
+        })
+        .onConflictDoUpdate({
+          target: atRecords.atUri,
+          set: {
+            operation: 'create',
+            record,
+            isActive: true,
+            createdAt: now,
+            ingestedAt: now,
+            sourceRelay: 'memory:ui',
+          },
+        })
+
+      return {
+        ok: true,
+        subjectUri: targetUri,
+        repostUri,
+        reposted: true,
+        nativeAnnounced,
+      }
+    },
+    {
+      body: repostBody,
+      detail: 'Create a canonical repost/boost for a feed object',
+      isSignedIn: true,
+      response: {
+        200: t.Object({
+          ok: t.Boolean(),
+          subjectUri: t.String(),
+          repostUri: t.String(),
+          reposted: t.Boolean(),
+          nativeAnnounced: t.Boolean(),
+        }),
+        400: t.String(),
+      },
+    },
+  )
+
+  .post(
+    '/reposts/remove',
+    async ({ body, user, error }) => {
+      const targetUri = normalizeRepostTarget(body)
+      if (!targetUri) {
+        return error(400, 'Choose a valid ActivityPub object URL or AT URI to remove from reposts')
+      }
+
+      const actorId = normalizeString(user.atprotoDid) ?? user.getWebId()
+      const now = new Date()
+      const repostUri = canonicalRepostUri(actorId, targetUri)
+      const record = buildCanonicalShareRecord(user, targetUri, 'ShareRemove', now)
+
+      await db
+        .insert(atRecords)
+        .values({
+          authorDid: actorId,
+          collection: 'canonical.share',
+          rkey: stableRepostId(actorId, targetUri),
+          atUri: repostUri,
+          cid: null,
+          operation: 'delete',
+          record,
+          isActive: false,
+          createdAt: now,
+          ingestedAt: now,
+          sourceRelay: 'memory:ui',
+          firehoseSeq: null,
+        })
+        .onConflictDoUpdate({
+          target: atRecords.atUri,
+          set: {
+            operation: 'delete',
+            record,
+            isActive: false,
+            createdAt: now,
+            ingestedAt: now,
+            sourceRelay: 'memory:ui',
+          },
+        })
+
+      return {
+        ok: true,
+        subjectUri: targetUri,
+        repostUri,
+        reposted: false,
+      }
+    },
+    {
+      body: repostBody,
+      detail: 'Remove the current viewer canonical repost/boost for a feed object',
+      isSignedIn: true,
+      response: {
+        200: t.Object({
+          ok: t.Boolean(),
+          subjectUri: t.String(),
+          repostUri: t.String(),
+          reposted: t.Boolean(),
+        }),
+        400: t.String(),
       },
     },
   )

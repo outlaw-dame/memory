@@ -38,6 +38,13 @@ Currently optimised mobile devices are:
 - go into the directory `cd api`
 - run `bun install` to install the dependencies
 - run `bun dev` to start the api
+- run `bun run typecheck` to perform a dedicated TypeScript type-check for the API
+
+From the repository root, you can also run:
+
+- `bun run typecheck:api` to type-check the API
+- `bun run check:api` to run API type-check + API tests
+- `make api-typecheck` for a Makefile-based type-check entrypoint
 
 #### Running the frontend
 - go into the directory `cd frontend`

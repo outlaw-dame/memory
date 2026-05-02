@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: docker-build docker-up build start log stop restart db-push db-generate
+.PHONY: docker-build docker-up build start log stop restart db-push db-generate api-typecheck
 
 DOCKER_COMPOSE_DEV=docker compose -f docker-compose-dev.yml  --env-file .env
 DOCKER_COMPOSE_PROD=docker compose -f docker-compose-prod.yml --env-file ./api/.env --env-file ./frontend/.env
@@ -103,3 +103,7 @@ db-generate:
 # Apply all pending checked-in migration files (use in CI / production).
 db-migrate:
 	cd api && DB_URL=postgres://postgres:$(POSTGRES_PASSWORD)@localhost:5432/postgres bun run drizzle:migrate
+
+# Type-check Memory API TypeScript without emitting build artifacts.
+api-typecheck:
+	cd api && bun run typecheck

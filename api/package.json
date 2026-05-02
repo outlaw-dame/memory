@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --target bun --outdir ./dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "bun run typecheck && bun test",
     "start": "NODE_ENV=production bun dist/index.js",
     "test": "bun test",
     "proof:canonical:unified": "bun scripts/canonical-unified-proof.ts",
@@ -17,7 +19,8 @@
     "@types/luxon": "^3.4.2",
     "@types/pg": "^8.11.11",
     "drizzle-kit": "^0.30.2",
-    "prettier-plugin-tailwindcss": "^0.6.11"
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "typescript": "^5.7.3"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
