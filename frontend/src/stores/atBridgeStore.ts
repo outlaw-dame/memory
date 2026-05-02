@@ -153,6 +153,7 @@ export interface UnifiedFeedItem {
   likeCount?: number | null
   quoteCount?: number | null
   quotedPost?: QuotedPost
+  linkPreview?: QuotedPost['linkPreview']
   /** Present when this feed item is a poll (FEP-9967 Question object). */
   poll?: FeedPoll | null
 }

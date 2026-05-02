@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { DateTime } from 'luxon'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '@/i18n'
 import HashtagText from './HashtagText.vue'
 import PostEmbedCard from './PostEmbedCard.vue'
+import PostLinkPreview from './PostLinkPreview.vue'
 import PostPoll from './PostPoll.vue'
 import ThreadSummary from './ThreadSummary.vue'
 import type { EmbeddedPost } from './PostEmbedCard.vue'
@@ -13,7 +14,9 @@ import type { CarouselMediaItem } from './PostMediaCarousel.vue'
 import InlineReplyComposer from './InlineReplyComposer.vue'
 import MoreActionsSheet from './MoreActionsSheet.vue'
 import type { UnifiedFeedItem } from '@/stores/atBridgeStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useFollow } from '@/composables/useFollow'
+import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPreview'
 import { useReply, type ReplyPolicyResolution, type ReplySubmissionResult } from '@/composables/useReply'
 
 const props = defineProps<{
@@ -27,6 +30,7 @@ const emit = defineEmits<{
 
 const { follow, isFollowing } = useFollow()
 const { resolvePolicy, submitReply, replyError, isResolving, isSubmitting } = useReply()
+const authStore = useAuthStore()
 const router = useRouter()
 const { t } = useI18n()
 const isReplying = ref(false)
@@ -34,6 +38,8 @@ const isMoreActionsOpen = ref(false)
 const replyPolicy = ref<ReplyPolicyResolution | null>(null)
 const replyComposer = ref<InstanceType<typeof InlineReplyComposer> | null>(null)
 const isRepostProcessing = ref(false)
+const fetchedLinkPreview = ref<LinkPreviewData | null>(null)
+const previewRequestId = ref(0)
 
 const repostGroup = computed(() => props.item.repostGroup ?? null)
 const repostCount = computed(() => props.item.repostCount ?? repostGroup.value?.count ?? 0)
@@ -105,6 +111,50 @@ const threadRootUri = computed(() => {
   }
   return null
 })
+
+function normalizeMainLinkPreview(value: unknown): LinkPreviewData | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.url !== 'string' || typeof record.title !== 'string') return null
+
+  const preview: LinkPreviewData = {
+    url: record.url,
+    title: record.title,
+  }
+
+  if (typeof record.description === 'string') preview.description = record.description
+  if (typeof record.image === 'string') preview.image = record.image
+  if (typeof record.domain === 'string') preview.domain = record.domain
+  if (typeof record.authorName === 'string') preview.authorName = record.authorName
+  if (typeof record.authorUrl === 'string') preview.authorUrl = record.authorUrl
+  if (Array.isArray(record.authors)) preview.authors = record.authors as LinkPreviewData['authors']
+
+  return preview
+}
+
+const inlineLinkPreview = computed(() => normalizeMainLinkPreview(props.item.linkPreview))
+const inlinePreviewUrlCandidate = computed(() => {
+  if (inlineLinkPreview.value || isArticle.value) return null
+  return extractFirstHttpUrl(props.item.content)
+})
+
+const resolvedLinkPreview = computed(() => inlineLinkPreview.value ?? fetchedLinkPreview.value)
+
+watch(
+  inlinePreviewUrlCandidate,
+  async url => {
+    if (!url) {
+      fetchedLinkPreview.value = null
+      return
+    }
+
+    const requestId = ++previewRequestId.value
+    const preview = await fetchLinkPreview(url, authStore.token)
+    if (requestId !== previewRequestId.value) return
+    fetchedLinkPreview.value = preview
+  },
+  { immediate: true },
+)
 
 interface NormalizedQuotedPost {
   id: number
@@ -411,6 +461,10 @@ async function onRepostClick() {
       :text="item.content"
       @hashtag-click="emit('hashtagClick', $event)"
     />
+
+    <div v-if="resolvedLinkPreview" class="mt-3" @click.stop>
+      <PostLinkPreview :preview="resolvedLinkPreview" />
+    </div>
 
     <!-- Poll (FEP-9967) -->
     <div v-if="item.poll" class="mt-3" @click.stop>

@@ -16,6 +16,7 @@ const mentionStartIndex = ref<number | null>(null)
 const mentionLookup = ref<Record<string, string>>({})
 const replyToMessageId = ref<string | null>(null)
 const autocompleteRequestId = ref(0)
+const activeMentionIndex = ref(0)
 const isSending = ref(false)
 
 const currentConversation = computed(() => conversationsStore.currentConversation)
@@ -117,6 +118,7 @@ async function openConversation(conversationId: string): Promise<void> {
   mentionSuggestions.value = []
   mentionStartIndex.value = null
   mentionLookup.value = {}
+  activeMentionIndex.value = 0
   await conversationsStore.fetchConversation(conversationId)
 }
 
@@ -135,6 +137,7 @@ async function refreshMentionSuggestions(): Promise<void> {
   if (!selectedConversationId.value || !composerEl.value) {
     mentionSuggestions.value = []
     mentionStartIndex.value = null
+    activeMentionIndex.value = 0
     return
   }
 
@@ -143,6 +146,7 @@ async function refreshMentionSuggestions(): Promise<void> {
   if (!mentionQuery) {
     mentionSuggestions.value = []
     mentionStartIndex.value = null
+    activeMentionIndex.value = 0
     return
   }
 
@@ -151,6 +155,7 @@ async function refreshMentionSuggestions(): Promise<void> {
   const suggestions = await conversationsStore.memberAutocomplete(selectedConversationId.value, mentionQuery.query)
   if (requestId !== autocompleteRequestId.value) return
   mentionSuggestions.value = suggestions
+  activeMentionIndex.value = 0
 }
 
 async function onComposerInput(): Promise<void> {
@@ -170,6 +175,7 @@ async function insertMention(userDid: string): Promise<void> {
   composerText.value = `${composerText.value.slice(0, mentionStartIndex.value)}@${label} ${composerText.value.slice(caret)}`
   mentionSuggestions.value = []
   mentionStartIndex.value = null
+  activeMentionIndex.value = 0
 
   await nextTick()
   const cursor = mentionStartIndex.value === null ? composerText.value.length : mentionStartIndex.value
@@ -219,8 +225,40 @@ async function sendMessage(): Promise<void> {
     mentionSuggestions.value = []
     mentionStartIndex.value = null
     mentionLookup.value = {}
+    activeMentionIndex.value = 0
   } finally {
     isSending.value = false
+  }
+}
+
+function onComposerKeydown(event: KeyboardEvent): void {
+  if (mentionSuggestions.value.length === 0) return
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeMentionIndex.value = (activeMentionIndex.value + 1) % mentionSuggestions.value.length
+    return
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeMentionIndex.value = (activeMentionIndex.value - 1 + mentionSuggestions.value.length) % mentionSuggestions.value.length
+    return
+  }
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    mentionSuggestions.value = []
+    mentionStartIndex.value = null
+    activeMentionIndex.value = 0
+    return
+  }
+
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    const selected = mentionSuggestions.value[activeMentionIndex.value]
+    if (!selected) return
+    event.preventDefault()
+    void insertMention(selected)
   }
 }
 </script>
@@ -387,6 +425,7 @@ async function sendMessage(): Promise<void> {
               @input="onComposerInput"
               @click="onComposerInput"
               @keyup="onComposerInput"
+              @keydown="onComposerKeydown"
             />
 
             <div v-if="mentionSuggestions.length > 0" class="absolute bottom-[calc(100%+12px)] left-0 right-0 rounded-[24px] bg-white p-2 shadow-[0_24px_60px_rgba(35,31,32,0.16)]">
@@ -395,7 +434,8 @@ async function sendMessage(): Promise<void> {
                 v-for="suggestion in mentionSuggestions"
                 :key="suggestion"
                 type="button"
-                class="flex w-full items-center justify-between rounded-[18px] px-3 py-2 text-left hover:bg-dark-10"
+                class="flex w-full items-center justify-between rounded-[18px] px-3 py-2 text-left"
+                :class="mentionSuggestions[activeMentionIndex] === suggestion ? 'bg-dark-10' : 'hover:bg-dark-10'"
                 @click="insertMention(suggestion)"
               >
                 <span class="font-semibold text-dark">@{{ formatMemberLabel(suggestion) }}</span>

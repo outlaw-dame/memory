@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from '@/i18n'
 import { usePostsStore } from '@/stores/postsStore'
 import { useAtBridgeStore } from '@/stores/atBridgeStore'
 import { useAuthStore } from '@/stores/authStore'
 import GifPicker from './GifPicker.vue'
+import PostLinkPreview from './PostLinkPreview.vue'
 import PostAdvancedSettings from './PostAdvancedSettings.vue'
 import { getEmbedUrl, type KlipyGif } from '@/composables/useKlipy'
+import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPreview'
+import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CreatePoll } from '@/types'
 import { parseHashtagInput } from '@/utils/hashtags'
 
@@ -36,6 +39,8 @@ const showGifPicker = ref(false)
 const selectedGif = ref<KlipyGif | null>(null)
 const showAdvancedSettings = ref(false)
 const outOfBandHashtags = ref('')
+const composerLinkPreview = ref<LinkPreviewData | null>(null)
+const previewRequestId = ref(0)
 
 const currentCharLimit = computed(() => (postType.value === 'article' ? ARTICLE_CHAR_LIMIT : NOTE_CHAR_LIMIT))
 const charCount = computed(() => content.value.length)
@@ -81,6 +86,24 @@ const composerPlaceholder = computed(() => (
     ? t('composer.article.bodyPlaceholder')
     : t('composer.placeholder')
 ))
+
+const extractedComposerUrl = computed(() => extractFirstHttpUrl(content.value))
+
+watch(
+  extractedComposerUrl,
+  async nextUrl => {
+    if (!nextUrl) {
+      composerLinkPreview.value = null
+      return
+    }
+
+    const requestId = ++previewRequestId.value
+    const preview = await fetchLinkPreview(nextUrl, authStore.token)
+    if (requestId !== previewRequestId.value) return
+    composerLinkPreview.value = preview
+  },
+  { immediate: true },
+)
 
 function applyFormat(type: 'bold' | 'italic' | 'underline') {
   const textarea = document.getElementById('composer-textarea') as HTMLTextAreaElement | null
@@ -169,6 +192,7 @@ async function createPost() {
   pollEndTime.value = ''
   selectedGif.value = null
   outOfBandHashtags.value = ''
+  composerLinkPreview.value = null
   showPoll.value = false
   showFormatting.value = false
   showGifPicker.value = false
@@ -266,6 +290,10 @@ async function createPost() {
         <span class="text-caption" :class="isOverLimit ? 'text-red-500' : 'text-dark-50'">
           {{ characterCountLabel }}
         </span>
+      </div>
+
+      <div v-if="composerLinkPreview" class="px-[var(--padding-main)] pb-3">
+        <PostLinkPreview :preview="composerLinkPreview" />
       </div>
 
       <!-- Out-of-band hashtags -->

@@ -9,10 +9,13 @@ import PostLinkPreview from '@/components/PostLinkPreview.vue'
 import type { LinkPreviewData } from '@/components/PostLinkPreview.vue'
 import AiInterpolatorCard from '@/components/AiInterpolatorCard.vue'
 import { useAtBridgeStore, type UnifiedFeedItem, type FeedPoll } from '@/stores/atBridgeStore'
+import { useAuthStore } from '@/stores/authStore'
+import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPreview'
 
 const router = useRouter()
 const route = useRoute()
 const store = useAtBridgeStore()
+const authStore = useAuthStore()
 const showAiInterpolator = ref(true)
 
 // -----------------------------------------------------------------------
@@ -76,6 +79,7 @@ function relativeTime(iso: string | null): string {
 }
 
 function toThreadPost(item: UnifiedFeedItem, inReplyToName?: string): ThreadPost {
+  const inlinePreview = normalizeLinkPreview(item.linkPreview)
   return {
     id: item.id,
     authorName: item.authorName,
@@ -89,7 +93,40 @@ function toThreadPost(item: UnifiedFeedItem, inReplyToName?: string): ThreadPost
     likeCount: '0',
     repostCount: '0',
     poll: item.poll ?? undefined,
+    linkPreview: inlinePreview ?? undefined,
   }
+}
+
+function normalizeLinkPreview(value: unknown): LinkPreviewData | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.url !== 'string' || typeof record.title !== 'string') return null
+
+  const preview: LinkPreviewData = {
+    url: record.url,
+    title: record.title,
+  }
+
+  if (typeof record.description === 'string') preview.description = record.description
+  if (typeof record.image === 'string') preview.image = record.image
+  if (typeof record.domain === 'string') preview.domain = record.domain
+  if (typeof record.authorName === 'string') preview.authorName = record.authorName
+  if (typeof record.authorUrl === 'string') preview.authorUrl = record.authorUrl
+  if (Array.isArray(record.authors)) preview.authors = record.authors as LinkPreviewData['authors']
+
+  return preview
+}
+
+async function hydrateThreadLinkPreviews(items: UnifiedFeedItem[]): Promise<void> {
+  await Promise.all(items.map(async item => {
+    if (item.linkPreview) return
+    const candidate = extractFirstHttpUrl(item.content)
+    if (!candidate) return
+
+    const preview = await fetchLinkPreview(candidate, authStore.token)
+    if (!preview) return
+    item.linkPreview = preview
+  }))
 }
 
 // -----------------------------------------------------------------------
@@ -125,6 +162,7 @@ onMounted(async () => {
     } else {
       rootItem.value = ctx.root
       replyItems.value = ctx.items
+      await hydrateThreadLinkPreviews([...(ctx.root ? [ctx.root] : []), ...ctx.items])
     }
   } catch {
     error.value = 'Failed to load thread.'

@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { _createPost, _selectUsers } from './types'
-import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin } from './routes'
+import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin, linkPreviewPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
 import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
 import { db } from './db/client'
@@ -59,6 +59,7 @@ const protectedRoutes = new Elysia({ aot: false })
   .use(profilePlugin)
   .use(conversationsPlugin)
   .use(activityPodsNotificationsPlugin)
+  .use(linkPreviewPlugin)
   .use(chatPlugin)
 
 export const app = new Elysia({ aot: false })
