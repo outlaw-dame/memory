@@ -245,7 +245,7 @@ async function fetchViewerDashboardList(
     return []
   }
 
-  const response = await fetchWithBackoff(`${baseUrl}/api/dashboard/settings/${container}`, {
+  const response = await fetchWithBackoff(`${baseUrl}/api/dashboard/apps/moderation/${container}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -857,7 +857,7 @@ async function createViewerModerationDecision(
   }
 
   const container = action === 'block' ? 'blocks' : 'mutes'
-  const response = await fetchWithBackoff(`${baseUrl}/api/dashboard/settings/${container}`, {
+  const response = await fetchWithBackoff(`${baseUrl}/api/dashboard/apps/moderation/${container}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
