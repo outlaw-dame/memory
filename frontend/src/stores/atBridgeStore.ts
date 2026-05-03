@@ -199,7 +199,7 @@ export interface FirehoseStatus {
 }
 
 export type FeedSource = 'all' | 'activitypods' | 'atproto'
-export type TimelineMode = 'balanced' | 'chronological'
+export type TimelineMode = 'balanced' | 'chronological' | 'following'
 
 export interface AtRecordSummary {
   title: string | null

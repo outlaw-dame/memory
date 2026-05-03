@@ -2,10 +2,12 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '@/i18n'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const notificationsStore = useNotificationsStore()
 
 const hiddenRoutes = new Set(['signin', 'signup', 'welcome', 'experience'])
 // Hide bottom nav entirely on dashboard routes (they have their own sidebar)
@@ -58,9 +60,17 @@ function navigate(item: NavItem) {
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
       <!-- Notifications / bell -->
-      <svg v-else-if="item.name === 'notifications'" class="w-5 h-5" :style="isActive(item) ? 'color:rgb(99,100,246)' : 'color:rgba(55,55,55,0.5)'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
-      </svg>
+      <span v-else-if="item.name === 'notifications'" class="relative inline-flex items-center justify-center w-5 h-5">
+        <svg class="w-5 h-5" :style="isActive(item) ? 'color:rgb(99,100,246)' : 'color:rgba(55,55,55,0.5)'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span
+          v-if="notificationsStore.totalUnreadCount > 0"
+          class="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-red-500 text-white font-bold leading-none"
+          style="min-width: 16px; height: 16px; font-size: 10px; padding: 0 3px;"
+          aria-label="unread notifications"
+        >{{ notificationsStore.totalUnreadCount > 99 ? '99+' : notificationsStore.totalUnreadCount }}</span>
+      </span>
       <!-- Profile -->
       <svg v-else-if="item.name === 'profile'" class="w-5 h-5" :style="isActive(item) ? 'color:rgb(99,100,246)' : 'color:rgba(55,55,55,0.5)'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>

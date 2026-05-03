@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 import { _createPost, _selectUsers } from './types'
 import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin, linkPreviewPlugin, bookmarksPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
+import { xrpcFeedPlugin } from './routes/atBridge'
 import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
 import { db } from './db/client'
 import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
@@ -18,6 +19,7 @@ const publicRoutes = new Elysia({ aot: false })
   .use(activityPodsAppPublicPlugin)
   .use(mastodonApiPlugin)
   .use(apBridgeWebhookPlugin)
+  .use(xrpcFeedPlugin)
 
 const protectedRoutes = new Elysia({ aot: false })
   .use(setupPlugin)

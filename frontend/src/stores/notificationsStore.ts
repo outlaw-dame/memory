@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { t } from '@/i18n'
 import { useAuthStore } from './authStore'
@@ -282,6 +282,10 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }
   }
 
+  const totalUnreadCount = computed(() =>
+    groupedItems.value.reduce((sum, g) => sum + g.unreadCount, 0)
+  )
+
   function reset() {
     items.value = []
     groupedItems.value = []
@@ -294,6 +298,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   return {
     items,
     groupedItems,
+    totalUnreadCount,
     groupingPreferences,
     status,
     isLoading,

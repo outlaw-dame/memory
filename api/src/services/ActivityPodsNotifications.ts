@@ -530,11 +530,38 @@ type NotificationKind =
   | 'favourite'
   | 'follow'
   | 'mention'
+  | 'reply'
+  | 'quote'
   | 'create'
   | 'update'
   | 'delete'
   | 'add'
   | 'other'
+
+/**
+ * Returns true when the AP Note/Article object looks like a quote-post.
+ * Checks Mastodon quoteUrl, Misskey _misskey_quote, and FEP-e232 quoteUri.
+ */
+function isQuotePost(obj: Record<string, unknown>): boolean {
+  if (typeof obj.quoteUrl === 'string' && obj.quoteUrl.length > 0) return true
+  if (typeof obj._misskey_quote === 'string' && obj._misskey_quote.length > 0) return true
+  if (typeof obj.quoteUri === 'string' && obj.quoteUri.length > 0) return true
+  // FEP-e232 tag-based quote: { type: 'Link', mediaType: 'application/ld+json', rel: 'https://misskey-hub.net/ns#_misskey_quote' }
+  if (Array.isArray(obj.tag)) {
+    for (const tag of obj.tag) {
+      if (!tag || typeof tag !== 'object' || Array.isArray(tag)) continue
+      const t = tag as Record<string, unknown>
+      const rel = typeof t.rel === 'string' ? t.rel : ''
+      if (
+        (t.type === 'Link' || t.type === 'Note') &&
+        (rel.includes('quote') || rel.includes('misskey'))
+      ) {
+        return true
+      }
+    }
+  }
+  return false
+}
 
 function deriveNotificationKind(payload: Record<string, unknown>, activityType: string): NotificationKind {
   const envelopeType = firstTypeString(payload.type ?? activityType) ?? activityType
@@ -552,7 +579,14 @@ function deriveNotificationKind(payload: Record<string, unknown>, activityType: 
   if (effectiveType === 'add') return 'add'
 
   if (envelopeType.toLowerCase() === 'add') {
-    if (effectiveType === 'note' || effectiveType === 'article') return 'mention'
+    if (effectiveType === 'note' || effectiveType === 'article') {
+      // Distinguish reply vs quote vs plain mention using the Note's own fields.
+      if (nestedObject) {
+        if (isQuotePost(nestedObject)) return 'quote'
+        if (nestedObject.inReplyTo != null) return 'reply'
+      }
+      return 'mention'
+    }
     return 'add'
   }
 
@@ -610,6 +644,10 @@ function getNotificationLabel(kind: NotificationKind, activityType: string): str
       return 'Follows'
     case 'mention':
       return 'Mentions'
+    case 'reply':
+      return 'Replies'
+    case 'quote':
+      return 'Quotes'
     case 'create':
       return 'New activity'
     case 'update':

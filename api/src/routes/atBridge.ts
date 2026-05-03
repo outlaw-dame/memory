@@ -117,7 +117,7 @@ type FeedPageResponse = {
   hasMore: boolean
 }
 
-type TimelineMode = 'chronological' | 'balanced'
+type TimelineMode = 'chronological' | 'balanced' | 'following'
 
 type LexiconFamily = 'bsky' | 'standard.site' | 'other'
 
@@ -1612,7 +1612,7 @@ const feedQuery = t.Object({
   cursor: t.Optional(t.String({ minLength: 1, maxLength: 512 })),
   source: t.Optional(t.Union([t.Literal('activitypods'), t.Literal('atproto'), t.Literal('all')])),
   hashtag: t.Optional(t.String({ minLength: 2, maxLength: 65 })),
-  mode: t.Optional(t.Union([t.Literal('chronological'), t.Literal('balanced')])),
+  mode: t.Optional(t.Union([t.Literal('chronological'), t.Literal('balanced'), t.Literal('following')])),
   apWeight: t.Optional(t.Integer({ default: 50, minimum: 1, maximum: 99 })),
   atWeight: t.Optional(t.Integer({ default: 50, minimum: 1, maximum: 99 })),
   excludeViewed: t.Optional(t.Boolean({ default: false })),
@@ -1714,14 +1714,27 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
         const mediaFlaggedResults = await applyAtprotoMediaFlags(bumpedResults)
         const warningResults = applyViewerWarningFlags(mediaFlaggedResults, moderationState)
-        const { visible: results } = filterViewerModeratedRows(warningResults, moderationState)
-        console.log('[AT Bridge /feed] Moderation filtered', { visible: results.length, hidden: warningResults.length - results.length })
+        const { visible: moderatedResults } = filterViewerModeratedRows(warningResults, moderationState)
+        console.log('[AT Bridge /feed] Moderation filtered', { visible: moderatedResults.length, hidden: warningResults.length - moderatedResults.length })
+
+        // For the following mode, filter down to only posts from followed authors.
+        let results = moderatedResults
+        if (timelineMode === 'following') {
+          const followedIds = await resolveFollowedAuthorIds(user)
+          if (followedIds.size > 0) {
+            results = moderatedResults.filter(row => {
+              // Match ATProto author DID or ActivityPub webId against followed set.
+              return followedIds.has(row.authorWebId) ||
+                (row.atUri != null && followedIds.has(row.authorWebId))
+            })
+          }
+        }
 
         const cursorScopedResults = useCursorPaging
           ? results.filter(row => isBeforeFeedCursor(row, keysetCursor!))
           : results
 
-        const rawPage = timelineMode === 'chronological' || source === 'activitypods' || source === 'atproto'
+        const rawPage = timelineMode === 'chronological' || timelineMode === 'following' || source === 'activitypods' || source === 'atproto'
           ? (useCursorPaging
             ? cursorScopedResults.slice(0, limit + 1)
             : cursorScopedResults.slice(offset, offset + limit))
@@ -2168,6 +2181,215 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   )
 
   // -------------------------------------------------------------------------
+  // GET /at/notifications — AT Protocol native notifications
+  //
+  // Queries atRecords for events (likes, reposts, follows, replies, quotes)
+  // that target the currently authenticated user's posts or DID.
+  // Grouped by kind, matching the GroupedNotification shape the UI consumes.
+  // -------------------------------------------------------------------------
+  .get(
+    '/notifications',
+    async ({ query: { limit, since }, user, error }) => {
+      const userDid = normalizeString(user.atprotoDid)
+      const userWebId = typeof user.getWebId === 'function' ? normalizeString(user.getWebId()) : null
+      if (!userDid && !userWebId) {
+        return error(400, 'AT Protocol DID is required to fetch AT-native notifications')
+      }
+
+      try {
+        const sinceDate = since
+          ? (() => { const d = new Date(since); return isNaN(d.getTime()) ? null : d })()
+          : null
+
+        // Fetch user's own posts so we can match inbound interactions against them.
+        const ownPostConditions = []
+        if (userDid) ownPostConditions.push(eq(atPosts.authorDid, userDid))
+        const ownPosts = ownPostConditions.length > 0
+          ? await db
+              .select({ atUri: atPosts.atUri })
+              .from(atPosts)
+              .where(and(...ownPostConditions, eq(atPosts.isPublic, true)))
+              .limit(1000)
+          : []
+        const ownPostUris = new Set(ownPosts.map(p => p.atUri))
+
+        // Fetch all active AT records that might be notifications.
+        const recordConditions: SQL[] = [
+          eq(atRecords.isActive, true),
+          inArray(atRecords.collection, [
+            'app.bsky.feed.like',
+            'app.bsky.feed.repost',
+            'app.bsky.graph.follow',
+            'app.bsky.feed.post',
+          ]),
+        ]
+        if (sinceDate) {
+          recordConditions.push(gt(atRecords.createdAt, sinceDate))
+        }
+        // Exclude the user's own records.
+        if (userDid) {
+          recordConditions.push(sql`${atRecords.authorDid} != ${userDid}`)
+        }
+
+        const rawRecords = await db
+          .select({
+            id: atRecords.id,
+            authorDid: atRecords.authorDid,
+            collection: atRecords.collection,
+            atUri: atRecords.atUri,
+            record: atRecords.record,
+            createdAt: atRecords.createdAt,
+            handle: atIdentities.handle,
+            displayName: atIdentities.displayName,
+            avatarUrl: atIdentities.avatarUrl,
+          })
+          .from(atRecords)
+          .leftJoin(atIdentities, eq(atRecords.authorDid, atIdentities.did))
+          .where(and(...recordConditions))
+          .orderBy(desc(atRecords.createdAt))
+          .limit(Math.min(500, limit * 20))
+
+        // Classify each record into a notification kind.
+        type AtNotifKind = 'favourite' | 'reblog' | 'follow' | 'reply' | 'quote' | 'mention'
+        interface AtNotifItem {
+          id: number
+          kind: AtNotifKind
+          actorDid: string
+          actorHandle: string
+          subjectUri: string | null
+          createdAt: Date | null
+        }
+
+        const notifs: AtNotifItem[] = []
+        for (const row of rawRecords) {
+          const rec = (row.record as Record<string, unknown> | null) ?? {}
+          const handle = normalizeString(row.handle) ?? row.authorDid
+
+          if (row.collection === 'app.bsky.feed.like') {
+            const subjectUri = normalizeString((rec.subject as Record<string, unknown> | null)?.uri)
+            if (subjectUri && ownPostUris.has(subjectUri)) {
+              notifs.push({ id: row.id, kind: 'favourite', actorDid: row.authorDid, actorHandle: handle, subjectUri, createdAt: row.createdAt })
+            }
+          } else if (row.collection === 'app.bsky.feed.repost') {
+            const subjectUri = normalizeString((rec.subject as Record<string, unknown> | null)?.uri)
+            if (subjectUri && ownPostUris.has(subjectUri)) {
+              notifs.push({ id: row.id, kind: 'reblog', actorDid: row.authorDid, actorHandle: handle, subjectUri, createdAt: row.createdAt })
+            }
+          } else if (row.collection === 'app.bsky.graph.follow') {
+            const subjectDid = normalizeString((rec.subject as Record<string, unknown> | null)?.did)
+              ?? normalizeString(rec.subject as string | null)
+            if (subjectDid && (subjectDid === userDid || subjectDid === userWebId)) {
+              notifs.push({ id: row.id, kind: 'follow', actorDid: row.authorDid, actorHandle: handle, subjectUri: null, createdAt: row.createdAt })
+            }
+          } else if (row.collection === 'app.bsky.feed.post') {
+            const replyParent = normalizeString((rec.reply as Record<string, unknown> | null)?.parent as unknown as string | null)
+              ?? normalizeString(((rec.reply as Record<string, unknown> | null)?.parent as Record<string, unknown> | null)?.uri)
+            const embedRecord = (rec.embed as Record<string, unknown> | null)
+            const quoteUri =
+              normalizeString(embedRecord?.uri as string | null) ??
+              normalizeString((embedRecord?.record as Record<string, unknown> | null)?.uri)
+            const facets = Array.isArray(rec.facets) ? rec.facets : []
+            const mentionsDids = facets.flatMap((facet: unknown) => {
+              const f = facet as Record<string, unknown>
+              return Array.isArray(f.features)
+                ? (f.features as Array<Record<string, unknown>>)
+                    .filter(feat => feat.$type === 'app.bsky.richtext.facet#mention')
+                    .map(feat => normalizeString(feat.did))
+                    .filter((d): d is string => !!d)
+                : []
+            })
+
+            if (replyParent && ownPostUris.has(replyParent)) {
+              notifs.push({ id: row.id, kind: 'reply', actorDid: row.authorDid, actorHandle: handle, subjectUri: replyParent, createdAt: row.createdAt })
+            } else if (quoteUri && ownPostUris.has(quoteUri)) {
+              notifs.push({ id: row.id, kind: 'quote', actorDid: row.authorDid, actorHandle: handle, subjectUri: quoteUri, createdAt: row.createdAt })
+            } else if (userDid && mentionsDids.includes(userDid)) {
+              notifs.push({ id: row.id, kind: 'mention', actorDid: row.authorDid, actorHandle: handle, subjectUri: null, createdAt: row.createdAt })
+            }
+          }
+        }
+
+        // Group by kind + subjectUri (the same grouping the AP notification system uses).
+        const kindLabel: Record<AtNotifKind, string> = {
+          favourite: 'Likes',
+          reblog: 'Boosts',
+          follow: 'Follows',
+          reply: 'Replies',
+          quote: 'Quotes',
+          mention: 'Mentions',
+        }
+        const groups = new Map<string, {
+          kind: AtNotifKind
+          ids: number[]
+          actors: Map<string, { count: number; lastAt: string }>
+          latestAt: Date | null
+          subjectUri: string | null
+        }>()
+
+        for (const notif of notifs) {
+          const key = `${notif.kind}:${notif.subjectUri ?? 'none'}`
+          let group = groups.get(key)
+          if (!group) {
+            group = { kind: notif.kind, ids: [], actors: new Map(), latestAt: null, subjectUri: notif.subjectUri }
+            groups.set(key, group)
+          }
+          group.ids.push(notif.id)
+          const existingActor = group.actors.get(notif.actorDid)
+          if (existingActor) {
+            existingActor.count += 1
+            if (notif.createdAt && notif.createdAt > new Date(existingActor.lastAt)) {
+              existingActor.lastAt = notif.createdAt.toISOString()
+            }
+          } else {
+            group.actors.set(notif.actorDid, {
+              count: 1,
+              lastAt: notif.createdAt?.toISOString() ?? new Date().toISOString(),
+            })
+          }
+          if (notif.createdAt && (!group.latestAt || notif.createdAt > group.latestAt)) {
+            group.latestAt = notif.createdAt
+          }
+        }
+
+        const grouped = [...groups.entries()].map(([key, group]) => ({
+          groupId: `atproto:${crypto.createHash('sha256').update(key).digest('hex').slice(0, 16)}`,
+          kind: group.kind,
+          label: kindLabel[group.kind],
+          totalCount: group.ids.length,
+          unreadCount: group.ids.length,
+          actorCount: group.actors.size,
+          actors: [...group.actors.entries()].map(([actorUri, data]) => ({
+            actorUri,
+            count: data.count,
+            lastAt: data.lastAt,
+          })),
+          latestAt: group.latestAt?.toISOString() ?? new Date().toISOString(),
+          objectUri: group.subjectUri,
+          targetUri: null,
+          notificationIds: group.ids,
+          source: 'atproto' as const,
+        }))
+
+        // Sort by most recent activity first.
+        grouped.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime())
+
+        return grouped.slice(0, limit)
+      } catch (err) {
+        console.error('[AT Bridge] Failed to fetch AT-native notifications:', err)
+        return error(500, 'Failed to fetch AT-native notifications')
+      }
+    },
+    {
+      query: t.Object({
+        limit: t.Integer({ default: 30, maximum: 100, minimum: 1 }),
+        since: t.Optional(t.String({ minLength: 10, maxLength: 64 })),
+      }),
+      detail: 'Returns AT-Protocol-native notifications (likes, reposts, follows, replies, quotes, mentions) for the signed-in user',
+      isSignedIn: true,
+    },
+  )
+
+  // -------------------------------------------------------------------------
   // GET /at/posts — AT Protocol posts only
   // -------------------------------------------------------------------------
   .get(
@@ -2432,3 +2654,87 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   )
 
 export default atBridgePlugin
+
+// ---------------------------------------------------------------------------
+// XRPC — app.bsky.feed.getFeedSkeleton
+//
+// Public endpoint that lets Bluesky clients and PDS instances treat Memory
+// as an AT Protocol custom feed generator.  Clients send the AT URI of the
+// feed (e.g. at://did:web:memory.social/app.bsky.feed.generator/unified)
+// and receive a skeleton: an ordered list of { post: atUri } objects.
+//
+// Supported feed aliases:
+//   *:memory-unified   → balanced algorithmic feed (mode=balanced)
+//   *:memory-following → following-only chronological feed (mode=following)
+//   *:memory-latest    → pure chronological feed (mode=chronological)
+// ---------------------------------------------------------------------------
+
+export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
+  .use(setupPlugin)
+  .get(
+    '/app.bsky.feed.getFeedSkeleton',
+    async ({ query: { feed, limit, cursor }, error: elysiaError }) => {
+      // Determine mode from the feed AT URI's rkey.
+      const feedRkey = (() => {
+        if (!feed) return 'memory-unified'
+        const parts = feed.split('/')
+        return parts[parts.length - 1] ?? 'memory-unified'
+      })()
+
+      type XrpcMode = 'balanced' | 'chronological' | 'following'
+      const modeMap: Record<string, XrpcMode> = {
+        'memory-unified': 'balanced',
+        'memory-following': 'following',
+        'memory-latest': 'chronological',
+      }
+      const timelineMode: XrpcMode = modeMap[feedRkey] ?? 'balanced'
+
+      const normalizedLimit = Math.min(100, Math.max(1, limit ?? 30))
+      const keysetCursor = decodeFeedCursor(cursor)
+      const fetchLimit = Math.min(300, Math.max(60, normalizedLimit * 6))
+
+      try {
+        const candidateRows = await queryFeedCandidates({
+          fetchLimit,
+          source: null,
+          hashtag: null,
+          sinceDate: null,
+        })
+
+        const cursorScopedRows = keysetCursor !== null
+          ? candidateRows.filter(row => isBeforeFeedCursor(row, keysetCursor))
+          : candidateRows
+
+        const pageRows = timelineMode === 'balanced'
+          ? buildBalancedFeed(cursorScopedRows, normalizedLimit + 1, 0, 50, 50)
+          : cursorScopedRows.slice(0, normalizedLimit + 1)
+
+        const hasMore = pageRows.length > normalizedLimit
+        const resultRows = pageRows.slice(0, normalizedLimit)
+
+        const feedItems = resultRows
+          .filter(row => typeof row.atUri === 'string' && row.atUri.startsWith('at://'))
+          .map(row => ({ post: row.atUri as string }))
+
+        const nextCursor = hasMore && resultRows.length > 0
+          ? encodeFeedCursor(resultRows[resultRows.length - 1])
+          : null
+
+        return {
+          feed: feedItems,
+          ...(nextCursor ? { cursor: nextCursor } : {}),
+        }
+      } catch (err) {
+        console.error('[XRPC getFeedSkeleton] Failed:', err)
+        return elysiaError(500, 'Feed skeleton generation failed')
+      }
+    },
+    {
+      query: t.Object({
+        feed: t.Optional(t.String({ minLength: 1, maxLength: 512 })),
+        limit: t.Optional(t.Integer({ default: 30, minimum: 1, maximum: 100 })),
+        cursor: t.Optional(t.String({ minLength: 1, maxLength: 512 })),
+      }),
+      detail: 'AT Protocol feed generator skeleton — returns an ordered list of post AT URIs for Bluesky clients',
+    },
+  )

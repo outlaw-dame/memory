@@ -67,6 +67,10 @@ function getGroupedNotificationLabel(kind: string, fallbackLabel: string) {
       return t('notifications.group.kind.follow')
     case 'mention':
       return t('notifications.group.kind.mention')
+    case 'reply':
+      return t('notifications.group.kind.reply')
+    case 'quote':
+      return t('notifications.group.kind.quote')
     default:
       return fallbackLabel
   }
