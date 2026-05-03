@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import ky from 'ky'
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { db } from '../db/client'
 import { notifications, users } from '../db/schema'
 import { chatConvos, chatMembers, chatMessages } from '../db/chatSchema'
@@ -493,6 +493,136 @@ function sanitizeNotificationPayload(payload: Record<string, unknown>) {
   return sanitized
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return null
+}
+
+function firstTypeString(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim().length > 0) return value.trim()
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      if (typeof entry === 'string' && entry.trim().length > 0) return entry.trim()
+      const record = asRecord(entry)
+      if (record) {
+        const nested = firstTypeString(record.type ?? record['@type'])
+        if (nested) return nested
+      }
+    }
+  }
+  const record = asRecord(value)
+  if (!record) return null
+  const nested = record.type ?? record['@type']
+  return firstTypeString(nested)
+}
+
+function getNestedObject(payload: Record<string, unknown>): Record<string, unknown> | null {
+  const object = asRecord(payload.object)
+  if (!object) return null
+  const nestedObject = asRecord(object.object)
+  return nestedObject ?? object
+}
+
+type NotificationKind =
+  | 'reblog'
+  | 'favourite'
+  | 'follow'
+  | 'mention'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'add'
+  | 'other'
+
+function deriveNotificationKind(payload: Record<string, unknown>, activityType: string): NotificationKind {
+  const envelopeType = firstTypeString(payload.type ?? activityType) ?? activityType
+  const nestedObject = getNestedObject(payload)
+  const nestedType = firstTypeString(nestedObject?.type)
+  const effectiveType = (nestedType ?? envelopeType).toLowerCase()
+
+  if (effectiveType === 'announce' || effectiveType === 'share' || effectiveType === 'repost') return 'reblog'
+  if (effectiveType === 'like' || effectiveType === 'favorite' || effectiveType === 'favourite') return 'favourite'
+  if (effectiveType === 'follow') return 'follow'
+  if (effectiveType === 'mention') return 'mention'
+  if (effectiveType === 'create') return 'create'
+  if (effectiveType === 'update') return 'update'
+  if (effectiveType === 'delete') return 'delete'
+  if (effectiveType === 'add') return 'add'
+
+  if (envelopeType.toLowerCase() === 'add') {
+    if (effectiveType === 'note' || effectiveType === 'article') return 'mention'
+    return 'add'
+  }
+
+  return 'other'
+}
+
+function deriveGroupSubjectUri(
+  payload: Record<string, unknown>,
+  objectUri: string | null,
+  targetUri: string | null,
+): string | null {
+  const nestedObject = getNestedObject(payload)
+  const nestedTarget = asRecord(nestedObject?.target)
+  const nestedSubject = asRecord(nestedObject?.object)
+
+  return (
+    sanitizeString(
+      getStringValue(nestedSubject) ??
+      getStringValue(nestedTarget) ??
+      getStringValue(nestedObject) ??
+      objectUri ??
+      targetUri,
+      4096,
+    )
+  )
+}
+
+export interface GroupedNotificationActor {
+  actorUri: string
+  count: number
+  lastAt: string
+}
+
+export interface GroupedNotification {
+  groupId: string
+  kind: NotificationKind
+  label: string
+  totalCount: number
+  unreadCount: number
+  actorCount: number
+  actors: GroupedNotificationActor[]
+  latestAt: string
+  objectUri: string | null
+  targetUri: string | null
+  notificationIds: number[]
+}
+
+function getNotificationLabel(kind: NotificationKind, activityType: string): string {
+  switch (kind) {
+    case 'reblog':
+      return 'Boosts'
+    case 'favourite':
+      return 'Likes'
+    case 'follow':
+      return 'Follows'
+    case 'mention':
+      return 'Mentions'
+    case 'create':
+      return 'New activity'
+    case 'update':
+      return 'Updated activity'
+    case 'delete':
+      return 'Deleted activity'
+    case 'add':
+      return 'Inbox activity'
+    default:
+      return activityType || 'Activity'
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Direct-message detection helpers
 // ---------------------------------------------------------------------------
@@ -756,6 +886,151 @@ export async function recordNotificationDelivery(userId: number, payload: Record
 
 export async function listNotificationsForUser(userId: number) {
   return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(50)
+}
+
+export async function listGroupedNotificationsForUser(userId: number): Promise<GroupedNotification[]> {
+  const rows = await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(200)
+
+  type ActorAggregate = {
+    actorUri: string
+    count: number
+    lastAt: Date
+  }
+
+  type GroupAggregate = {
+    kind: NotificationKind
+    label: string
+    objectUri: string | null
+    targetUri: string | null
+    totalCount: number
+    unreadCount: number
+    latestAt: Date
+    actorMap: Map<string, ActorAggregate>
+    notificationIds: number[]
+  }
+
+  const groups = new Map<string, GroupAggregate>()
+
+  for (const row of rows) {
+    const payload = (row.payload && typeof row.payload === 'object')
+      ? row.payload as Record<string, unknown>
+      : {}
+
+    const kind = deriveNotificationKind(payload, row.activityType)
+    const groupSubject = deriveGroupSubjectUri(payload, row.objectUri, row.targetUri)
+    const isGroupable = (kind === 'reblog' || kind === 'favourite') && !!groupSubject
+    const groupId = isGroupable ? `${kind}:${groupSubject}` : `single:${row.id}`
+
+    const occurredAt = row.publishedAt ?? row.createdAt
+    const actorUri = row.actorUri
+
+    let aggregate = groups.get(groupId)
+    if (!aggregate) {
+      aggregate = {
+        kind,
+        label: getNotificationLabel(kind, row.activityType),
+        objectUri: row.objectUri,
+        targetUri: row.targetUri,
+        totalCount: 0,
+        unreadCount: 0,
+        latestAt: occurredAt,
+        actorMap: new Map<string, ActorAggregate>(),
+        notificationIds: [],
+      }
+      groups.set(groupId, aggregate)
+    }
+
+    aggregate.totalCount += 1
+    if (!row.isRead) aggregate.unreadCount += 1
+    if (occurredAt > aggregate.latestAt) aggregate.latestAt = occurredAt
+    aggregate.notificationIds.push(row.id)
+
+    if (actorUri) {
+      const existingActor = aggregate.actorMap.get(actorUri)
+      if (existingActor) {
+        existingActor.count += 1
+        if (occurredAt > existingActor.lastAt) existingActor.lastAt = occurredAt
+      } else {
+        aggregate.actorMap.set(actorUri, {
+          actorUri,
+          count: 1,
+          lastAt: occurredAt,
+        })
+      }
+    }
+  }
+
+  const result: GroupedNotification[] = [...groups.entries()].map(([groupId, aggregate]) => {
+    const actors = [...aggregate.actorMap.values()]
+      .sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime())
+      .slice(0, 3)
+      .map(actor => ({
+        actorUri: actor.actorUri,
+        count: actor.count,
+        lastAt: actor.lastAt.toISOString(),
+      }))
+
+    return {
+      groupId,
+      kind: aggregate.kind,
+      label: aggregate.label,
+      totalCount: aggregate.totalCount,
+      unreadCount: aggregate.unreadCount,
+      actorCount: aggregate.actorMap.size,
+      actors,
+      latestAt: aggregate.latestAt.toISOString(),
+      objectUri: aggregate.objectUri,
+      targetUri: aggregate.targetUri,
+      notificationIds: aggregate.notificationIds,
+    }
+  })
+
+  return result.sort((a, b) => {
+    const ta = new Date(a.latestAt).getTime()
+    const tb = new Date(b.latestAt).getTime()
+    return tb - ta
+  })
+}
+
+export async function markNotificationRead(userId: number, notificationId: number) {
+  const now = new Date()
+  const updated = await db
+    .update(notifications)
+    .set({ isRead: true, readAt: now })
+    .where(and(eq(notifications.userId, userId), eq(notifications.id, notificationId)))
+    .returning({ id: notifications.id })
+
+  return updated.length > 0
+}
+
+export async function markNotificationsRead(userId: number, notificationIds: number[]) {
+  const ids = notificationIds.filter(id => Number.isInteger(id) && id > 0)
+  if (ids.length === 0) return 0
+
+  const now = new Date()
+  const updated = await db
+    .update(notifications)
+    .set({ isRead: true, readAt: now })
+    .where(and(eq(notifications.userId, userId), inArray(notifications.id, ids)))
+    .returning({ id: notifications.id })
+
+  return updated.length
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const now = new Date()
+  const updated = await db
+    .update(notifications)
+    .set({ isRead: true, readAt: now })
+    .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)))
+    .returning({ id: notifications.id })
+
+  return updated.length
 }
 
 export async function verifyWebhookTarget(userId: number, signature?: string) {

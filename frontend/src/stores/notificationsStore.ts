@@ -14,6 +14,28 @@ export interface MemoryNotification {
   payload: Record<string, unknown>
   createdAt: string
   publishedAt: string | null
+  isRead: boolean
+  readAt: string | null
+}
+
+export interface GroupedNotificationActor {
+  actorUri: string
+  count: number
+  lastAt: string
+}
+
+export interface GroupedNotification {
+  groupId: string
+  kind: string
+  label: string
+  totalCount: number
+  unreadCount: number
+  actorCount: number
+  actors: GroupedNotificationActor[]
+  latestAt: string
+  objectUri: string | null
+  targetUri: string | null
+  notificationIds: number[]
 }
 
 export interface NotificationStatus {
@@ -38,6 +60,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const authStore = useAuthStore()
 
   const items = ref<MemoryNotification[]>([])
+  const groupedItems = ref<GroupedNotification[]>([])
   const status = ref<NotificationStatus | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -119,6 +142,54 @@ export const useNotificationsStore = defineStore('notifications', () => {
     return items.value
   }
 
+  async function fetchGroupedNotifications() {
+    groupedItems.value = await apiFetch<GroupedNotification[]>('/activitypods/notifications/grouped')
+    return groupedItems.value
+  }
+
+  async function markNotificationRead(id: number) {
+    await apiFetch<{ updated: boolean }>(`/activitypods/notifications/${id}/read`, { method: 'PATCH' })
+    items.value = items.value.map(item => {
+      if (item.id !== id) return item
+      return {
+        ...item,
+        isRead: true,
+        readAt: item.readAt ?? new Date().toISOString(),
+      }
+    })
+    await fetchGroupedNotifications()
+  }
+
+  async function markGroupRead(notificationIds: number[]) {
+    if (notificationIds.length === 0) return
+    await apiFetch<{ updated: number }>('/activitypods/notifications/groups/read', {
+      method: 'POST',
+      body: JSON.stringify({ notificationIds }),
+    })
+    items.value = items.value.map(item => {
+      if (!notificationIds.includes(item.id)) return item
+      return {
+        ...item,
+        isRead: true,
+        readAt: item.readAt ?? new Date().toISOString(),
+      }
+    })
+    await fetchGroupedNotifications()
+  }
+
+  async function markAllRead() {
+    await apiFetch<{ updated: number }>('/activitypods/notifications/read-all', {
+      method: 'POST',
+    })
+    const nowIso = new Date().toISOString()
+    items.value = items.value.map(item => ({
+      ...item,
+      isRead: true,
+      readAt: item.readAt ?? nowIso,
+    }))
+    await fetchGroupedNotifications()
+  }
+
   async function initialize() {
     if (!authStore.isLoggedIn) return null
 
@@ -132,6 +203,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       }
       if (status.value?.installed && status.value.hasInboxWebhook) {
         await fetchNotifications()
+        await fetchGroupedNotifications()
       }
       return status.value
     } catch (err) {
@@ -153,6 +225,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   function reset() {
     items.value = []
+    groupedItems.value = []
     status.value = null
     error.value = null
     deferPodReauth.value = false
@@ -161,6 +234,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   return {
     items,
+    groupedItems,
     status,
     isLoading,
     error,
@@ -168,7 +242,11 @@ export const useNotificationsStore = defineStore('notifications', () => {
     beginAuthorization,
     bootstrap,
     fetchNotifications,
+    fetchGroupedNotifications,
     fetchStatus,
+    markAllRead,
+    markGroupRead,
+    markNotificationRead,
     initialize,
     reset,
   }
