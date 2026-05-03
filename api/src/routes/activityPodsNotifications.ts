@@ -95,7 +95,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
     },
     detail: 'List recent ActivityPods notification deliveries captured by Memory',
   })
-  .get('/activitypods/notifications/grouped', async ({ set, user, headers }: any) => {
+  .get('/activitypods/notifications/grouped', async ({ set, user, headers, query }: any) => {
     const locale = localeFromHeaders(headers)
     const dbUser = await getUserById(user.userId)
     if (!dbUser) {
@@ -103,8 +103,28 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       return translate(locale, 'common.userNotFound')
     }
 
+    const parseBoolean = (value: unknown, fallback = false) => {
+      if (typeof value === 'boolean') return value
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase()
+        if (normalized === 'true' || normalized === '1' || normalized === 'yes') return true
+        if (normalized === 'false' || normalized === '0' || normalized === 'no') return false
+      }
+      return fallback
+    }
+
+    const parseWindowHours = (value: unknown, fallback = 72) => {
+      const parsed = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
+      if (!Number.isFinite(parsed)) return fallback
+      return Math.min(24 * 30, Math.max(1, Math.trunc(parsed)))
+    }
+
     try {
-      return await listGroupedNotificationsForUser(dbUser.id)
+      return await listGroupedNotificationsForUser(dbUser.id, {
+        includeFollows: parseBoolean(query?.includeFollows, false),
+        includeMentions: parseBoolean(query?.includeMentions, false),
+        windowHours: parseWindowHours(query?.windowHours, 72),
+      })
     } catch (error) {
       console.error('Error while listing grouped notifications:', error)
       set.status = 500

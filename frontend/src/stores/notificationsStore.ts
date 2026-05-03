@@ -54,13 +54,56 @@ export interface NotificationStatus {
 }
 
 const REAUTH_DEFER_STARTED_AT_KEY = 'memory.notifications.reauth.defer.startedAt'
+const GROUPING_PREFERENCES_KEY = 'memory.notifications.grouping.preferences.v1'
 const sessionPolicyConfig = getSessionPolicyConfig()
+
+export interface NotificationGroupingPreferences {
+  includeFollows: boolean
+  includeMentions: boolean
+  windowHours: number
+}
+
+const DEFAULT_GROUPING_PREFERENCES: NotificationGroupingPreferences = {
+  includeFollows: false,
+  includeMentions: false,
+  windowHours: 72,
+}
+
+function normalizeGroupingPreferences(input: unknown): NotificationGroupingPreferences {
+  const value = (input && typeof input === 'object') ? input as Record<string, unknown> : {}
+  const includeFollows = value.includeFollows === true
+  const includeMentions = value.includeMentions === true
+  const rawWindow = typeof value.windowHours === 'number' ? value.windowHours : Number(value.windowHours)
+  const windowHours = Number.isFinite(rawWindow)
+    ? Math.min(24 * 30, Math.max(1, Math.trunc(rawWindow)))
+    : DEFAULT_GROUPING_PREFERENCES.windowHours
+  return { includeFollows, includeMentions, windowHours }
+}
+
+function loadGroupingPreferences(): NotificationGroupingPreferences {
+  if (typeof localStorage === 'undefined') {
+    return { ...DEFAULT_GROUPING_PREFERENCES }
+  }
+  const raw = localStorage.getItem(GROUPING_PREFERENCES_KEY)
+  if (!raw) return { ...DEFAULT_GROUPING_PREFERENCES }
+  try {
+    return normalizeGroupingPreferences(JSON.parse(raw))
+  } catch {
+    return { ...DEFAULT_GROUPING_PREFERENCES }
+  }
+}
+
+function saveGroupingPreferences(value: NotificationGroupingPreferences) {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(GROUPING_PREFERENCES_KEY, JSON.stringify(value))
+}
 
 export const useNotificationsStore = defineStore('notifications', () => {
   const authStore = useAuthStore()
 
   const items = ref<MemoryNotification[]>([])
   const groupedItems = ref<GroupedNotification[]>([])
+  const groupingPreferences = ref<NotificationGroupingPreferences>(loadGroupingPreferences())
   const status = ref<NotificationStatus | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -143,8 +186,24 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   async function fetchGroupedNotifications() {
-    groupedItems.value = await apiFetch<GroupedNotification[]>('/activitypods/notifications/grouped')
+    const params = new URLSearchParams({
+      includeFollows: String(groupingPreferences.value.includeFollows),
+      includeMentions: String(groupingPreferences.value.includeMentions),
+      windowHours: String(groupingPreferences.value.windowHours),
+    })
+    groupedItems.value = await apiFetch<GroupedNotification[]>(`/activitypods/notifications/grouped?${params.toString()}`)
     return groupedItems.value
+  }
+
+  async function setGroupingPreferences(next: Partial<NotificationGroupingPreferences>) {
+    groupingPreferences.value = normalizeGroupingPreferences({
+      ...groupingPreferences.value,
+      ...next,
+    })
+    saveGroupingPreferences(groupingPreferences.value)
+    if (status.value?.installed && status.value.hasInboxWebhook) {
+      await fetchGroupedNotifications()
+    }
   }
 
   async function markNotificationRead(id: number) {
@@ -235,6 +294,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   return {
     items,
     groupedItems,
+    groupingPreferences,
     status,
     isLoading,
     error,
@@ -245,6 +305,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     fetchGroupedNotifications,
     fetchStatus,
     markAllRead,
+    setGroupingPreferences,
     markGroupRead,
     markNotificationRead,
     initialize,

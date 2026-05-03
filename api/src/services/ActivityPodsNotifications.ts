@@ -888,7 +888,23 @@ export async function listNotificationsForUser(userId: number) {
   return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(50)
 }
 
-export async function listGroupedNotificationsForUser(userId: number): Promise<GroupedNotification[]> {
+export interface GroupedNotificationOptions {
+  includeFollows?: boolean
+  includeMentions?: boolean
+  windowHours?: number
+}
+
+export async function listGroupedNotificationsForUser(
+  userId: number,
+  options: GroupedNotificationOptions = {},
+): Promise<GroupedNotification[]> {
+  const includeFollows = options.includeFollows === true
+  const includeMentions = options.includeMentions === true
+  const windowHours = Number.isFinite(options.windowHours)
+    ? Math.min(24 * 30, Math.max(1, Math.trunc(options.windowHours as number)))
+    : 72
+  const cutoffMs = Date.now() - (windowHours * 60 * 60 * 1000)
+
   const rows = await db
     .select()
     .from(notifications)
@@ -922,12 +938,19 @@ export async function listGroupedNotificationsForUser(userId: number): Promise<G
       : {}
 
     const kind = deriveNotificationKind(payload, row.activityType)
-    const groupSubject = deriveGroupSubjectUri(payload, row.objectUri, row.targetUri)
-    const isGroupable = (kind === 'reblog' || kind === 'favourite') && !!groupSubject
-    const groupId = isGroupable ? `${kind}:${groupSubject}` : `single:${row.id}`
-
     const occurredAt = row.publishedAt ?? row.createdAt
     const actorUri = row.actorUri
+    const groupSubject = deriveGroupSubjectUri(payload, row.objectUri, row.targetUri)
+
+    const isWithinWindow = occurredAt.getTime() >= cutoffMs
+    const isBoostOrLikeGroup = (kind === 'reblog' || kind === 'favourite') && !!groupSubject
+    const isFollowGroup = kind === 'follow' && includeFollows && !!actorUri
+    const isMentionGroup = kind === 'mention' && includeMentions && !!groupSubject
+
+    const isGroupable = isWithinWindow && (isBoostOrLikeGroup || isFollowGroup || isMentionGroup)
+    const groupId = isGroupable
+      ? (isFollowGroup ? `${kind}:${actorUri}` : `${kind}:${groupSubject}`)
+      : `single:${row.id}`
 
     let aggregate = groups.get(groupId)
     if (!aggregate) {

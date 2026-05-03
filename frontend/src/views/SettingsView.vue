@@ -1,12 +1,38 @@
 <script setup lang="ts">
 import { useI18n } from '@/i18n'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 
 const { availableLocales, locale, setLocale, t } = useI18n()
+const notificationsStore = useNotificationsStore()
 
 function onLocaleChange(event: Event) {
   const target = event.target as HTMLSelectElement | null
   if (target) {
     setLocale(target.value)
+  }
+}
+
+function onIncludeFollowsChange(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  if (target) {
+    void notificationsStore.setGroupingPreferences({ includeFollows: target.checked })
+  }
+}
+
+function onIncludeMentionsChange(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  if (target) {
+    void notificationsStore.setGroupingPreferences({ includeMentions: target.checked })
+  }
+}
+
+function onWindowHoursChange(event: Event) {
+  const target = event.target as HTMLSelectElement | null
+  if (target) {
+    const windowHours = Number.parseInt(target.value, 10)
+    if (Number.isFinite(windowHours)) {
+      void notificationsStore.setGroupingPreferences({ windowHours })
+    }
   }
 }
 </script>
@@ -30,6 +56,43 @@ function onLocaleChange(event: Event) {
       </label>
       <p class="text-caption mt-2">{{ t('settings.language.description') }}</p>
       <p class="text-caption mt-1">{{ t('settings.language.updatesImmediately') }}</p>
+    </section>
+
+    <section class="rounded-default bg-pastel-light p-[var(--padding-main)] flex flex-col gap-3">
+      <h3 class="text-base font-semibold">{{ t('settings.appearance.title') }}</h3>
+      <p class="text-caption">{{ t('settings.appearance.description') }}</p>
+
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span>{{ t('settings.appearance.notifications.groupFollows') }}</span>
+        <input
+          type="checkbox"
+          :checked="notificationsStore.groupingPreferences.includeFollows"
+          @change="onIncludeFollowsChange"
+        >
+      </label>
+
+      <label class="flex items-center justify-between gap-3 text-sm">
+        <span>{{ t('settings.appearance.notifications.groupMentions') }}</span>
+        <input
+          type="checkbox"
+          :checked="notificationsStore.groupingPreferences.includeMentions"
+          @change="onIncludeMentionsChange"
+        >
+      </label>
+
+      <label class="flex flex-col gap-2 text-sm">
+        <span>{{ t('settings.appearance.notifications.groupWindow') }}</span>
+        <select
+          :value="notificationsStore.groupingPreferences.windowHours"
+          class="rounded border border-gray-300 bg-white px-3 py-2 font-normal"
+          @change="onWindowHoursChange"
+        >
+          <option :value="24">{{ t('settings.appearance.notifications.window.24h') }}</option>
+          <option :value="72">{{ t('settings.appearance.notifications.window.72h') }}</option>
+          <option :value="168">{{ t('settings.appearance.notifications.window.168h') }}</option>
+          <option :value="336">{{ t('settings.appearance.notifications.window.336h') }}</option>
+        </select>
+      </label>
     </section>
 
     <RouterLink
