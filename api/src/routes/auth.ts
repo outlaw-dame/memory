@@ -13,7 +13,24 @@ import { db } from "../db/client"
 import setupPlugin from "./setup"
 import { getTokenObject } from "../services/jwt"
 import User from "../decorater/User"
+import { syncAtprotoIdentity } from '../services/WebIdProfileService'
 import { localeFromHeaders, translate } from "../i18n"
+
+const ATPROTO_LINK_DEADLINE_MS = 1_500
+
+async function maybeSyncAtprotoIdentity(
+  dbUser: SelectUsers,
+  webId: string,
+  accessToken: string,
+): Promise<SelectUsers> {
+  const syncPromise = syncAtprotoIdentity(dbUser, webId, accessToken)
+  const deadline = new Promise<null>((resolve) => {
+    setTimeout(() => resolve(null), ATPROTO_LINK_DEADLINE_MS)
+  })
+
+  const synced = await Promise.race([syncPromise, deadline])
+  return synced ?? dbUser
+}
 
 const authPlugin = new Elysia({name: 'auth'})
   .use(setupPlugin)
@@ -71,13 +88,19 @@ const authPlugin = new Elysia({name: 'auth'})
           console.error('Error while checking if user is in the database: ', e)
           return error(500, translate(locale, 'auth.userCheckFailed'))
         }
+        const linkedUser = await maybeSyncAtprotoIdentity(
+          dbUser[0],
+          providerResponse.webId,
+          providerResponse.token,
+        )
+
         // generate signed token for signIn
-        const tokenObject = getTokenObject(new User(dbUser[0], providerResponse.token))
+        const tokenObject = getTokenObject(new User(linkedUser, providerResponse.token))
         const token = await jwt.sign(tokenObject)
 
         return {
           token,
-          user: dbUser[0]
+          user: linkedUser
         }
       }
     },
@@ -145,11 +168,17 @@ const authPlugin = new Elysia({name: 'auth'})
             console.error('Error while checking if user is in the database: ', e)
             return error(500, translate(locale, 'auth.userCheckFailed'))
           }
-          const authToken = await jwt.sign(getTokenObject(new User(userResponse[0], providerResponse.token)))
+          const linkedUser = await maybeSyncAtprotoIdentity(
+            userResponse[0],
+            providerResponse.webId,
+            providerResponse.token,
+          )
+
+          const authToken = await jwt.sign(getTokenObject(new User(linkedUser, providerResponse.token)))
 
           return {
             token: authToken,
-            user: userResponse[0]
+            user: linkedUser
           }
         }
       } catch (e: any) {
