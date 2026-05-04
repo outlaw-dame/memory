@@ -18,6 +18,13 @@ import Elysia from 'elysia'
 import setupPlugin from '../setup'
 import { chatRoutes } from './chatRoutes'
 import { db } from '../../db/client'
+import ActivityPod from '../../services/ActivityPod'
+
+const originalCreatePost = ActivityPod.createPost
+
+afterEach(() => {
+  ActivityPod.createPost = originalCreatePost
+})
 
 // ---------------------------------------------------------------------------
 // DB stubbing helpers
@@ -87,7 +94,7 @@ function stubDb(rows: unknown[], transactionResult: unknown = rows[0]): DbStub {
   })
   dbLike.transaction = async (fn: (tx: unknown) => Promise<unknown>) => {
     return fn({
-      select: (_fields?: unknown) => createQueryChain(rows),
+      select: (_fields?: unknown) => createQueryChain([]),
       insert: (_table: unknown) => ({
         values: (_vals: unknown) => ({
           onConflictDoNothing: () => Promise.resolve([]),
@@ -129,6 +136,8 @@ function stubDb(rows: unknown[], transactionResult: unknown = rows[0]): DbStub {
 
 const ALICE_DID = 'did:plc:alice1234567890abcd'
 const BOB_DID = 'did:plc:bob1234567890abcde'
+const ALICE_WEBID = 'https://alice.example/profile/card#me'
+const BOB_WEBID = 'https://bob.example/profile/card#me'
 
 // A deterministic convoId for alice+bob (mirrors deriveConvoId in chatRoutes)
 import crypto from 'node:crypto'
@@ -138,6 +147,7 @@ function deriveConvoId(dids: string[]): string {
   return `convo_${digest.slice(0, 32)}`
 }
 const ALICE_BOB_CONVO_ID = deriveConvoId([ALICE_DID, BOB_DID])
+const ALICE_BOB_WEBID_CONVO_ID = deriveConvoId([ALICE_WEBID, BOB_WEBID])
 
 function createAuthenticatedChatApp(userDid = ALICE_DID) {
   return new Elysia({ aot: false })
@@ -149,6 +159,9 @@ function createAuthenticatedChatApp(userDid = ALICE_DID) {
     .onBeforeHandle({ as: 'global' }, ({ user }: any) => {
       user.atprotoDid = userDid
       user.getWebId = () => userDid
+      user.endpoint = 'https://pods.example'
+      user.userName = 'alice'
+      user.token = 'pod-token'
     })
     .use(chatRoutes)
 }
@@ -507,9 +520,20 @@ describe('POST /chat/sendMessage', () => {
     const origSelect = dbLike.select
     const origTransaction = dbLike.transaction
 
-    dbLike.select = () => createQueryChain([{ role: 'member' }]) // member check
+    ActivityPod.createPost = async () => ({
+      raw: {},
+      objectUri: 'https://pods.example/alice/objects/dm-1',
+    })
+
+    let selectCall = 0
+    dbLike.select = () => {
+      selectCall += 1
+      if (selectCall === 1) return createQueryChain([{ role: 'member' }])
+      return createQueryChain([{ userDid: ALICE_WEBID }, { userDid: BOB_WEBID }])
+    }
     dbLike.transaction = async (fn: (tx: unknown) => Promise<unknown>) => {
       return fn({
+        select: (_fields?: unknown) => createQueryChain([]),
         update: (_table: unknown) => ({
           set: (_vals: unknown) => ({
             where: (_cond: unknown) => ({
@@ -519,9 +543,12 @@ describe('POST /chat/sendMessage', () => {
         }),
         insert: (_table: unknown) => ({
           values: (vals: unknown) => {
-            const v = vals as { text: string }
-            capturedText = v.text
-            return { then: (r: (v: unknown[]) => unknown) => Promise.resolve([]).then(r) }
+            const v = vals as { text?: string }
+            if (typeof v.text === 'string') capturedText = v.text
+            return {
+              onConflictDoNothing: () => Promise.resolve([]),
+              then: (r: (v: unknown[]) => unknown) => Promise.resolve([]).then(r),
+            }
           },
         }),
       })
@@ -536,17 +563,63 @@ describe('POST /chat/sendMessage', () => {
       },
     }
 
-    const app = createAuthenticatedChatApp()
+    const app = createAuthenticatedChatApp(ALICE_WEBID)
     await app.handle(
       new Request('http://localhost/chat/sendMessage', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ convoId: ALICE_BOB_CONVO_ID, text: 'Hello\x00World' }),
+        body: JSON.stringify({ convoId: ALICE_BOB_WEBID_CONVO_ID, text: 'Hello\x00World' }),
       }),
     )
 
     expect(capturedText).not.toBeNull()
     expect(capturedText!).toBe('HelloWorld')
+  })
+
+  it('does not write the local projection when the Pod commit fails', async () => {
+    const dbLike = db as unknown as DbLike
+    const origSelect = dbLike.select
+    const origTransaction = dbLike.transaction
+    const origConsoleError = console.error
+    let transactionCalled = false
+
+    ActivityPod.createPost = async () => {
+      throw new Error('pod unavailable')
+    }
+
+    let selectCall = 0
+    dbLike.select = () => {
+      selectCall += 1
+      if (selectCall === 1) return createQueryChain([{ role: 'member' }])
+      return createQueryChain([{ userDid: ALICE_WEBID }, { userDid: BOB_WEBID }])
+    }
+    dbLike.transaction = async () => {
+      transactionCalled = true
+      return null
+    }
+    console.error = () => {}
+
+    stub = {
+      rows: [],
+      transactionResult: null,
+      restore: () => {
+        dbLike.select = origSelect
+        dbLike.transaction = origTransaction
+        console.error = origConsoleError
+      },
+    }
+
+    const app = createAuthenticatedChatApp(ALICE_WEBID)
+    const res = await app.handle(
+      new Request('http://localhost/chat/sendMessage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ convoId: ALICE_BOB_WEBID_CONVO_ID, text: 'Hello' }),
+      }),
+    )
+
+    expect(res.status).toBe(502)
+    expect(transactionCalled).toBe(false)
   })
 })
 

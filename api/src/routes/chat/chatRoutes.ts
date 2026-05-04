@@ -1,9 +1,9 @@
 /**
- * Chat routes — DB-backed, ActivityPods-integrated
+ * Chat routes — Pod/PDS-committed, ActivityPods-integrated
  *
- * All conversations are owned by the user's ActivityPods pod. Local storage in
- * PostgreSQL (chat_convos / chat_members / chat_messages) mirrors the pod's
- * authoritative state so that the UI can paginate efficiently.
+ * Messages commit to the user's Pod/PDS first. Local storage in PostgreSQL
+ * (chat_convos / chat_members / chat_messages) is a projection used for
+ * pagination, unread state, and UI latency; it is not the source of truth.
  *
  * Identity model:
  *   - callerDid = user.atprotoDid (ATProto users) or user.getWebId() (AP/pod users)
@@ -100,83 +100,217 @@ function escapeLike(raw: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Best-effort outgoing DM delivery via ActivityPods outbox
+// Authoritative outgoing DM commit via ActivityPods outbox
 // ---------------------------------------------------------------------------
 
-async function postDmToOutbox(
+class PodCommitUnavailableError extends Error {}
+
+function deriveMessageIdFromObjectUri(objectUri: string): string {
+  return createHash('sha256').update(objectUri).digest('hex').slice(0, 36)
+}
+
+function isRetryableProjectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const text = error.message.toLowerCase()
+  return (
+    text.includes('timeout') ||
+    text.includes('connection') ||
+    text.includes('econnreset') ||
+    text.includes('deadlock') ||
+    text.includes('40001') ||
+    text.includes('40p01') ||
+    text.includes('08006') ||
+    text.includes('53300') ||
+    text.includes('57p01')
+  )
+}
+
+async function withProjectionBackoff<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      if (attempt === 2 || !isRetryableProjectionError(error)) throw error
+      const jitter = Math.floor(Math.random() * 50)
+      await new Promise(resolve => setTimeout(resolve, Math.min(750, 75 * (2 ** attempt) + jitter)))
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Projection failed')
+}
+
+async function commitDmToPod(
   user: { endpoint?: string; userName?: string; token?: string; getWebId: () => string },
-  convoId: string,
   text: string,
-  msgId: string,
+  recipientWebIds: string[],
   opts?: {
     mentions?: string[]
     inReplyToMessageId?: string | null
     attachments?: Array<Record<string, unknown>>
   },
-): Promise<void> {
-  // Guard: skip for non-pod users and tests (endpoint/token not set)
-  if (!user.endpoint || !user.token || !user.userName) return
-
+): Promise<{ objectUri: string }> {
+  if (!user.endpoint || !user.token || !user.userName) {
+    throw new PodCommitUnavailableError('Pod commit context is unavailable for this session')
+  }
   const actorUri = user.getWebId()
 
-  let recipientWebIds: string[]
-  try {
-    const rows = await db
-      .select({ userDid: chatMembers.userDid })
-      .from(chatMembers)
-      .where(eq(chatMembers.convoId, convoId))
-    recipientWebIds = rows
-      .map(r => r.userDid)
-      .filter(did => isWebId(did) && did !== actorUri)
-  } catch {
-    return
+  if (recipientWebIds.length === 0) {
+    throw new PodCommitUnavailableError('No Pod-addressable recipients were found for this conversation')
   }
 
-  if (recipientWebIds.length === 0) return
+  const mentionTags = (opts?.mentions ?? [])
+    .filter(isWebId)
+    .map(href => ({ type: 'Mention' as const, href }))
 
-  try {
-    const mentionTags = (opts?.mentions ?? [])
-      .filter(isWebId)
-      .map(href => ({ type: 'Mention' as const, href }))
+  const attachmentItems = Array.isArray(opts?.attachments)
+    ? opts!.attachments
+        .map(item => {
+          if (!item || typeof item !== 'object') return null
+          const obj = item as Record<string, unknown>
+          const url = typeof obj.url === 'string' ? obj.url : ''
+          if (!/^https?:\/\//i.test(url)) return null
+          const type = typeof obj.type === 'string' ? obj.type : 'Link'
+          const mediaType = typeof obj.mimeType === 'string' ? obj.mimeType : undefined
+          const name = typeof obj.name === 'string' ? obj.name : undefined
+          return {
+            type,
+            mediaType,
+            url,
+            name,
+          }
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+    : []
 
-    const attachmentItems = Array.isArray(opts?.attachments)
-      ? opts!.attachments
-          .map(item => {
-            if (!item || typeof item !== 'object') return null
-            const obj = item as Record<string, unknown>
-            const url = typeof obj.url === 'string' ? obj.url : ''
-            if (!/^https?:\/\//i.test(url)) return null
-            const type = typeof obj.type === 'string' ? obj.type : 'Link'
-            const mediaType = typeof obj.mimeType === 'string' ? obj.mimeType : undefined
-            const name = typeof obj.name === 'string' ? obj.name : undefined
-            return {
-              type,
-              mediaType,
-              url,
-              name,
-            }
-          })
-          .filter((item): item is NonNullable<typeof item> => item !== null)
-      : []
+  const post: NoteCreateRequest = {
+    '@context': AS_CONTEXT,
+    type: 'Note',
+    attributedTo: actorUri,
+    to: recipientWebIds,
+    content: text,
+    ...(mentionTags.length > 0 ? { tag: mentionTags } : {}),
+    ...(attachmentItems.length > 0 ? { attachment: attachmentItems } : {}),
+    ...(opts?.inReplyToMessageId ? { inReplyTo: opts.inReplyToMessageId } : {}),
+  }
 
-    const post: NoteCreateRequest = {
-      '@context': AS_CONTEXT,
-      type: 'Note',
-      attributedTo: actorUri,
-      to: recipientWebIds,
-      content: text,
-      ...(mentionTags.length > 0 ? { tag: mentionTags } : {}),
-      ...(attachmentItems.length > 0 ? { attachment: attachmentItems } : {}),
-      ...(opts?.inReplyToMessageId ? { inReplyTo: opts.inReplyToMessageId } : {}),
-    }
-    await ActivityPod.createPost(user as Parameters<typeof ActivityPod.createPost>[0], post)
-  } catch (err) {
-    console.error('[chatRoutes] DM outbox delivery failed', {
-      error: err instanceof Error ? err.message : String(err),
-      actor: actorUri,
-      msgId,
+  const created = await ActivityPod.createPost(user as Parameters<typeof ActivityPod.createPost>[0], post)
+  if (!created.objectUri || !/^https?:\/\//i.test(created.objectUri)) {
+    throw new Error('Pod commit did not return a canonical object URI')
+  }
+
+  return { objectUri: created.objectUri }
+}
+
+async function persistCommittedDmProjection(args: {
+  convoId: string
+  callerDid: string
+  memberDids: string[]
+  text: string
+  mentions: string[]
+  hashtags: string[]
+  attachments: Array<Record<string, unknown>>
+  inReplyToMessageId: string | null
+  quoteMessageId: string | null
+  objectUri: string
+}) {
+  const msgId = deriveMessageIdFromObjectUri(args.objectUri)
+
+  return withProjectionBackoff(() =>
+    db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({
+          id: chatMessages.id,
+          convoId: chatMessages.convoId,
+          senderDid: chatMessages.senderDid,
+          text: chatMessages.text,
+          mentions: chatMessages.mentions,
+          hashtags: chatMessages.hashtags,
+          attachments: chatMessages.attachments,
+          inReplyToMessageId: chatMessages.inReplyToMessageId,
+          quoteMessageId: chatMessages.quoteMessageId,
+          sentAt: chatMessages.sentAt,
+          rev: chatMessages.rev,
+          objectUri: chatMessages.objectUri,
+        })
+        .from(chatMessages)
+        .where(eq(chatMessages.id, msgId))
+        .limit(1)
+
+      if (existing) {
+        return {
+          id: existing.id,
+          convoId: existing.convoId,
+          senderDid: existing.senderDid,
+          text: existing.text,
+          mentions: Array.isArray(existing.mentions) ? existing.mentions : [],
+          hashtags: Array.isArray(existing.hashtags) ? existing.hashtags : [],
+          attachments: Array.isArray(existing.attachments) ? existing.attachments : [],
+          inReplyToMessageId: existing.inReplyToMessageId ?? null,
+          quoteMessageId: existing.quoteMessageId ?? null,
+          objectUri: existing.objectUri ?? args.objectUri,
+          sentAt: existing.sentAt instanceof Date ? existing.sentAt.toISOString() : String(existing.sentAt),
+          rev: String(existing.rev),
+        }
+      }
+
+      await tx.insert(chatConvos).values({
+        id: args.convoId,
+        convoType: args.memberDids.length > 2 ? 'group' : 'direct',
+        name: null,
+        rev: 0,
+      }).onConflictDoNothing()
+
+      for (const did of args.memberDids) {
+        await tx.insert(chatMembers).values({
+          convoId: args.convoId,
+          userDid: did,
+          role: 'member',
+        }).onConflictDoNothing()
+      }
+
+      const [updated] = await tx
+        .update(chatConvos)
+        .set({ rev: sql`${chatConvos.rev} + 1`, updatedAt: new Date() })
+        .where(eq(chatConvos.id, args.convoId))
+        .returning({ rev: chatConvos.rev })
+
+      if (!updated) throw new Error('CONVO_NOT_FOUND')
+
+      const sentAt = new Date()
+      await tx.insert(chatMessages).values({
+        id: msgId,
+        objectUri: args.objectUri,
+        convoId: args.convoId,
+        senderDid: args.callerDid,
+        text: args.text,
+        mentions: args.mentions,
+        hashtags: args.hashtags,
+        attachments: args.attachments,
+        inReplyToMessageId: args.inReplyToMessageId,
+        quoteMessageId: args.quoteMessageId,
+        sentAt,
+        rev: updated.rev,
+      }).onConflictDoNothing()
+
+      return {
+        id: msgId,
+        convoId: args.convoId,
+        senderDid: args.callerDid,
+        text: args.text,
+        mentions: args.mentions,
+        hashtags: args.hashtags,
+        attachments: args.attachments,
+        inReplyToMessageId: args.inReplyToMessageId,
+        quoteMessageId: args.quoteMessageId,
+        objectUri: args.objectUri,
+        sentAt: sentAt.toISOString(),
+        rev: String(updated.rev),
+      }
     })
-  }
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +513,7 @@ export const chatRoutes = new Elysia()
       attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
       inReplyToMessageId: msg.inReplyToMessageId ?? null,
       quoteMessageId: msg.quoteMessageId ?? null,
+      objectUri: msg.objectUri ?? null,
       sentAt: msg.sentAt instanceof Date ? msg.sentAt.toISOString() : String(msg.sentAt),
       rev: msg.rev,
       ...(msg.deletedAt ? { deleted: true } : {}),
@@ -456,13 +591,13 @@ export const chatRoutes = new Elysia()
       return { error: 'Not a member of this conversation' }
     }
 
+    const memberRows = await db
+      .select({ userDid: chatMembers.userDid })
+      .from(chatMembers)
+      .where(eq(chatMembers.convoId, convoId))
+
     // Mention scoping: all mentions must be members of this conversation.
     if (mentions.length > 0) {
-      const memberRows = await db
-        .select({ userDid: chatMembers.userDid })
-        .from(chatMembers)
-        .where(eq(chatMembers.convoId, convoId))
-
       const memberSet = new Set(memberRows.map(r => r.userDid))
       const invalidMention = mentions.find(m => !memberSet.has(m))
       if (invalidMention) {
@@ -496,8 +631,6 @@ export const chatRoutes = new Elysia()
       }
     }
 
-    const msgId = randomUUID()
-
     let txResult: {
       id: string
       convoId: string
@@ -508,65 +641,64 @@ export const chatRoutes = new Elysia()
       attachments: Array<Record<string, unknown>>
       inReplyToMessageId: string | null
       quoteMessageId: string | null
+      objectUri: string
       sentAt: string
       rev: string
     } | null = null
 
+    const actorUri = user.getWebId()
+    const recipientWebIds = memberRows
+      .map(row => row.userDid)
+      .filter(did => isWebId(did) && did !== actorUri)
+
+    let committed: { objectUri: string }
     try {
-      txResult = await db.transaction(async (tx) => {
-        const [updated] = await tx
-          .update(chatConvos)
-          .set({ rev: sql`${chatConvos.rev} + 1`, updatedAt: new Date() })
-          .where(eq(chatConvos.id, convoId))
-          .returning({ rev: chatConvos.rev })
-
-        if (!updated) throw new Error('CONVO_NOT_FOUND')
-
-        const msgRev = updated.rev
-        const sentAt = new Date()
-
-        await tx.insert(chatMessages).values({
-          id: msgId,
-          convoId,
-          senderDid: callerDid,
-          text: sanitized,
-          mentions,
-          hashtags,
-          attachments,
-          inReplyToMessageId: normalizedInReplyToMessageId,
-          quoteMessageId: normalizedQuoteMessageId,
-          sentAt,
-          rev: msgRev,
-        })
-
-        return {
-          id: msgId,
-          convoId,
-          senderDid: callerDid,
-          text: sanitized,
-          mentions,
-          hashtags,
-          attachments,
-          inReplyToMessageId: normalizedInReplyToMessageId,
-          quoteMessageId: normalizedQuoteMessageId,
-          sentAt: sentAt.toISOString(),
-          rev: String(msgRev),
-        }
+      committed = await commitDmToPod(user, sanitized, recipientWebIds, {
+        mentions,
+        inReplyToMessageId: normalizedInReplyToMessageId,
+        attachments,
       })
-    } catch (err) {
-      if (err instanceof Error && err.message === 'CONVO_NOT_FOUND') {
-        set.status = 404
-        return { error: 'Conversation not found' }
+    } catch (error) {
+      if (error instanceof PodCommitUnavailableError) {
+        set.status = 503
+        return { error: error.message }
       }
-      throw err
+      console.error('[chatRoutes] Pod DM commit failed', {
+        error: error instanceof Error ? error.message : String(error),
+        actor: actorUri,
+        convoId,
+      })
+      set.status = 502
+      return { error: 'Pod commit failed' }
     }
 
-    // Best-effort AP delivery via ActivityPods outbox (non-blocking)
-    postDmToOutbox(user, convoId, sanitized, msgId, {
-      mentions,
-      inReplyToMessageId: normalizedInReplyToMessageId,
-      attachments,
-    }).catch(() => {})
+    try {
+      txResult = await persistCommittedDmProjection({
+        convoId,
+        callerDid,
+        memberDids: memberRows.map(row => row.userDid),
+        text: sanitized,
+        mentions,
+        hashtags,
+        attachments,
+        inReplyToMessageId: normalizedInReplyToMessageId,
+        quoteMessageId: normalizedQuoteMessageId,
+        objectUri: committed.objectUri,
+      })
+    } catch (err) {
+      console.error('[chatRoutes] Pod DM committed but local projection failed', {
+        error: err instanceof Error ? err.message : String(err),
+        actor: actorUri,
+        convoId,
+        objectUri: committed.objectUri,
+      })
+      set.status = 202
+      return {
+        committed: true,
+        projection: 'pending',
+        objectUri: committed.objectUri,
+      }
+    }
 
     return { message: txResult }
   }, {
@@ -775,5 +907,3 @@ export const chatRoutes = new Elysia()
       memberDid: t.String(),
     }),
   })
-
-

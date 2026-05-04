@@ -7,6 +7,7 @@ import User from '../decorater/User'
 import { getTokenObject } from '../services/jwt'
 import { syncAtprotoIdentity } from '../services/WebIdProfileService'
 import { localeFromHeaders, translate } from '../i18n'
+import { toPublicUser } from '../services/PodTokenService'
 
 /**
  * How long (in ms) to wait for the ATProto identity link before issuing the
@@ -152,27 +153,14 @@ const oidcAuthPlugin = new Elysia({ prefix: '/oidc-auth' })
         dbUser = synced
       }
 
-      // -----------------------------------------------------------------------
-      // Pod-native token selection
-      //
-      // ActivityPods verifies outbox-write Bearer tokens against its own RS256
-      // key (via auth.jwt.verifyToken), which is different from the OIDC
-      // provider's signing key. The OIDC access_token is therefore rejected by
-      // the pod for any write operation.
-      //
-      // If this user has previously signed in via the legacy /signin route,
-      // their pod-native JWT is stored in users.pod_token. Use that for pod
-      // writes. Fall back to the OIDC access_token only for read operations
-      // (WebID profile fetch etc.).
-      // -----------------------------------------------------------------------
-      const podWriteToken = dbUser.podToken || tokens.access_token
-
-      const tokenObject = getTokenObject(new User(dbUser, podWriteToken))
+      // Pod-native write credentials stay server-side. Protected handlers
+      // hydrate them from the encrypted users.pod_token column when needed.
+      const tokenObject = getTokenObject(new User(dbUser))
       const token = await jwt.sign(tokenObject)
 
       return {
         token,
-        user: dbUser
+        user: toPublicUser(dbUser)
       }
     } catch (e) {
       console.error('Error while completing OIDC login: ', e)

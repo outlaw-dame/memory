@@ -1,5 +1,5 @@
 import { relations, eq, sql } from 'drizzle-orm'
-import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb, index } from 'drizzle-orm/pg-core'
+import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core'
 
 export const users = table('users', {
   id: serial().primaryKey(),
@@ -21,11 +21,9 @@ export const users = table('users', {
    */
   atprotoHandle: varchar('atproto_handle', { length: 512 }),
   /**
-   * Pod-native JWT issued by ActivityPods' /auth/login (RS256, no expiry).
-   * This is the token the pod's ActivityPub API accepts for outbox writes.
-   * It is different from the OIDC access_token; both are Bearer JWTs but
-   * signed with different keys for different purposes.
-   * Populated on every legacy /signin and refreshed on subsequent sign-ins.
+   * Server-side encrypted Pod-native JWT issued by ActivityPods' /auth/login.
+   * The token is never returned to the browser or embedded in Memory JWTs.
+   * It is decrypted only inside API handlers that must commit to the user's Pod.
    */
   podToken: text('pod_token'),
 })
@@ -125,7 +123,7 @@ export const notifications = table('notifications', {
  * private bookmark records: visible only to the owner, never to others.
  *
  * Exactly one of atUri or objectUri will be set, depending on source.
- * The uniqueness constraint is on (user_id, COALESCE(at_uri, object_uri)).
+ * Partial unique indexes enforce one bookmark per user per AT URI or AP URI.
  */
 export const bookmarks = table('bookmarks', {
   id: serial().primaryKey(),
@@ -140,6 +138,8 @@ export const bookmarks = table('bookmarks', {
 }, t => [
   index('bookmarks_user_at_uri_idx').on(t.userId, t.atUri),
   index('bookmarks_user_object_uri_idx').on(t.userId, t.objectUri),
+  uniqueIndex('bookmarks_user_at_uri_unique_idx').on(t.userId, t.atUri).where(sql`${t.atUri} IS NOT NULL`),
+  uniqueIndex('bookmarks_user_object_uri_unique_idx').on(t.userId, t.objectUri).where(sql`${t.objectUri} IS NOT NULL`),
 ])
 // ---------------------------------------------------------------------------
 // Viewer Relationship Cache — persisted follow/mute/block state

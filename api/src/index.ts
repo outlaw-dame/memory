@@ -8,8 +8,20 @@ import { db } from './db/client'
 import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
 import { startAtBridgeRetentionService } from './services/AtBridgeRetentionService'
 import { startApRemoteReconciliationService } from './services/ApRemoteIngestionService'
+import { hydrateUserPodToken } from './services/PodTokenService'
+import { assertTokenVaultReadyForProduction } from './services/TokenVault'
+import { isCurrentSessionToken } from './services/jwt'
 
 export { db }
+
+assertTokenVaultReadyForProduction()
+
+async function loadSessionUser(authValue: { user?: unknown } | false | null, user: any) {
+  if (!isCurrentSessionToken(authValue)) return false
+  user.loadUser(JSON.parse(authValue.user))
+  await hydrateUserPodToken(user)
+  return true
+}
 
 const publicRoutes = new Elysia({ aot: false })
   .use(setupPlugin)
@@ -28,7 +40,7 @@ const protectedRoutes = new Elysia({ aot: false })
     if (token) {
       const authValue = await jwt.verify(token)
       if (authValue) {
-        user.loadUser(JSON.parse(authValue.user as string))
+        await loadSessionUser(authValue as { user?: unknown }, user)
       }
     }
   })
@@ -42,11 +54,9 @@ const protectedRoutes = new Elysia({ aot: false })
           applyLocaleHeaders(set, locale)
           const auth = headers.auth
           const authValue = await jwt.verify(auth)
-          if (!authValue) {
+          if (!authValue || (!user.userId && !(await loadSessionUser(authValue as { user?: unknown }, user)))) {
             set.status = 401
             return translate(locale, 'common.mustBeSignedIn')
-          } else {
-            user.loadUser(JSON.parse(authValue.user as string))
           }
         }
       }

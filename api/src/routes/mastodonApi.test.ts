@@ -5,9 +5,11 @@ import { getTokenObject } from '../services/jwt'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
 import mastodonApiPlugin from './mastodonApi'
+import { db } from '../db/client'
 
 const originalGetProfile = ActivityPod.getProfile
 const originalUpdateProfile = ActivityPod.updateProfile
+const originalSelect = (db as unknown as Record<string, unknown>).select
 
 function testUser(): User {
   const user = new User()
@@ -23,6 +25,7 @@ async function mintToken(app: { handle: (request: Request) => Promise<Response> 
 afterEach(() => {
   ActivityPod.getProfile = originalGetProfile
   ActivityPod.updateProfile = originalUpdateProfile
+  ;(db as unknown as Record<string, unknown>).select = originalSelect
 })
 
 describe('Mastodon API routes', () => {
@@ -43,6 +46,23 @@ describe('Mastodon API routes', () => {
       persisted = actor
       profile = actor
       return null
+    }
+    ;(db as unknown as Record<string, unknown>).select = () => {
+      const chain = {
+        from: () => chain,
+        where: () => chain,
+        limit: () => Promise.resolve([{
+          id: 1,
+          name: 'alice',
+          email: 'alice@example.com',
+          webId: user.getWebId(),
+          providerEndpoint: 'https://pods.example',
+          podToken: 'pod-token',
+          atprotoDid: null,
+          atprotoHandle: null,
+        }]),
+      }
+      return chain
     }
 
     const app = new Elysia({ aot: false })

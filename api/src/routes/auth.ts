@@ -11,10 +11,12 @@ import { eq } from "drizzle-orm"
 import Elysia, { t } from "elysia"
 import { db } from "../db/client"
 import setupPlugin from "./setup"
-import { getTokenObject } from "../services/jwt"
+import { getTokenObject, isCurrentSessionToken } from "../services/jwt"
 import User from "../decorater/User"
 import { syncAtprotoIdentity } from '../services/WebIdProfileService'
 import { localeFromHeaders, translate } from "../i18n"
+import { toPublicUser } from "../services/PodTokenService"
+import { encryptToken } from "../services/TokenVault"
 
 const ATPROTO_LINK_DEADLINE_MS = 1_500
 
@@ -40,7 +42,7 @@ const authPlugin = new Elysia({name: 'auth'})
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in
-      if (auth && (await jwt.verify(auth))) {
+      if (auth && isCurrentSessionToken(await jwt.verify(auth))) {
         return error(204, translate(locale, 'auth.alreadyLoggedIn'))
       }
       const { username, password, providerEndpoint } = body
@@ -72,7 +74,7 @@ const authPlugin = new Elysia({name: 'auth'})
                 email: username as string,
                 webId: providerResponse.webId,
                 providerEndpoint: providerEndpoint,
-                podToken: providerResponse.token
+                podToken: encryptToken(providerResponse.token)
               })
               .returning()
           } else {
@@ -80,7 +82,7 @@ const authPlugin = new Elysia({name: 'auth'})
             // can retrieve it for outbox writes.
             dbUser = await db
               .update(users)
-              .set({ podToken: providerResponse.token })
+              .set({ podToken: encryptToken(providerResponse.token) })
               .where(eq(users.webId, providerResponse.webId))
               .returning()
           }
@@ -95,12 +97,12 @@ const authPlugin = new Elysia({name: 'auth'})
         )
 
         // generate signed token for signIn
-        const tokenObject = getTokenObject(new User(linkedUser, providerResponse.token))
+        const tokenObject = getTokenObject(new User(linkedUser))
         const token = await jwt.sign(tokenObject)
 
         return {
           token,
-          user: linkedUser
+          user: toPublicUser(linkedUser)
         }
       }
     },
@@ -132,7 +134,7 @@ const authPlugin = new Elysia({name: 'auth'})
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in
-      if (auth && (await jwt.verify(auth))) {
+      if (auth && isCurrentSessionToken(await jwt.verify(auth))) {
         return translate(locale, 'auth.alreadyLoggedIn')
       }
       const { username, password, email, providerEndpoint } = body
@@ -155,12 +157,12 @@ const authPlugin = new Elysia({name: 'auth'})
                 email,
                 webId: providerResponse.webId,
                 providerEndpoint: providerEndpoint,
-                podToken: providerResponse.token
+                podToken: encryptToken(providerResponse.token)
               }).returning()
             } else {
               userResponse = await db
                 .update(users)
-                .set({ podToken: providerResponse.token })
+                .set({ podToken: encryptToken(providerResponse.token) })
                 .where(eq(users.webId, providerResponse.webId))
                 .returning()
             }
@@ -174,11 +176,11 @@ const authPlugin = new Elysia({name: 'auth'})
             providerResponse.token,
           )
 
-          const authToken = await jwt.sign(getTokenObject(new User(linkedUser, providerResponse.token)))
+          const authToken = await jwt.sign(getTokenObject(new User(linkedUser)))
 
           return {
             token: authToken,
-            user: linkedUser
+            user: toPublicUser(linkedUser)
           }
         }
       } catch (e: any) {

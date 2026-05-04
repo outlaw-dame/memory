@@ -3,6 +3,8 @@ import User from '../decorater/User'
 import ActivityPod from '../services/ActivityPod'
 import { localeFromHeaders, translate } from '../i18n'
 import setupPlugin from './setup'
+import { hydrateUserPodToken } from '../services/PodTokenService'
+import { isCurrentSessionToken } from '../services/jwt'
 import {
   MastodonApiValidationError,
   applyMastodonProfileUpdate,
@@ -32,15 +34,13 @@ async function authenticate(
   if (!token) return null
 
   const verified = await jwt.verify(token)
-  if (!verified || typeof verified !== 'object') return null
-
-  const rawUser = (verified as Record<string, unknown>).user
-  if (typeof rawUser !== 'string') return null
+  if (!isCurrentSessionToken(verified)) return null
 
   try {
-    const parsed = JSON.parse(rawUser) as User
+    const parsed = JSON.parse(verified.user) as User
     const user = new User()
     user.loadUser(parsed)
+    await hydrateUserPodToken(user)
     if (!user.endpoint || !user.userName || !user.token) return null
     return { user }
   } catch {

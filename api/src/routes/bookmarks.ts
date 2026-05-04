@@ -1,5 +1,5 @@
 import Elysia, { t } from 'elysia'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client'
 import { bookmarks } from '../db/schema'
 import setupPlugin from './setup'
@@ -22,7 +22,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   .get(
     '/bookmarks',
     async ({ user, error }: any) => {
-      const userId: number = user.id
+      const userId: number = user.userId
       if (!userId) return error(401, 'Unauthorized')
       const rows = await db
         .select()
@@ -57,7 +57,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   .post(
     '/bookmarks',
     async ({ body, user, error }: any) => {
-      const userId: number = user.id
+      const userId: number = user.userId
       if (!userId) return error(401, 'Unauthorized')
       const { source, atUri, objectUri } = body as {
         source: string
@@ -76,7 +76,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
             eq(bookmarks.userId, userId),
             atUri
               ? eq(bookmarks.atUri, atUri)
-              : isNull(bookmarks.atUri)
+              : eq(bookmarks.objectUri, objectUri as string)
           )
         )
         .limit(1)
@@ -111,7 +111,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   .delete(
     '/bookmarks',
     async ({ body, user, error }: any) => {
-      const userId: number = user.id
+      const userId: number = user.userId
       if (!userId) return error(401, 'Unauthorized')
       const { atUri, objectUri } = body as {
         atUri?: string | null

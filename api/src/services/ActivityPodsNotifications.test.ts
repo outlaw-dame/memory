@@ -36,6 +36,14 @@ describe('maybePersistDirectMessage', () => {
     dbLike.transaction = async (fn: (tx: unknown) => Promise<unknown>) => {
       transactionCalls += 1
       const tx = {
+        select: (_fields?: unknown) => createSelectChain([]),
+        update: (_table: unknown) => ({
+          set: (_vals: unknown) => ({
+            where: (_cond: unknown) => ({
+              returning: (_fields: unknown) => Promise.resolve([{ rev: 1 }]),
+            }),
+          }),
+        }),
         insert: (_table: unknown) => ({
           values: (vals: unknown) => {
             insertedValues.push(vals)
@@ -96,6 +104,7 @@ describe('maybePersistDirectMessage', () => {
       mentions: string[]
       hashtags: string[]
       attachments: Array<Record<string, unknown>>
+      objectUri: string | null
     }
 
     expect(chatMessageInsert.senderDid).toBe('https://bob.example/profile/card#me')
@@ -105,6 +114,7 @@ describe('maybePersistDirectMessage', () => {
     expect(chatMessageInsert.mentions).toEqual(['https://alice.example/profile/card#me'])
     expect(chatMessageInsert.hashtags).toEqual(['privatetag'])
     expect(chatMessageInsert.attachments.length).toBe(1)
+    expect(chatMessageInsert.objectUri).toBe('https://bridge.example/_bridge/canonical/abc#note')
   })
 
   it('does nothing for non-Add payloads', async () => {

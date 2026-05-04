@@ -1,10 +1,11 @@
 import crypto from 'crypto'
 import ky from 'ky'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../db/client'
 import { notifications, users } from '../db/schema'
 import { chatConvos, chatMembers, chatMessages } from '../db/chatSchema'
 import type { SelectUsers } from '../types'
+import { decryptPodTokenForUser } from './PodTokenService'
 
 const JSON_LD_ACCEPT = 'application/ld+json, application/json;q=0.9'
 const NOTIFY_CONTEXT = {
@@ -787,10 +788,11 @@ export async function maybePersistDirectMessage(
     // Case B: URI reference — fetch from pod (requires podToken)
     const activityUri = extractUriString(rawObject)
     if (!activityUri || !/^https?:\/\//i.test(activityUri) || activityUri.length > 2048) return
-    if (!recipientUser.podToken) return
+    const podToken = await decryptPodTokenForUser(recipientUser)
+    if (!podToken) return
 
     try {
-      activity = await fetchJson(activityUri, recipientUser.podToken) as Record<string, unknown>
+      activity = await fetchJson(activityUri, podToken) as Record<string, unknown>
     } catch {
       // Pod unreachable or access denied — drop silently, not retried here
       return
@@ -844,10 +846,11 @@ export async function maybePersistDirectMessage(
   //     Fall back to a content hash — never use new Date() to avoid non-deterministic
   //     IDs that would create duplicates on redelivery.
   const fetchedActivityId = extractUriString(activity.id ?? activity['@id'])
+  const objectUri = extractUriString(objRecord.id ?? objRecord['@id'])
   const publishedRaw = typeof activity.published === 'string' ? activity.published : null
   if (!fetchedActivityId && !publishedRaw) return // cannot derive a stable id; drop safely
 
-  const msgIdSource = fetchedActivityId ?? `${actorUri}|${recipientWebId}|${text}|${publishedRaw}`
+  const msgIdSource = objectUri ?? fetchedActivityId ?? `${actorUri}|${recipientWebId}|${text}|${publishedRaw}`
   const msgId = crypto.createHash('sha256').update(msgIdSource).digest('hex').slice(0, 36)
 
   // 11. Parse sentAt — guard against malformed published value
@@ -866,8 +869,23 @@ export async function maybePersistDirectMessage(
     await tx.insert(chatMembers).values({ convoId, userDid: actorUri, role: 'member' }).onConflictDoNothing()
     await tx.insert(chatMembers).values({ convoId, userDid: recipientWebId, role: 'member' }).onConflictDoNothing()
 
+    const [existingMessage] = await tx
+      .select({ id: chatMessages.id })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, msgId))
+      .limit(1)
+
+    if (existingMessage) return
+
+    const [updated] = await tx
+      .update(chatConvos)
+      .set({ rev: sql`${chatConvos.rev} + 1`, updatedAt: new Date() })
+      .where(eq(chatConvos.id, convoId))
+      .returning({ rev: chatConvos.rev })
+
     await tx.insert(chatMessages).values({
       id: msgId,
+      objectUri,
       convoId,
       senderDid: actorUri,
       text,
@@ -877,7 +895,7 @@ export async function maybePersistDirectMessage(
       inReplyToMessageId: null,
       quoteMessageId: null,
       sentAt,
-      rev: 0,
+      rev: updated?.rev ?? 1,
     }).onConflictDoNothing()
   })
 }

@@ -17,7 +17,15 @@ export type SignInBody = Static<typeof signinBody>
 
 export const signinResponse = t.Object({
   token: t.String(),
-  user: _selectUsers
+  user: t.Object({
+    id: t.Number(),
+    name: t.String(),
+    webId: t.String(),
+    email: t.String(),
+    providerEndpoint: t.String(),
+    atprotoDid: t.Union([t.String(), t.Null()]),
+    atprotoHandle: t.Union([t.String(), t.Null()]),
+  })
 })
 export type SignInResponse = Static<typeof signinResponse>
 
