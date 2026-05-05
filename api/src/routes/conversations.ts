@@ -2,7 +2,7 @@ import Elysia, { t } from 'elysia'
 import { conversations, conversationMembers, messages, users } from '../db/schema'
 import { db } from '../db/client'
 import setupPlugin from './setup'
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, ne } from 'drizzle-orm'
 import { formatRelativeTime, localeFromHeaders, translate, type ApiLocale } from '../i18n'
 
 export interface ConversationPreview {
@@ -67,7 +67,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
                 .where(
                   and(
                     eq(conversationMembers.conversationId, conv.id),
-                    eq(users.id, sql`NOT ${user.userId}`)
+                    ne(users.id, user.userId)
                   )
                 )
 

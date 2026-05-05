@@ -763,13 +763,20 @@ export const chatRoutes = new Elysia()
   // ---------------------------------------------------------------------------
   .post('/chat/createGroup', async ({ user, body, set }) => {
     const { members, name } = body
+    const uniqueMembers = Array.from(
+      new Set(
+        (members ?? [])
+          .map(member => sanitizeDid(member))
+          .filter(member => member.length > 0)
+      )
+    )
 
-    if (!members || members.length < MIN_GROUP_MEMBERS) {
+    if (uniqueMembers.length < MIN_GROUP_MEMBERS) {
       set.status = 400
       return { error: `At least ${MIN_GROUP_MEMBERS} members required` }
     }
 
-    if (members.length > MAX_GROUP_MEMBERS) {
+    if (uniqueMembers.length > MAX_GROUP_MEMBERS) {
       set.status = 400
       return { error: `At most ${MAX_GROUP_MEMBERS} members allowed` }
     }
@@ -777,7 +784,7 @@ export const chatRoutes = new Elysia()
     const callerDid = user.atprotoDid ?? user.getWebId()
 
     // Ensure caller is in the members list
-    const allDids = members.includes(callerDid) ? members : [callerDid, ...members]
+    const allDids = uniqueMembers.includes(callerDid) ? uniqueMembers : [callerDid, ...uniqueMembers]
 
     // Generate a random group convoId (groups do not have deterministic IDs)
     const groupId = `convo_${randomUUID().replace(/-/g, '').slice(0, 32)}`

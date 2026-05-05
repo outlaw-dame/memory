@@ -744,6 +744,40 @@ describe('POST /chat/createGroup', () => {
     const bobMember = body.members.find((m: { did: string; role: string }) => m.did === BOB_DID)
     expect(bobMember?.role).toBe('member')
   })
+
+  it('deduplicates duplicate group members before inserting rows', async () => {
+    const insertedMembers: string[] = []
+    const dbLike = db as unknown as DbLike
+    const origTransaction = dbLike.transaction
+    dbLike.transaction = async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn({
+        insert: (table: unknown) => ({
+          values: (vals: unknown) => {
+            const value = vals as { userDid?: string }
+            if (value.userDid) insertedMembers.push(value.userDid)
+            return { then: (r: (v: unknown[]) => unknown) => Promise.resolve([]).then(r) }
+          },
+        }),
+      })
+    }
+    stub = {
+      rows: [],
+      transactionResult: null,
+      restore: () => { dbLike.transaction = origTransaction },
+    }
+
+    const app = createAuthenticatedChatApp()
+    const res = await app.handle(
+      new Request('http://localhost/chat/createGroup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ members: [ALICE_DID, BOB_DID, BOB_DID], name: 'Team Alpha' }),
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(insertedMembers).toEqual([ALICE_DID, BOB_DID])
+  })
 })
 
 // ---------------------------------------------------------------------------
