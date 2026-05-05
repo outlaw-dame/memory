@@ -6,7 +6,8 @@ import { type Static } from '@sinclair/typebox'
 // Query types
 export const selectQueryObject = t.Object({
   limit: t.Integer({ default: 10, maximum: 50, minimum: 1 }),
-  offset: t.Integer({ default: 0, minimum: 0 })
+  offset: t.Integer({ default: 0, minimum: 0 }),
+  hashtag: t.Optional(t.String({ minLength: 2, maxLength: 65 }))
 })
 
 // DB types

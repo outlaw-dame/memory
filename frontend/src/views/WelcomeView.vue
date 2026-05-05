@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import MemoryButton from '@/components/MemoryButton.vue'
+import { useI18n } from '@/i18n'
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -16,24 +19,24 @@ import MemoryButton from '@/components/MemoryButton.vue'
     <div class="self-end">
       <div class="text-white">
         <h2 class="text-h1 pb-(--gap-default)">
-          Welcome to<br /><span class="text-pageTitle font-[Butler]">LOGO.</span>
+          {{ t('welcome.heading') }}<br /><span class="text-pageTitle font-[Butler]">LOGO.</span>
         </h2>
         <p class="text-h3 pb-(--padding-huge)">
-          The most customisable social app you’ve ever experienced, in the palm of your hand.
+          {{ t('welcome.tagline') }}
         </p>
       </div>
       <div class="gap-(--gap-default) flex flex-col">
         <MemoryButton class="text-dark w-full bg-white" success @click="$router.push({ name: 'signin' })">
-          Sign in
+          {{ t('common.actions.signIn') }}
         </MemoryButton>
         <MemoryButton class="bg-white-20 w-full text-white" success @click="$router.push({ name: 'signup' })">
-          Sign up
+          {{ t('common.actions.signUp') }}
         </MemoryButton>
       </div>
       <div class="py-(--padding-large) gap-(--gap-default) mb-(--padding-main) flex justify-center text-white">
-        <p>Terms of Service</p>
-        <p>Imprint</p>
-        <p>About</p>
+        <p>{{ t('welcome.terms') }}</p>
+        <p>{{ t('welcome.imprint') }}</p>
+        <p>{{ t('welcome.about') }}</p>
       </div>
     </div>
   </div>

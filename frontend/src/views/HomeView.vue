@@ -1,46 +1,67 @@
 <script setup lang="ts">
 import CreatePostForm from '@/components/CreatePostForm.vue'
-import PostList from '@/components/PostList.vue'
 import UnifiedFeedList from '@/components/UnifiedFeedList.vue'
 import { ref } from 'vue'
+import { useI18n } from '@/i18n'
 
-type Tab = 'my-posts' | 'federated'
-const activeTab = ref<Tab>('federated')
+type Tab = 'for-you' | 'home' | 'following'
+const activeTab = ref<Tab>('for-you')
+const { t } = useI18n()
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
+    <div class="flex justify-end">
+      <RouterLink to="/settings" class="rounded bg-pastel-light px-3 py-2 text-sm font-medium hover:bg-blue-100">
+        {{ t('home.settings') }}
+      </RouterLink>
+    </div>
+
     <!-- Tab switcher -->
     <div class="flex gap-2 border-b border-gray-200 pb-2">
       <button
         class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeTab === 'federated'
+        :class="activeTab === 'for-you'
           ? 'border-b-2 border-blue-600 text-blue-600'
           : 'text-gray-500 hover:text-gray-700'"
-        @click="activeTab = 'federated'"
+        @click="activeTab = 'for-you'"
       >
-        🌐 Federated Feed
+        {{ t('home.tabs.forYou') }}
       </button>
       <button
         class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeTab === 'my-posts'
+        :class="activeTab === 'home'
           ? 'border-b-2 border-blue-600 text-blue-600'
           : 'text-gray-500 hover:text-gray-700'"
-        @click="activeTab = 'my-posts'"
+        @click="activeTab = 'home'"
       >
-        ✍️ My Posts
+        {{ t('home.tabs.home') }}
+      </button>
+      <button
+        class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
+        :class="activeTab === 'following'
+          ? 'border-b-2 border-blue-600 text-blue-600'
+          : 'text-gray-500 hover:text-gray-700'"
+        @click="activeTab = 'following'"
+      >
+        {{ t('home.tabs.following') }}
       </button>
     </div>
 
-    <!-- Federated Feed (AT Protocol + ActivityPods) -->
-    <div v-if="activeTab === 'federated'">
-      <UnifiedFeedList />
+    <!-- For You: algorithmic/balanced feed across all protocols -->
+    <div v-if="activeTab === 'for-you'">
+      <UnifiedFeedList mode="balanced" />
     </div>
 
-    <!-- My Posts -->
-    <div v-if="activeTab === 'my-posts'">
+    <!-- Home: chronological timeline with compose -->
+    <div v-if="activeTab === 'home'" class="flex flex-col gap-4">
       <CreatePostForm />
-      <PostList />
+      <UnifiedFeedList mode="chronological" />
+    </div>
+
+    <!-- Following: posts from people you follow only -->
+    <div v-if="activeTab === 'following'">
+      <UnifiedFeedList mode="following" />
     </div>
   </div>
 </template>

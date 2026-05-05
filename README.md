@@ -1,6 +1,6 @@
 # Memory
 
-A Microblog-App that saves all data on your Pod.
+A Responsive Microblog-App and PWA that saves all data on your Pod.
 
 Built on the [ActivityPods](https://activitypods.org) framework.
 
@@ -38,10 +38,19 @@ Currently optimised mobile devices are:
 - go into the directory `cd api`
 - run `bun install` to install the dependencies
 - run `bun dev` to start the api
+- run `bun run typecheck` to perform a dedicated TypeScript type-check for the API
+
+From the repository root, you can also run:
+
+- `bun run typecheck:api` to type-check the API
+- `bun run check:api` to run API type-check + API tests
+- `make api-typecheck` for a Makefile-based type-check entrypoint
 
 #### Running the frontend
 - go into the directory `cd frontend`
 - run `bun install` to install the dependencies
+- copy env template: `cp .env.example .env`
+- set `VITE_KLIPY_APP_KEY` in `frontend/.env` to enable Klipy GIF search/trending/recent
 - run `bun dev` to start the frontend
 
 ### Building the app for android

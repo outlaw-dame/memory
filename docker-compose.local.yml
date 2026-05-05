@@ -54,10 +54,16 @@ services:
       DB_URL: postgres://postgres:localpassword@pg:5432/memory
       JWT_SECRET: local-dev-jwt-secret-change-in-prod
       API_PORT: 8794
-      FRONTEND_URL: http://localhost:5173
+      FRONTEND_URL: http://localhost:5174
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
+      AP_BRIDGE_SECRET: ${AP_BRIDGE_SECRET:-change-me-ap-secret}
+      POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://localhost:3000}
+      ACTIVITYPUB_PROXY_BASE_URL: ${ACTIVITYPUB_PROXY_BASE_URL:-http://localhost:3000}
+    networks:
+      - default
+      - activitypods-network
     healthcheck:
-      test: ['CMD-SHELL', 'curl -sf http://localhost:8794/health || exit 1']
+      test: ['CMD', 'bun', '-e', 'fetch("http://localhost:8794/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -71,12 +77,15 @@ services:
       context: .
       dockerfile: docker/frontend.dockerfile
       args:
-        VITE_API_URL: http://localhost:8794
+        VITE_API_URL: /api
+        VITE_POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://localhost:3000}
     restart: unless-stopped
     depends_on:
       - api
     ports:
-      - '5173:5173'
+      - '5173:4000'
+    environment:
+      BACKEND_URL: http://api:8794
 
   # --------------------------------------------------------------------------
   # Mastopod AT Protocol Ingress Pipeline (Phase 5.5 local harness)
@@ -85,7 +94,7 @@ services:
   # --------------------------------------------------------------------------
   mastopod:
     build:
-      context: ../mastopod-federation-architecture/fedify-sidecar
+      context: ../fedify-sidecar
       dockerfile: Dockerfile.local
     restart: unless-stopped
     depends_on:
@@ -94,8 +103,22 @@ services:
     environment:
       MEMORY_WEBHOOK_URL: http://api:8794/at/webhook/ingress
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
-      # Set to 'true' to connect to the real Bluesky relay instead of the mock
-      USE_REAL_FIREHOSE: 'false'
+      # Preferred mode selector: mock | relay | jetstream
+      FIREHOSE_MODE: ${FIREHOSE_MODE:-jetstream}
+      # Optional override for Jetstream endpoint/filter params
+      JETSTREAM_URL: ${JETSTREAM_URL:-wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post&wantedCollections=app.bsky.actor.profile}
+      # Optional smoke-mode cutoff for quick proof runs (empty = continuous)
+      JETSTREAM_MAX_EVENTS: ${JETSTREAM_MAX_EVENTS:-}
+      # Legacy fallback flag used by older scripts (true -> relay mode)
+      USE_REAL_FIREHOSE: ${USE_REAL_FIREHOSE:-false}
 
 volumes:
   pg_data:
+
+networks:
+  # The api service joins activitypods-network so the fedify-sidecar can POST
+  # relay activities to /ap/webhook/ingress without going through the host.
+  # The network is owned by fedify-sidecar/docker-compose.yml; run that stack
+  # first (or run both with docker compose --project-directory).
+  activitypods-network:
+    external: true

@@ -1,71 +1,22 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/authStore'
-import type { ProviderEndpoints } from '@/types/api'
 import MemoryButton from '@/components/MemoryButton.vue'
-import MemoryInput from './MemoryInput.vue'
-import { ref } from 'vue'
-
-// Form
-const username = ref('')
-const password = ref('')
-const endpoint = ref<ProviderEndpoints>('http://localhost:3000')
-// Validation
-const formIsValid = ref(true)
-const formLifeCheck = ref(false)
-const errorMessages = ref<Record<string, string>>({})
+import { useI18n } from '@/i18n'
 
 const authStore = useAuthStore()
-
-function signin() {
-  formLifeCheck.value = true
-  validateForm()
-  if (formIsValid.value) {
-    authStore.signin(username.value, password.value, endpoint.value)
-  }
-}
-
-function validateForm(): void {
-  if (formLifeCheck.value) {
-    errorMessages.value = {}
-    let valid = true
-
-    // username check
-    if (username.value === '') {
-      errorMessages.value.username = 'Username is required'
-      valid = false
-    }
-    // password check
-    if (password.value === '') {
-      errorMessages.value.password = 'Password is required'
-      valid = false
-    }
-
-    formIsValid.value = valid
-  }
-}
+const { t } = useI18n()
 </script>
 
 <template>
-  <form @submit.prevent class="flex flex-col justify-between">
-    <div class="flex flex-col gap-2">
-      <MemoryInput
-        v-model="username"
-        :error="errorMessages.username"
-        label="Email or Username"
-        placeholder="Email or Username"
-        @input="validateForm"
-      />
-      <MemoryInput
-        v-model="password"
-        :error="errorMessages.password"
-        label="Password"
-        type="password"
-        placeholder="Password"
-        @input="validateForm"
-      />
-    </div>
-    <div class="mb-4 flex flex-col gap-2">
-      <MemoryButton class="p w-full" success @click="signin">Sign in</MemoryButton>
-    </div>
-  </form>
+  <div class="flex flex-col gap-6">
+    <p class="text-footnote text-dark/70">
+      {{ t('signin.description') }}
+    </p>
+    <p v-if="authStore.authError" class="text-footnote text-danger">
+      {{ authStore.authError }}
+    </p>
+    <MemoryButton class="p w-full" success @click="authStore.signinWithOidc()">
+      {{ t('signin.continueWithActivityPods') }}
+    </MemoryButton>
+  </div>
 </template>
