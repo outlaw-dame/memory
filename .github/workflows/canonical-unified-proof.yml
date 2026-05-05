@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   proof:
+    name: Canonical Unified Proof
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
