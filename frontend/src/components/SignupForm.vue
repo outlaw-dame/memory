@@ -6,9 +6,11 @@ import MemoryInput from '@/components/MemoryInput.vue'
 import type { ProviderEndpoints } from '@/types/api'
 import { ref } from 'vue'
 import { ProviderSignUpErrors } from '@/types'
+import { useI18n } from '@/i18n'
 
 // Store
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // Form Data
 const username = ref('test')
@@ -58,7 +60,7 @@ function validateForm(): void {
 
     // password check
     if (password.value !== confirmPassword.value) {
-      errorMessages.value.confirmPassword = 'Passwords do not match'
+      errorMessages.value.confirmPassword = t('validation.passwords.mismatch')
       valid = false
     } else {
       const pval = validatePassword(password.value)
@@ -72,14 +74,14 @@ function validateForm(): void {
     const emailVal = validateEmail(email.value)
     if (emailVal) {
       errorMessages.value.email = emailVal
-      valid = false
+        valid = false
     }
 
     // username check
     const usernameVal = validateUsername(username.value)
     if (usernameVal) {
       errorMessages.value.username = usernameVal
-      valid = false
+        valid = false
     }
     formIsValid.value = valid
   }
@@ -91,32 +93,32 @@ function validateForm(): void {
     <div class="gap-(--gap-small) flex flex-col">
       <MemoryInput
         v-model="username"
-        label="Username"
-        placeholder="Username"
+        :label="t('signup.fields.username')"
+        :placeholder="t('signup.fields.username')"
         :error="errorMessages.username"
         @input="validateForm"
       />
       <MemoryInput
         v-model="email"
-        label="Email"
+        :label="t('signup.fields.email')"
         type="email"
-        placeholder="Email"
+        :placeholder="t('signup.fields.email')"
         :error="errorMessages.email"
         @input="validateForm"
       />
       <div class="gap-(--gap-small) flex flex-col">
         <MemoryInput
           v-model="password"
-          label="Password"
+          :label="t('signup.fields.password')"
           type="password"
-          placeholder="Password"
+          :placeholder="t('signup.fields.password')"
           :error="errorMessages.password"
           @input="validateForm"
         />
         <MemoryInput
           v-model="confirmPassword"
           type="password"
-          placeholder="Confirm Password"
+          :placeholder="t('signup.fields.confirmPassword')"
           :error="errorMessages.confirmPassword"
           @input="validateForm"
         />
@@ -128,7 +130,7 @@ function validateForm(): void {
       class="mb-(--padding-large) w-full"
       :disabled="!formIsValid"
     >
-      Sign up
+      {{ t('common.actions.signUp') }}
     </MemoryButton>
   </form>
 </template>

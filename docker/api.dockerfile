@@ -2,7 +2,7 @@ FROM oven/bun:1.2-debian AS base
 
 WORKDIR /app/api
 
-COPY /api/package.json /api/bun.lock /api/.env /app/api
+COPY /api/package.json /api/bun.lock /api/.env /app/api/
 
 RUN bun install --global pm2
 RUN bun install

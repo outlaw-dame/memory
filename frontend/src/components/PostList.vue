@@ -2,8 +2,15 @@
 import { usePostsStore } from '@/stores/postsStore'
 import { DateTime } from 'luxon'
 import MemoryButton from './MemoryButton.vue'
+import HashtagText from './HashtagText.vue'
+import { useFollow } from '@/composables/useFollow'
 
 const postsStore = usePostsStore()
+const { follow, isFollowing } = useFollow()
+
+function onHashtagClick(hashtag: string): void {
+  postsStore.setHashtagFilter(hashtag)
+}
 </script>
 
 <template>
@@ -19,9 +26,12 @@ const postsStore = usePostsStore()
           <p class="text-footnote font-bold">{{ post.author.name }}</p>
           <p class="text-caption">{{ post.author.webId }} • {{ DateTime.fromISO(post.createdAt).toRelative() }}</p>
         </div>
-        <MemoryButton> Follow </MemoryButton>
+        <MemoryButton
+            :disabled="isFollowing(post.author.webId)"
+            @click="follow(post.author.webId)"
+          >{{ isFollowing(post.author.webId) ? 'Following' : 'Follow' }}</MemoryButton>
       </div>
-      <p>{{ post.content }}</p>
+      <HashtagText :text="post.content" @hashtag-click="onHashtagClick" />
     </div>
   </div>
 </template>

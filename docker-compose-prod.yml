@@ -59,6 +59,9 @@ services:
       - ${API_PORT}
     ports:
       - '${API_PORT}:${API_PORT}'
+    networks:
+      - default
+      - activitypods-network
 
   #redis:
   #  image: redis
@@ -67,6 +70,14 @@ services:
   #  volumes:
   #    - ./data/redis:/data:z
   #  command: ['redis-server', '--appendonly', 'yes']
+
+networks:
+  # memory-api joins activitypods-network so the fedify-sidecar can POST
+  # relay activities to /ap/webhook/ingress without going through the host.
+  # The network is owned by fedify-sidecar/docker-compose.yml; run that stack
+  # first (or use a shared network bootstrap step).
+  activitypods-network:
+    external: true
 
   #arena:
   #  image: activitypods/arena

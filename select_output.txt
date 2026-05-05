@@ -1,0 +1,5 @@
+ remaining_future_posts 
+------------------------
+                      0
+(1 row)
+
