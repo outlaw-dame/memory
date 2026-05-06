@@ -5,20 +5,34 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
+
+function isKnownPglitePackagingWarning(warning: { message?: string; id?: string }): boolean {
+  const message = warning.message ?? ''
+  const id = warning.id ?? ''
+  return (
+    id.includes(`${sep}@electric-sql${sep}pglite${sep}`) &&
+    (message.includes('Use of eval') || message.includes('is not exported by "__vite-browser-external"'))
+  )
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   css: { preprocessorOptions: { scss: { api: 'modern-compiler' } } },
-  plugins: [vue({ template: { compilerOptions: { isCustomElement: tag => tag === 'box-icon' } } }), vueJsx(), vueDevTools(), tailwindcss()],
+  plugins: [
+    vue(),
+    vueJsx(),
+    vueDevTools(),
+    tailwindcss()
+  ],
   server: {
     proxy: {
       '/api': {
         target: 'http://localhost:8794',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/api/, ''),
-      },
-    },
+        rewrite: path => path.replace(/^\/api/, '')
+      }
+    }
   },
   resolve: {
     alias: {
@@ -29,9 +43,27 @@ export default defineConfig({
   // PGlite WASM and transformers.js must not be pre-bundled by Vite —
   // they manage their own WASM loading and dynamic imports internally.
   optimizeDeps: {
-    exclude: ['@electric-sql/pglite', '@xenova/transformers'],
+    exclude: ['@electric-sql/pglite', '@huggingface/transformers']
   },
   worker: {
-    format: 'es',
+    format: 'es'
   },
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (isKnownPglitePackagingWarning(warning)) return
+        warn(warning)
+      },
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('@electric-sql/pglite')) return 'pglite'
+          if (id.includes('@huggingface/transformers')) return 'transformers'
+          if (id.includes('/vue') || id.includes('/pinia') || id.includes('/vue-router')) return 'vue-vendor'
+          return 'vendor'
+        }
+      }
+    }
+  }
 })

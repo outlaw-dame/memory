@@ -4,6 +4,7 @@ import { DateTime } from 'luxon'
 import MemoryButton from './MemoryButton.vue'
 import HashtagText from './HashtagText.vue'
 import { useFollow } from '@/composables/useFollow'
+import AppIcon from '@/components/AppIcon.vue'
 
 const postsStore = usePostsStore()
 const { follow, isFollowing } = useFollow()
@@ -21,7 +22,7 @@ function onHashtagClick(hashtag: string): void {
       :key="post.id"
     >
       <div class="user flex flex-row gap-[var(--gap-default)]">
-        <box-icon class="h-[27px] w-[27px]" type="solid" name="user-circle"></box-icon>
+        <AppIcon name="user-circle" :size="27" color="rgba(55,55,55,0.4)" />
         <div class="w-full">
           <p class="text-footnote font-bold">{{ post.author.name }}</p>
           <p class="text-caption">{{ post.author.webId }} • {{ DateTime.fromISO(post.createdAt).toRelative() }}</p>

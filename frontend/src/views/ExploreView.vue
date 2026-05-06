@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import UnifiedFeedList from '@/components/UnifiedFeedList.vue'
 import PostEmbedCard from '@/components/PostEmbedCard.vue'
 import { useFollow } from '@/composables/useFollow'
+import AppIcon from '@/components/AppIcon.vue'
 
 const router = useRouter()
 const { follow, isFollowing } = useFollow()
@@ -137,7 +138,7 @@ const demoPost = {
           style="background: rgba(55,55,55,0.1); color: rgba(55,55,55,0.6);"
           @click="router.back()"
         >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <AppIcon name="chevron-left" :size="16" color="currentColor" />
         </button>
         <h1 class="font-black text-dark" style="font-size: 1.75rem; letter-spacing: -0.04em;">explore.</h1>
         <button
@@ -146,7 +147,7 @@ const demoPost = {
           style="background: rgba(55,55,55,0.1); color: rgba(55,55,55,0.6);"
           @click="router.back()"
         >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <AppIcon name="close" :size="16" color="currentColor" />
         </button>
       </div>
 
@@ -204,9 +205,7 @@ const demoPost = {
           @click="clearSearchHistory"
         >
           Clear Search History
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/>
-          </svg>
+          <AppIcon name="trash" :size="14" color="currentColor" />
         </button>
       </div>
 
@@ -222,7 +221,7 @@ const demoPost = {
           class="w-7 h-7 flex items-center justify-center rounded-full text-dark-30 hover:bg-dark-10 transition-colors"
           @click.stop="removeHistoryItem(i)"
         >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <AppIcon name="close" :size="14" color="currentColor" />
         </button>
       </div>
     </div>

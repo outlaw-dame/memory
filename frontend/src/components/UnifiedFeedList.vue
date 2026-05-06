@@ -12,6 +12,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from '@/i18n'
 import { useAtBridgeStore, type FeedSource, type TimelineMode, type UnifiedFeedItem as UnifiedFeedItemModel } from '@/stores/atBridgeStore'
 import UnifiedFeedItem from './UnifiedFeedItem.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 // Engagement scoring weights — adjust after observing real usage data.
 const ENGAGEMENT_WEIGHTS = Object.freeze({
@@ -240,7 +241,7 @@ function toPopularLabel(item: PopularFeedItem): string {
       v-if="store.isLoading && store.unifiedFeed.length === 0"
       class="rounded-default bg-white shadow-sm flex flex-col items-center gap-3 py-14 text-center"
     >
-      <box-icon name="loader-circle" animation="spin" size="28px" color="rgba(99,100,246,0.5)"></box-icon>
+      <AppIcon name="loader" :size="28" color="rgba(99,100,246,0.5)" class="animate-spin" />
       <p class="text-footnote text-dark-50">Loading feed…</p>
     </div>
 
@@ -256,9 +257,7 @@ function toPopularLabel(item: PopularFeedItem): string {
     >
       <!-- Icon -->
       <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: rgba(99,100,246,0.08);">
-        <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="rgb(99,100,246)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-        </svg>
+        <AppIcon name="messages" :size="28" color="rgb(99,100,246)" />
       </div>
 
       <div class="flex flex-col gap-1.5">

@@ -201,8 +201,8 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
       </div>
     </article>
 
+    <template v-if="notificationsStore.groupedItems.length === 0">
     <article
-      v-if="notificationsStore.groupedItems.length === 0"
       v-for="item in notificationsStore.items"
       :key="item.id"
       :class="[
@@ -244,5 +244,6 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
         </button>
       </div>
     </article>
+    </template>
   </section>
 </template>

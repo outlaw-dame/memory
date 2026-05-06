@@ -26,5 +26,19 @@ export default defineConfigWithVueTs(
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
+
+  {
+    name: 'app/overrides',
+    rules: {
+      // _ prefix is the TypeScript community convention for intentionally unused
+      // destructuring targets (e.g. omitting a field via rest spread).
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
+    },
+  },
+
   skipFormatting,
 )
