@@ -48,6 +48,7 @@ import {
   type RepostRecordInput,
 } from '../utils/repostGroups'
 import ActivityPod from '../services/ActivityPod'
+import { BlueskyAppViewClient } from '../services/BlueskyAppViewClient'
 
 type UnifiedFeedRow = {
   id: number
@@ -431,8 +432,7 @@ async function resolveViewerModerationState(
   }
 }
 
-const BSKY_PUBLIC_API = 'https://public.api.bsky.app/xrpc'
-const BSKY_PROFILE_BATCH_SIZE = 25
+const blueskyAppViewClient = BlueskyAppViewClient.fromEnv(process.env, console)
 
 /**
  * For AT rows whose author_name is still a raw DID (handle not yet resolved),
@@ -443,76 +443,64 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
   const resolved = new Map<string, string>()
   if (dids.length === 0) return resolved
 
-  // Process in batches of BSKY_PROFILE_BATCH_SIZE (API limit is 25).
-  for (let i = 0; i < dids.length; i += BSKY_PROFILE_BATCH_SIZE) {
-    const batch = dids.slice(i, i + BSKY_PROFILE_BATCH_SIZE)
-    const params = batch.map(d => `actors[]=${encodeURIComponent(d)}`).join('&')
-    try {
-      const resp = await fetch(`${BSKY_PUBLIC_API}/app.bsky.actor.getProfiles?${params}`, {
-        signal: AbortSignal.timeout(4000),
-        headers: { 'Accept': 'application/json' },
-      })
-      if (!resp.ok) {
-        console.warn('[AT Bridge] getProfiles returned', resp.status, 'for batch', batch.slice(0, 3))
-        continue
-      }
-      const data = await resp.json() as {
-        profiles?: Array<{
-          did: string
-          handle: string
-          displayName?: string
-          avatar?: string
-          banner?: string
-          followersCount?: number
-          followsCount?: number
-          postsCount?: number
-        }>
-      }
-      const profiles = data?.profiles ?? []
-      for (const profile of profiles) {
-        if (!profile.did || !profile.handle) continue
-        resolved.set(profile.did, profile.handle)
-      }
-      // Upsert resolved handles + profile data into at_identities cache (fire-and-forget; don't block response).
-      const upsertValues = profiles
-        .filter(p => p.did && p.handle)
-        .map(p => ({
-          did: p.did,
-          handle: p.handle,
-          displayName: p.displayName ?? null,
-          avatarUrl: p.avatar ?? null,
-          bannerUrl: p.banner ?? null,
-          followersCount: typeof p.followersCount === 'number' ? p.followersCount : null,
-          followsCount: typeof p.followsCount === 'number' ? p.followsCount : null,
-          postsCount: typeof p.postsCount === 'number' ? p.postsCount : null,
-          isActive: true,
-          resolvedAt: new Date(),
-          updatedAt: new Date(),
-        }))
-      if (upsertValues.length > 0) {
-        db.insert(atIdentities)
-          .values(upsertValues)
-          .onConflictDoUpdate({
-            target: atIdentities.did,
-            set: {
-              handle: sql`EXCLUDED.handle`,
-              displayName: sql`EXCLUDED.display_name`,
-              avatarUrl: sql`EXCLUDED.avatar_url`,
-              bannerUrl: sql`EXCLUDED.banner_url`,
-              followersCount: sql`EXCLUDED.followers_count`,
-              followsCount: sql`EXCLUDED.follows_count`,
-              postsCount: sql`EXCLUDED.posts_count`,
-              resolvedAt: new Date(),
-              updatedAt: new Date(),
-            },
-          })
-          .catch(err => console.warn('[AT Bridge] Failed to cache resolved handles:', err))
-      }
-    } catch (err) {
-      console.warn('[AT Bridge] resolveAndCacheHandles batch failed:', err)
+  try {
+    const profiles = await blueskyAppViewClient.getProfiles(dids)
+    for (const profile of profiles) resolved.set(profile.did, profile.handle)
+
+    const upsertValues = profiles.map(profile => ({
+      did: profile.did,
+      handle: profile.handle,
+      displayName: profile.displayName ?? null,
+      avatarUrl: profile.avatar ?? null,
+      bannerUrl: profile.banner ?? null,
+      followersCount: typeof profile.followersCount === 'number' ? profile.followersCount : null,
+      followsCount: typeof profile.followsCount === 'number' ? profile.followsCount : null,
+      postsCount: typeof profile.postsCount === 'number' ? profile.postsCount : null,
+      isActive: true,
+      resolvedAt: new Date(),
+      updatedAt: new Date(),
+    }))
+
+    if (upsertValues.length > 0) {
+      db.insert(atIdentities)
+        .values(upsertValues)
+        .onConflictDoUpdate({
+          target: atIdentities.did,
+          set: {
+            handle: sql`EXCLUDED.handle`,
+            displayName: sql`EXCLUDED.display_name`,
+            avatarUrl: sql`EXCLUDED.avatar_url`,
+            bannerUrl: sql`EXCLUDED.banner_url`,
+            followersCount: sql`EXCLUDED.followers_count`,
+            followsCount: sql`EXCLUDED.follows_count`,
+            postsCount: sql`EXCLUDED.posts_count`,
+            resolvedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        })
+        .catch(err => console.warn('[AT Bridge] Failed to cache resolved handles:', err))
     }
+  } catch (err) {
+    console.warn('[AT Bridge] resolveAndCacheHandles failed:', err)
   }
   return resolved
+}
+
+function canonicalFeedDedupeKey(row: UnifiedFeedRow): string {
+  const uri = feedRowUri(row)
+  return uri ?? `${row.source}:${row.id}`
+}
+
+function dedupeFeedRows<T extends UnifiedFeedRow>(rows: T[]): T[] {
+  const byKey = new Map<string, T>()
+  for (const row of rows) {
+    const key = canonicalFeedDedupeKey(row)
+    const existing = byKey.get(key)
+    if (!existing || feedSortTimestamp(row) > feedSortTimestamp(existing)) {
+      byKey.set(key, row)
+    }
+  }
+  return [...byKey.values()]
 }
 
 function hasEmbedsMedia(embeds: unknown): boolean {
@@ -1678,13 +1666,13 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
           ? (() => { const d = new Date(since); return isNaN(d.getTime()) ? null : d })()
           : null
 
-        const candidateRows = await queryFeedCandidates({
+        const candidateRows = dedupeFeedRows(await queryFeedCandidates({
           fetchLimit,
           source: source && source !== 'all' ? source : null,
           hashtag: hashtag?.trim().length ? hashtag : null,
           sinceDate,
           viewerIds: extractCurrentUserIds(user),
-        })
+        }))
         const queryDuration = Date.now() - queryStartTime
         console.log('[AT Bridge /feed] Query executed', { duration: queryDuration, rows: candidateRows.length })
 
@@ -2490,12 +2478,12 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
       const fetchLimit = Math.min(300, Math.max(60, normalizedLimit * 6))
 
       try {
-        const candidateRows = await queryFeedCandidates({
+        const candidateRows = dedupeFeedRows(await queryFeedCandidates({
           fetchLimit,
           source: null,
           hashtag: null,
           sinceDate: null,
-        })
+        }))
 
         const cursorScopedRows = keysetCursor !== null
           ? candidateRows.filter(row => isBeforeFeedCursor(row, keysetCursor))
