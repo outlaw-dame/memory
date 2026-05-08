@@ -1,12 +1,14 @@
+import { t } from '@/i18n'
+
 export function validateUsername(username: string, required = true): string | undefined {
   if (required && username === '') {
-    return 'Username is Required'
+    return t('validation.username.required')
   }
   if (username.length < 3) {
-    return 'Username must be at least 3 characters long'
+    return t('validation.username.minLength')
   }
   if (username.includes(' ')) {
-    return 'Username cannot contain spaces'
+    return t('validation.username.noSpaces')
   }
   // TODO: check if username includes bad words
   return undefined
@@ -14,7 +16,7 @@ export function validateUsername(username: string, required = true): string | un
 
 export function validatePassword(password: string) {
   if (password.length < 8) {
-    return 'Password needs to be at least 8 characters long'
+    return t('validation.password.minLength')
   }
   return undefined
 }
@@ -23,10 +25,10 @@ export function validateEmail(email: string, required = true): string | undefine
   const emailRegex =
     /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
   if (required && email === '') {
-    return 'Email is required'
+    return t('validation.email.required')
   }
   if (emailRegex.exec(email) === null) {
-    return 'Invalid Email'
+    return t('validation.email.invalid')
   }
   return undefined
 }

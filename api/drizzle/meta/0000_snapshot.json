@@ -1,0 +1,558 @@
+{
+  "id": "77891dcc-b3b3-4c43-bee6-1a1d609ba5d0",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.posts": {
+      "name": "posts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "object_uri": {
+          "name": "object_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "posts_author_id_users_id_fk": {
+          "name": "posts_author_id_users_id_fk",
+          "tableFrom": "posts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "web_id": {
+          "name": "web_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_endpoint": {
+          "name": "provider_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_web_id_unique": {
+          "name": "users_web_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "web_id"
+          ]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.at_firehose_cursors": {
+      "name": "at_firehose_cursors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'relay'"
+        },
+        "committed_seq": {
+          "name": "committed_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hot_seq": {
+          "name": "hot_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_connected": {
+          "name": "is_connected",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "last_event_at": {
+          "name": "last_event_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_commit_at": {
+          "name": "last_commit_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "at_firehose_cursors_source_id_unique": {
+          "name": "at_firehose_cursors_source_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.at_identities": {
+      "name": "at_identities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "did": {
+          "name": "did",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "handle": {
+          "name": "handle",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "did_document": {
+          "name": "did_document",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "local_user_id": {
+          "name": "local_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "at_identities_local_user_id_users_id_fk": {
+          "name": "at_identities_local_user_id_users_id_fk",
+          "tableFrom": "at_identities",
+          "tableTo": "users",
+          "columnsFrom": [
+            "local_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "at_identities_did_unique": {
+          "name": "at_identities_did_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "did"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.at_posts": {
+      "name": "at_posts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "author_did": {
+          "name": "author_did",
+          "type": "varchar(2048)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rkey": {
+          "name": "rkey",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at_uri": {
+          "name": "at_uri",
+          "type": "varchar(3072)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cid": {
+          "name": "cid",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "facets": {
+          "name": "facets",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "embeds": {
+          "name": "embeds",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reply_parent_uri": {
+          "name": "reply_parent_uri",
+          "type": "varchar(3072)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reply_root_uri": {
+          "name": "reply_root_uri",
+          "type": "varchar(3072)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ingested_at": {
+          "name": "ingested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "source_relay": {
+          "name": "source_relay",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firehose_seq": {
+          "name": "firehose_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "at_posts_at_uri_unique": {
+          "name": "at_posts_at_uri_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "at_uri"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {
+    "public.posts_view": {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "object_uri": {
+          "name": "object_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_name": {
+          "name": "author_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_web_id": {
+          "name": "author_web_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_provider_endpoint": {
+          "name": "author_provider_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "definition": "SELECT\n    posts.*,\n    users.name as author_name,\n    users.web_id as author_web_id,\n    users.provider_endpoint as author_provider_endpoint\n  FROM posts\n  INNER JOIN users on posts.author_id = users.id\n  WHERE posts.is_public = true",
+      "name": "posts_view",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    },
+    "public.unified_feed_view": {
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author_name": {
+          "name": "author_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_web_id": {
+          "name": "author_web_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_provider_endpoint": {
+          "name": "author_provider_endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "at_uri": {
+          "name": "at_uri",
+          "type": "varchar(3072)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "object_uri": {
+          "name": "object_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "\n  SELECT\n    posts.id,\n    posts.content,\n    posts.created_at,\n    posts.is_public,\n    posts.author_id,\n    users.name as author_name,\n    users.web_id as author_web_id,\n    users.provider_endpoint as author_provider_endpoint,\n    'activitypods' as source,\n    NULL::varchar as at_uri,\n    posts.object_uri\n  FROM posts\n  INNER JOIN users ON posts.author_id = users.id\n  WHERE posts.is_public = true\n\n  UNION ALL\n\n  SELECT\n    at_posts.id,\n    at_posts.content,\n    at_posts.created_at,\n    at_posts.is_public,\n    NULL::integer as author_id,\n    COALESCE(at_identities.handle, at_posts.author_did) as author_name,\n    at_posts.author_did as author_web_id,\n    '' as author_provider_endpoint,\n    'atproto' as source,\n    at_posts.at_uri,\n    NULL::text as object_uri\n  FROM at_posts\n  LEFT JOIN at_identities ON at_posts.author_did = at_identities.did\n  WHERE at_posts.is_public = true\n",
+      "name": "unified_feed_view",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    }
+  },
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,21 +1,36 @@
 import { t } from 'elysia'
 
-/**
- * Accepts any valid HTTP/HTTPS URL as a pod provider endpoint.
- *
- * The original fixed enum only allowed http://localhost:3000, which prevented
- * users from connecting to external or custom ActivityPods pod providers.
- * We validate the URL format here; the ActivityPods service validates the
- * endpoint's actual response at runtime.
- *
- * Security note: The URL is used only to make server-side requests to the
- * pod provider's /auth/login and /auth/signup endpoints. It is never reflected
- * back to the client without sanitisation.
- */
-export const viablePodProviders = t.String({
-  minLength: 7,
-  maxLength: 512,
-  pattern: '^https?://',
-  description: 'URL of the ActivityPods pod provider (e.g. http://localhost:3000)',
-  default: 'http://localhost:3000',
-})
+function normalizeProviderEndpoint(value: string | undefined): string | null {
+  if (!value) return null
+
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return null
+
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null
+    }
+    parsed.hash = ''
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    return null
+  }
+}
+
+const configuredProviderEndpoints = [
+  process.env.POD_PROVIDER_BASE_URL,
+  process.env.ACTIVITYPUB_PROXY_BASE_URL,
+  ...(process.env.MEMORY_POD_PROVIDER_ENDPOINTS?.split(',') ?? []),
+]
+  .map(value => normalizeProviderEndpoint(value))
+  .filter((value): value is string => value !== null)
+
+const providerEndpoints = Array.from(new Set([
+  'http://localhost:3000',
+  ...configuredProviderEndpoints,
+]))
+
+export const viablePodProviders = t.Enum(
+  Object.fromEntries(providerEndpoints.map(value => [value, value])) as Record<string, string>
+)

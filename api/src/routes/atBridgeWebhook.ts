@@ -1,13 +1,16 @@
 /**
  * AT Protocol Bridge — Ingress Webhook
  *
- * Receives trusted at.ingress.v1 events from the mastopod-federation-architecture
- * ingress pipeline via HTTP webhook and writes them to the memory database.
+ * Receives trusted bridge events from the mastopod-federation-architecture
+ * pipeline via HTTP webhook and writes them to the memory database.
  *
- * This webhook is the integration point between the Phase 5.5 pipeline and
- * the memory UI.  In production, this would be replaced by a direct RedPanda
- * consumer group subscription.  The webhook approach is used here for
- * simplicity and to avoid requiring a full RedPanda setup for the memory app.
+ * Supported payload contracts:
+ *   - Legacy at.ingress.v1 envelopes (#commit, #identity, #account)
+ *   - CanonicalIntent envelopes (PostCreate, PostEdit, PostDelete, etc.)
+ *
+ * CanonicalIntent is the preferred unification contract. Legacy ingress support
+ * remains for backward compatibility while sidecar workers migrate fully to
+ * canonical-first delivery.
  *
  * Authentication:
  *   - All requests must include the FIREHOSE_BRIDGE_SECRET in the
@@ -31,7 +34,7 @@ import crypto from 'crypto'
 
 function safeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) return false
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  return crypto.timingSafeEqual(new Uint8Array(Buffer.from(a)), new Uint8Array(Buffer.from(b)))
 }
 
 // ---------------------------------------------------------------------------
@@ -45,17 +48,19 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
   // -------------------------------------------------------------------------
   .post(
     '/ingress',
-    async ({ body, headers, error }) => {
+    async ({ body, headers, set }) => {
       // Authenticate the request
       const bridgeSecret = process.env.FIREHOSE_BRIDGE_SECRET
       if (!bridgeSecret) {
         console.error('[AtBridgeWebhook] FIREHOSE_BRIDGE_SECRET is not configured')
-        return error(503, 'Bridge not configured')
+        set.status = 503
+        return 'Bridge not configured'
       }
 
       const providedSecret = headers['x-bridge-secret'] as string | undefined
       if (!providedSecret || !safeCompare(providedSecret, bridgeSecret)) {
-        return error(401, 'Unauthorized')
+        set.status = 401
+        return 'Unauthorized'
       }
 
       // Process events
@@ -67,7 +72,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
       }
 
       for (const event of events) {
-        const success = await atBridgeIngestionService.processIngressEvent(event as any)
+        const success = await atBridgeIngestionService.processBridgeEvent(event as any)
         if (success) {
           results.processed++
         } else {
@@ -99,8 +104,44 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
           identity: t.Optional(t.Any()),
           account: t.Optional(t.Any()),
         })),
+        t.Object({
+          canonicalIntentId: t.String(),
+          kind: t.String(),
+          sourceProtocol: t.String(),
+          sourceEventId: t.String(),
+          sourceAccountRef: t.Any(),
+          createdAt: t.String(),
+          observedAt: t.String(),
+          visibility: t.Any(),
+          provenance: t.Any(),
+          warnings: t.Array(t.Any()),
+          object: t.Optional(t.Any()),
+          content: t.Optional(t.Any()),
+          inReplyTo: t.Optional(t.Any()),
+          subject: t.Optional(t.Any()),
+          reactionType: t.Optional(t.String()),
+          state: t.Optional(t.String()),
+        }),
+        t.Array(t.Object({
+          canonicalIntentId: t.String(),
+          kind: t.String(),
+          sourceProtocol: t.String(),
+          sourceEventId: t.String(),
+          sourceAccountRef: t.Any(),
+          createdAt: t.String(),
+          observedAt: t.String(),
+          visibility: t.Any(),
+          provenance: t.Any(),
+          warnings: t.Array(t.Any()),
+          object: t.Optional(t.Any()),
+          content: t.Optional(t.Any()),
+          inReplyTo: t.Optional(t.Any()),
+          subject: t.Optional(t.Any()),
+          reactionType: t.Optional(t.String()),
+          state: t.Optional(t.String()),
+        })),
       ]),
-      detail: 'Receive trusted AT Protocol ingress events from the federation pipeline',
+      detail: { description: 'Receive trusted bridge events (legacy ingress + canonical intents) from the federation pipeline' },
       response: {
         200: t.Object({
           processed: t.Number(),
@@ -124,7 +165,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
       bridgeConfigured: !!process.env.FIREHOSE_BRIDGE_SECRET,
     }),
     {
-      detail: 'AT Protocol bridge webhook health check',
+      detail: { description: 'AT Protocol bridge webhook health check' },
     },
   )
 

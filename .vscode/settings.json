@@ -1,3 +1,9 @@
 {
-  "eslint.workingDirectories": ["./vueFrontend"]
+  "eslint.workingDirectories": ["./vueFrontend"],
+  "python.terminal.useEnvFile": true,
+  "files.associations": {
+    "**/api/drizzle/*.sql": "plaintext",
+    "**/drizzle/*.sql": "plaintext"
+  },
+  "mssql.intelliSense.enableErrorChecking": false
 }

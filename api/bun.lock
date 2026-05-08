@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "api",
@@ -20,6 +21,7 @@
         "@types/pg": "^8.11.11",
         "drizzle-kit": "^0.30.2",
         "prettier-plugin-tailwindcss": "^0.6.11",
+        "typescript": "^5.7.3",
       },
       "peerDependencies": {
         "typescript": "^5.7.3",

@@ -1,6 +1,15 @@
 import type { SignInResponse, SignUpBody } from '#api/types'
+import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { ApiErrorsGeneral, ProviderSignUpErrors, type ApiErrors } from '@/types'
 import ky, { HTTPError } from 'ky'
+
+export interface OidcExchangeBody {
+  accessToken: string
+  webId: string
+  providerEndpoint: string
+  name?: string
+  email?: string
+}
 
 export interface ApiResponse<T> {
   data: T
@@ -10,15 +19,39 @@ export interface ApiResponse<T> {
 export class ApiClient {
   baseUrl: string
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL
+    this.baseUrl = getApiBaseUrl()
   }
 
   async signup(body: SignUpBody): Promise<ApiResponse<SignInResponse | string | ApiErrors>> {
     try {
-      const response = await ky.post(`${this.baseUrl}/signup`, { json: body })
+      const response = await ky
+        .post(`${this.baseUrl}/signup`, {
+          headers: buildApiHeaders({ includeJsonContentType: true }),
+          json: body
+        })
+        .json<SignInResponse>()
+
       return {
-        data: 'Successfully signed up',
-        status: response.status
+        data: response,
+        status: 200
+      }
+    } catch (e) {
+      return await this.handleError(e)
+    }
+  }
+
+  async exchangeOidc(body: OidcExchangeBody): Promise<ApiResponse<SignInResponse | ApiErrors>> {
+    try {
+      const data = await ky
+        .post(`${this.baseUrl}/auth/oidc/exchange`, {
+          headers: buildApiHeaders({ includeJsonContentType: true }),
+          json: body
+        })
+        .json<SignInResponse>()
+
+      return {
+        data,
+        status: 200
       }
     } catch (e) {
       return await this.handleError(e)

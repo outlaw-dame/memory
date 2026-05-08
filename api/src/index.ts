@@ -1,37 +1,97 @@
 import { Elysia } from 'elysia'
-import { drizzle } from 'drizzle-orm/node-postgres'
 import { _createPost, _selectUsers } from './types'
-import { postsPlugin, authPlugin, setupPlugin, atBridgePlugin } from './routes'
+import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin, linkPreviewPlugin, bookmarksPlugin, mediaUploadsPlugin, mediaSidecarCallbackPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
+import { xrpcFeedPlugin } from './routes/atBridge'
+import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
+import { db } from './db/client'
+import { applyLocaleHeaders, localeFromHeaders, translate } from './i18n'
+import { startAtBridgeRetentionService } from './services/AtBridgeRetentionService'
+import { startApRemoteReconciliationService } from './services/ApRemoteIngestionService'
+import { hydrateUserPodToken } from './services/PodTokenService'
+import { assertTokenVaultReadyForProduction } from './services/TokenVault'
+import { isCurrentSessionToken } from './services/jwt'
 
-export const db = drizzle({ connection: process.env.DB_URL || '', casing: 'snake_case' })
+export { db }
 
-export const app = new Elysia()
-  // Top-level health check — used by Docker healthcheck and the Mastopod harness
-  .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+assertTokenVaultReadyForProduction()
+
+async function loadSessionUser(authValue: { user?: unknown } | false | null, user: any) {
+  if (!isCurrentSessionToken(authValue)) return false
+  user.loadUser(JSON.parse(authValue.user))
+  await hydrateUserPodToken(user)
+  return true
+}
+
+const publicRoutes = new Elysia({ aot: false })
   .use(setupPlugin)
+  .use(authPlugin)
+  .use(oidcAuthPlugin)
+  .use(oidcClientPlugin)
+  .use(activityPodsAppPublicPlugin)
+  .use(mastodonApiPlugin)
+  .use(apBridgeWebhookPlugin)
+  .use(mediaSidecarCallbackPlugin)
+  .use(xrpcFeedPlugin)
+
+const protectedRoutes = new Elysia({ aot: false })
+  .use(setupPlugin)
+  .onBeforeHandle(async ({ headers, jwt, user }: any) => {
+    const token = (headers as any)['auth']
+    if (token) {
+      const authValue = await jwt.verify(token)
+      if (authValue) {
+        await loadSessionUser(authValue as { user?: unknown }, user)
+      }
+    }
+  })
   .macro({
     isSignedIn: enabled => {
       if (!enabled) return
 
       return {
-        async beforeHandle({ headers: { auth }, jwt, error, user }) {
+        async beforeHandle({ headers, jwt, set, user }) {
+          const locale = localeFromHeaders(headers)
+          applyLocaleHeaders(set, locale)
+          const auth = headers.auth
           const authValue = await jwt.verify(auth)
-          if (!authValue) {
-            return error(401, 'You must be signed in to do that')
-          } else {
-            user.loadUser(JSON.parse(authValue.user as string))
+          if (!authValue || (!user.userId && !(await loadSessionUser(authValue as { user?: unknown }, user)))) {
+            set.status = 401
+            return translate(locale, 'common.mustBeSignedIn')
           }
         }
       }
     }
   })
-  .use(authPlugin)
   .use(postsPlugin)
   .use(atBridgePlugin)
   .use(atBridgeWebhookPlugin)
-  .listen(process.env.API_PORT || 8796)
+  .use(followPlugin)
+  .use(replyPlugin)
+  .use(actorMetadataPlugin)
+  .use(profilePlugin)
+  .use(conversationsPlugin)
+  .use(bookmarksPlugin)
+  .use(activityPodsNotificationsPlugin)
+  .use(linkPreviewPlugin)
+  .use(mediaUploadsPlugin)
+  .use(chatPlugin)
+
+export const app = new Elysia({ aot: false })
+  // Top-level health check — used by Docker healthcheck and the Mastopod harness
+  .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+  .use(publicRoutes)
+  .use(protectedRoutes)
+  .listen({
+    port: Number(process.env.API_PORT || 8796),
+    // Unified feed aggregation can exceed Bun's short default request timeout
+    // during local cold-start and large replay windows.
+    idleTimeout: 30,
+  })
 
 console.info(`Listening on port ${process.env.API_PORT}`)
+
+startAtBridgeRetentionService()
+startApRemoteReconciliationService()
 
 export type App = typeof app
