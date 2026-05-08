@@ -1,5 +1,5 @@
 import { relations, eq, sql } from 'drizzle-orm'
-import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core'
+import { boolean, text, serial, pgTable as table, timestamp, integer, pgView, varchar, jsonb, index, uniqueIndex, uuid, check } from 'drizzle-orm/pg-core'
 
 export const users = table('users', {
   id: serial().primaryKey(),
@@ -46,7 +46,50 @@ export const posts = table('posts', {
   postType: text('post_type', { enum: ['note', 'article'] }).notNull().default('note'),
   name: text('name'),
   summary: text('summary'),
-})
+  clientPostKey: varchar('client_post_key', { length: 128 }),
+  clientPostRequestHash: varchar('client_post_request_hash', { length: 64 }),
+}, t => [
+  uniqueIndex('posts_author_client_key_unique_idx').on(t.authorId, t.clientPostKey).where(sql`${t.clientPostKey} IS NOT NULL`),
+])
+
+export const mediaAttachments = table('media_attachments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  postId: integer('post_id').references(() => posts.id),
+  state: text('state', { enum: ['uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted'] }).notNull().default('uploading'),
+  kind: text('kind', { enum: ['image', 'gif', 'video', 'audio', 'unknown'] }).notNull(),
+  sourceUrl: text('source_url'),
+  sourceMediaType: varchar('source_media_type', { length: 120 }).notNull(),
+  sourceSize: integer('source_size').notNull(),
+  originalFilename: text('original_filename'),
+  altText: text('alt_text'),
+  focusX: integer('focus_x'),
+  focusY: integer('focus_y'),
+  blurhash: varchar('blurhash', { length: 128 }),
+  width: integer('width'),
+  height: integer('height'),
+  durationMs: integer('duration_ms'),
+  previewUrl: text('preview_url'),
+  thumbnailUrl: text('thumbnail_url'),
+  canonicalUrl: text('canonical_url'),
+  gatewayUrl: text('gateway_url'),
+  filebaseCid: varchar('filebase_cid', { length: 256 }),
+  digestMultibase: varchar('digest_multibase', { length: 256 }),
+  errorCode: varchar('error_code', { length: 64 }),
+  errorMessage: text('error_message'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index('media_attachments_user_state_idx').on(t.userId, t.state),
+  index('media_attachments_user_post_idx').on(t.userId, t.postId),
+  index('media_attachments_expires_at_idx').on(t.expiresAt),
+  check('media_attachments_state_check', sql`${t.state} IN ('uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted')`),
+  check('media_attachments_kind_check', sql`${t.kind} IN ('image', 'gif', 'video', 'audio', 'unknown')`),
+  check('media_attachments_size_check', sql`${t.sourceSize} > 0`),
+  check('media_attachments_focus_x_check', sql`${t.focusX} IS NULL OR (${t.focusX} >= -1000000 AND ${t.focusX} <= 1000000)`),
+  check('media_attachments_focus_y_check', sql`${t.focusY} IS NULL OR (${t.focusY} >= -1000000 AND ${t.focusY} <= 1000000)`),
+])
 
 export const postsView = pgView('posts_view', {
   id: serial().primaryKey(),
