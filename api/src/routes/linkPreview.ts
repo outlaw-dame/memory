@@ -10,7 +10,9 @@ const linkPreviewPlugin = new Elysia({ name: 'link-preview' })
         return await fetchLinkPreview(query.url)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch link preview'
-        const responseStatus = /url|http\(s\)|private|local|numeric|safe browsing|credentials/i.test(message) ? 400 : 502
+        const responseStatus = /url|http\(s\)|private|local|numeric|safe browsing|credentials|dns|redirect|too many/i.test(message)
+          ? 400
+          : 502
         return status(responseStatus, message)
       }
     },

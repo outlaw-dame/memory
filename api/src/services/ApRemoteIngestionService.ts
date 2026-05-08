@@ -22,6 +22,8 @@ import { db } from '../db/client'
 import { apRemotePosts, atRecords, apActorCache } from '../db/atBridgeSchema'
 import { eq, and, isNull, isNotNull } from 'drizzle-orm'
 import crypto from 'crypto'
+import { secureFetch } from '../utils/secureFetch'
+import { isPublicHttpUrl } from '../utils/urlGuards'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -271,11 +273,23 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
       return
     }
 
-    const resp = await fetch(actorUri, {
-      headers: { Accept: 'application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"' },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (!resp.ok) return
+    const resp = await (async () => {
+      try {
+        const { response } = await secureFetch(actorUri, {
+          headers: { Accept: 'application/activity+json, application/ld+json; profile="https://www.w3.org/ns/activitystreams"' },
+          timeoutMs: 5000,
+          // AP actor URIs are federation identifiers; we still run the
+          // full URL-hygiene pipeline (sanitize + DNS resolve + Safe
+          // Browsing) but allow callers to suppress SB if a future
+          // private/internal AP cluster is introduced.
+        })
+        return response
+      } catch {
+        // Guard rejection or transport failure — actor cache is best-effort.
+        return null
+      }
+    })()
+    if (!resp || !resp.ok) return
 
     const actor = await resp.json() as Record<string, unknown>
 
@@ -294,10 +308,13 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
     const iconObj = actor['icon']
     const imageObj = actor['image']
     function extractMediaUrl(obj: unknown): string | null {
-      if (typeof obj === 'string') return isHttpsUrl(obj) ? obj : null
+      // Reject non-public URLs (private IPs, loopback, javascript:, file:, etc.)
+      // before storing — the browser will later request these directly so we
+      // must not let federated actors point clients at internal hosts.
+      if (typeof obj === 'string') return isPublicHttpUrl(obj) ? obj : null
       if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
         const url = (obj as Record<string, unknown>)['url']
-        if (typeof url === 'string' && isHttpsUrl(url)) return url
+        if (typeof url === 'string' && isPublicHttpUrl(url)) return url
       }
       return null
     }
