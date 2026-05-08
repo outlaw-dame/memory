@@ -5,7 +5,7 @@ import { fetchLinkPreview } from '../services/LinkPreviewService'
 const linkPreviewPlugin = new Elysia({ name: 'link-preview' })
   .get(
     '/link-preview',
-    async ({ query, status }) => {
+    async ({ query, set }) => {
       try {
         return await fetchLinkPreview(query.url)
       } catch (err) {
@@ -13,7 +13,8 @@ const linkPreviewPlugin = new Elysia({ name: 'link-preview' })
         const responseStatus = /url|http\(s\)|private|local|numeric|safe browsing|credentials|dns|redirect|too many/i.test(message)
           ? 400
           : 502
-        return status(responseStatus, message)
+        set.status = responseStatus
+        return message
       }
     },
     {

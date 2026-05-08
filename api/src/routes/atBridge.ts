@@ -1802,7 +1802,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .get(
     '/thread',
-    async ({ query: { rootUri, limit, cursor }, status, user }) => {
+    async ({ query: { rootUri, limit, cursor }, set, user }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const normalizedRootUri = normalizeThreadUri(rootUri)
       if (!normalizedRootUri) {
         return status(400, 'Invalid rootUri')
@@ -1957,7 +1961,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
         return status(400, 'Choose a valid ActivityPub object URL or AT URI to repost')
@@ -2033,7 +2041,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts/remove',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
         return status(400, 'Choose a valid ActivityPub object URL or AT URI to remove from reposts')
@@ -2097,7 +2109,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/moderation/author',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const subject = deriveModerationSubject(body)
       if (!subject) {
         return status(400, 'Unable to determine moderation subject')
@@ -2140,7 +2156,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/feed/viewed',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const objectIds = [...new Set([body.objectId, ...(body.objectIds ?? [])].filter((value): value is string => !!value && value.trim().length > 0))]
       if (objectIds.length === 0) {
         return status(400, 'objectId or objectIds is required')
@@ -2382,7 +2402,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   // -------------------------------------------------------------------------
   .post(
     '/subscribe',
-    async ({ body, status }) => {
+    async ({ body, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const { sourceId, url, sourceType } = body
 
       // Validate URL format
@@ -2460,7 +2484,11 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
   .use(setupPlugin)
   .get(
     '/app.bsky.feed.getFeedSkeleton',
-    async ({ query: { feed, limit, cursor }, status: elysiaError }) => {
+    async ({ query: { feed, limit, cursor }, set }) => {
+      const elysiaError = (code: number, body: unknown) => {
+        set.status = code
+        return body
+      }
       // Determine mode from the feed AT URI's rkey.
       const feedRkey = (() => {
         if (!feed) return 'memory-unified'

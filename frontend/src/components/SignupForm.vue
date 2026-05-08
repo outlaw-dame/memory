@@ -5,6 +5,7 @@ import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from '@/components/MemoryInput.vue'
 import { ref } from 'vue'
 import { ProviderSignUpErrors } from '@/types'
+import type { ProviderEndpoints } from '@/types'
 import { useI18n } from '@/i18n'
 
 // Store
@@ -40,7 +41,7 @@ async function submitForm() {
       email.value,
       username.value,
       password.value,
-      endpoint.value as any,
+      endpoint.value as ProviderEndpoints,
     )
     // if the response is a string, it means that there was an error
     if (authResponse) {
