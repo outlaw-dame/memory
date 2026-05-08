@@ -97,6 +97,8 @@ services:
       context: ../fedify-sidecar
       dockerfile: Dockerfile.local
     restart: unless-stopped
+    profiles:
+      - legacy-at-harness
     depends_on:
       api:
         condition: service_healthy
