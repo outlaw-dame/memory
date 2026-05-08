@@ -38,12 +38,12 @@ const authPlugin = new Elysia({name: 'auth'})
   .use(setupPlugin)
   .post(
     '/signin',
-    async ({ body, jwt, headers, error }) => {
+    async ({ body, jwt, headers, status }) => {
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in
       if (auth && isCurrentSessionToken(await jwt.verify(auth))) {
-        return error(204, translate(locale, 'auth.alreadyLoggedIn'))
+        return status(204, translate(locale, 'auth.alreadyLoggedIn'))
       }
       const { username, password, providerEndpoint } = body
 
@@ -54,12 +54,12 @@ const authPlugin = new Elysia({name: 'auth'})
         providerResponse = await ActivityPod.signIn(providerEndpoint, username, password)
       } catch (e) {
         console.error('Error while logging in to endpoint: ', e)
-        return error(400, translate(locale, 'auth.endpointBadStatus'))
+        return status(400, translate(locale, 'auth.endpointBadStatus'))
       }
 
       // check if the endpoint returned a token
       if (providerResponse.token === undefined) {
-        return error(400, translate(locale, 'auth.endpointNoToken'))
+        return status(400, translate(locale, 'auth.endpointNoToken'))
       } else {
         let dbUser: SelectUsers[] = []
         // the endpoint returned like expected now check if the user is already in the database
@@ -88,7 +88,7 @@ const authPlugin = new Elysia({name: 'auth'})
           }
         } catch (e) {
           console.error('Error while checking if user is in the database: ', e)
-          return error(500, translate(locale, 'auth.userCheckFailed'))
+          return status(500, translate(locale, 'auth.userCheckFailed'))
         }
         const linkedUser = await maybeSyncAtprotoIdentity(
           dbUser[0],
@@ -114,7 +114,7 @@ const authPlugin = new Elysia({name: 'auth'})
         400: t.String(),
         500: t.String()
       },
-      detail: 'Logs in a with a pod provider and sets an auth cookie for the user'
+      detail: { description: 'Logs in a with a pod provider and sets an auth cookie for the user' }
     }
   )
   .get(
@@ -125,12 +125,12 @@ const authPlugin = new Elysia({name: 'auth'})
       return translate(locale, 'auth.loggedOut')
     },
     {
-      detail: 'Removes the auth cookie'
+      detail: { description: 'Removes the auth cookie' }
     }
   )
   .post(
     '/signup',
-    async ({ body, error, headers, jwt }) => {
+    async ({ body, status, headers, jwt }) => {
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in
@@ -145,7 +145,7 @@ const authPlugin = new Elysia({name: 'auth'})
         let userResponse: SelectUsers[] = []
 
         if (providerResponse.token === undefined) {
-          return error(400, translate(locale, 'auth.providerNoToken'))
+          return status(400, translate(locale, 'auth.providerNoToken'))
         } else {
           // the provider created a new user, so we need to create a new user in the database
           try {
@@ -168,7 +168,7 @@ const authPlugin = new Elysia({name: 'auth'})
             }
           } catch (e) {
             console.error('Error while checking if user is in the database: ', e)
-            return error(500, translate(locale, 'auth.userCheckFailed'))
+            return status(500, translate(locale, 'auth.userCheckFailed'))
           }
           const linkedUser = await maybeSyncAtprotoIdentity(
             userResponse[0],
@@ -187,14 +187,14 @@ const authPlugin = new Elysia({name: 'auth'})
         if (e.name === 'HTTPError') {
           const errorJson = await e.response.json()
           console.error('Error while signing up the user', errorJson)
-          return error(errorJson.code, errorJson.message)
+          return status(errorJson.code, errorJson.message)
         }
         console.error('Error while signing up the user', e)
-        return error(400, translate(locale, 'auth.providerError'))
+        return status(400, translate(locale, 'auth.providerError'))
       }
     },
     {
-      detail: 'Signs up a new user',
+      detail: { description: 'Signs up a new user' },
       body: signUpBody,
       response: {
         200: signinResponse,

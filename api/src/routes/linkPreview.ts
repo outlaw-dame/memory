@@ -1,16 +1,17 @@
 import Elysia, { t } from 'elysia'
+import { signedIn } from './elysiaCompat'
 import { fetchLinkPreview } from '../services/LinkPreviewService'
 
 const linkPreviewPlugin = new Elysia({ name: 'link-preview' })
   .get(
     '/link-preview',
-    async ({ query, error }) => {
+    async ({ query, status }) => {
       try {
         return await fetchLinkPreview(query.url)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch link preview'
-        const status = /url|http\(s\)|private|local/i.test(message) ? 400 : 502
-        return error(status, message)
+        const responseStatus = /url|http\(s\)|private|local/i.test(message) ? 400 : 502
+        return status(responseStatus, message)
       }
     },
     {
@@ -30,8 +31,8 @@ const linkPreviewPlugin = new Elysia({ name: 'link-preview' })
         400: t.String(),
         502: t.String(),
       },
-      detail: 'Fetches Open Graph metadata for a URL to power link previews',
-      isSignedIn: true,
+      detail: { description: 'Fetches Open Graph metadata for a URL to power link previews' },
+      ...signedIn,
     },
   )
 

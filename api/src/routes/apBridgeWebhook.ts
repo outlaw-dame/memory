@@ -57,7 +57,7 @@ const apBridgeWebhookPlugin = new Elysia({ name: 'ap-bridge-webhook', prefix: '/
     },
     {
       body: t.Any(),
-      detail: 'Receives AP relay activities from the fedify sidecar for feed inclusion',
+      detail: { description: 'Receives AP relay activities from the fedify sidecar for feed inclusion' },
     },
   )
 

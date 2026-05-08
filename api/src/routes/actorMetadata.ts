@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
 import { localeFromHeaders, translate } from '../i18n'
@@ -14,26 +15,23 @@ const isAbsoluteHttpsUrl = (value: string): boolean => {
 
 const actorMetadataPlugin = new Elysia({ name: 'actorMetadata' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   .post(
     '/actor-metadata/verify',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       if (!user?.endpoint || !user?.userName) {
-        return error(401, translate(locale, 'common.mustBeSignedIn'))
+        return status(401, translate(locale, 'common.mustBeSignedIn'))
       }
       if (body.actorUri && !isAbsoluteHttpsUrl(body.actorUri)) {
-        return error(400, translate(locale, 'metadata.actorUriHttps'))
+        return status(400, translate(locale, 'metadata.actorUriHttps'))
       }
 
       try {
         return await ActivityPod.verifyActorMetadata(user, body.actorUri)
       } catch (e) {
         console.error('Error while verifying actor metadata:', e)
-        return error(502, translate(locale, 'metadata.verifyActorFailed'))
+        return status(502, translate(locale, 'metadata.verifyActorFailed'))
       }
     },
     {
@@ -46,28 +44,28 @@ const actorMetadataPlugin = new Elysia({ name: 'actorMetadata' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Verify rel=me links for the authenticated ActivityPub actor metadata'
+      detail: { description: 'Verify rel=me links for the authenticated ActivityPub actor metadata' }
     }
   )
   .post(
     '/actor-metadata/verify-link',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       if (!user?.endpoint || !user?.userName) {
-        return error(401, translate(locale, 'common.mustBeSignedIn'))
+        return status(401, translate(locale, 'common.mustBeSignedIn'))
       }
       if (!isAbsoluteHttpsUrl(body.href)) {
-        return error(400, translate(locale, 'metadata.hrefHttps'))
+        return status(400, translate(locale, 'metadata.hrefHttps'))
       }
       if (body.actorUri && !isAbsoluteHttpsUrl(body.actorUri)) {
-        return error(400, translate(locale, 'metadata.actorUriHttps'))
+        return status(400, translate(locale, 'metadata.actorUriHttps'))
       }
 
       try {
         return await ActivityPod.verifyRelMeLink(user, body.href, body.actorUri)
       } catch (e) {
         console.error('Error while verifying rel=me link:', e)
-        return error(502, translate(locale, 'metadata.verifyRelMeFailed'))
+        return status(502, translate(locale, 'metadata.verifyRelMeFailed'))
       }
     },
     {
@@ -81,7 +79,7 @@ const actorMetadataPlugin = new Elysia({ name: 'actorMetadata' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Verify a single rel=me link against the authenticated ActivityPub actor'
+      detail: { description: 'Verify a single rel=me link against the authenticated ActivityPub actor' }
     }
   )
 

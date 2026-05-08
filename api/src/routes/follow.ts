@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
 import { localeFromHeaders, translate } from '../i18n'
@@ -14,22 +15,19 @@ const isAbsoluteHttpsUrl = (value: string): boolean => {
 
 const followPlugin = new Elysia({ name: 'follow' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   .post(
     '/follows/resolve',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       if (!isAbsoluteHttpsUrl(body.objectUri)) {
-        return error(400, translate(locale, 'follow.objectUriHttps'))
+        return status(400, translate(locale, 'follow.objectUriHttps'))
       }
       try {
         return await ActivityPod.resolveFollowTarget(user, body.objectUri)
       } catch (e) {
         console.error('Error while resolving follow target:', e)
-        return error(502, translate(locale, 'follow.resolveFailed'))
+        return status(502, translate(locale, 'follow.resolveFailed'))
       }
     },
     {
@@ -42,22 +40,22 @@ const followPlugin = new Elysia({ name: 'follow' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Resolve whether an ActivityPub object is followable and where the Follow will be delivered'
+      detail: { description: 'Resolve whether an ActivityPub object is followable and where the Follow will be delivered' }
     }
   )
   .post(
     '/follows',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       const { objectUri } = body
       if (!isAbsoluteHttpsUrl(objectUri)) {
-        return error(400, translate(locale, 'follow.objectUriHttps'))
+        return status(400, translate(locale, 'follow.objectUriHttps'))
       }
       try {
         await ActivityPod.followObject(user, objectUri)
       } catch (e) {
         console.error('Error while following object:', e)
-        return error(502, translate(locale, 'follow.failed'))
+        return status(502, translate(locale, 'follow.failed'))
       }
       return { followed: true }
     },
@@ -69,7 +67,7 @@ const followPlugin = new Elysia({ name: 'follow' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Follow a followable ActivityPub object via FEP-efda resolution'
+      detail: { description: 'Follow a followable ActivityPub object via FEP-efda resolution' }
     }
   )
 

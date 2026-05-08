@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedIn, signedInGuard } from './elysiaCompat'
 import { conversations, conversationMembers, messages, users } from '../db/schema'
 import { db } from '../db/client'
 import setupPlugin from './setup'
@@ -18,10 +19,7 @@ export interface ConversationPreview {
 
 const conversationsRoutes = new Elysia({ name: 'conversations' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   .get(
     '/conversations',
     async ({ user, headers }) => {
@@ -103,8 +101,8 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
       }
     },
     {
-      detail: 'Get all conversations for the current user',
-      isSignedIn: true,
+      detail: { description: 'Get all conversations for the current user' },
+      ...signedIn,
       response: {
         200: t.Array(t.Any()),
       },
@@ -112,7 +110,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .get(
     '/conversations/:id',
-    async ({ params: { id }, user, headers, error }) => {
+    async ({ params: { id }, user, headers, status }) => {
       const locale = localeFromHeaders(headers)
       try {
         const conv = await db
@@ -122,7 +120,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
           .limit(1)
 
         if (!conv.length || conv[0].userId !== user.userId) {
-          return error(404, translate(locale, 'conversations.notFound'))
+          return status(404, translate(locale, 'conversations.notFound'))
         }
 
         const msgs = await db
@@ -141,17 +139,17 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         return { conversation: conv[0], messages: msgs }
       } catch (e) {
         console.error('Error fetching conversation:', e)
-        return error(500, translate(locale, 'conversations.fetchFailed'))
+        return status(500, translate(locale, 'conversations.fetchFailed'))
       }
     },
     {
-      detail: 'Get a specific conversation with all messages',
-      isSignedIn: true,
+      detail: { description: 'Get a specific conversation with all messages' },
+      ...signedIn,
     }
   )
   .post(
     '/conversations',
-    async ({ body, user, headers, error }) => {
+    async ({ body, user, headers, status }) => {
       const locale = localeFromHeaders(headers)
       const { type, name, memberIds } = body as {
         type: 'dm' | 'group'
@@ -182,7 +180,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         return newConv
       } catch (e) {
         console.error('Error creating conversation:', e)
-        return error(500, translate(locale, 'conversations.createFailed'))
+        return status(500, translate(locale, 'conversations.createFailed'))
       }
     },
     {
@@ -191,13 +189,13 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         name: t.Optional(t.String()),
         memberIds: t.Array(t.Number()),
       }),
-      detail: 'Create a new conversation',
-      isSignedIn: true,
+      detail: { description: 'Create a new conversation' },
+      ...signedIn,
     }
   )
   .post(
     '/conversations/:id/messages',
-    async ({ params: { id }, body, user, headers, error }) => {
+    async ({ params: { id }, body, user, headers, status }) => {
       const locale = localeFromHeaders(headers)
       const { content } = body as { content: string }
 
@@ -217,7 +215,7 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
           .limit(1)
 
         if (!member.length) {
-          return error(403, translate(locale, 'conversations.notMember'))
+          return status(403, translate(locale, 'conversations.notMember'))
         }
 
         // Create message
@@ -245,15 +243,15 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
         }
       } catch (e) {
         console.error('Error sending message:', e)
-        return error(500, translate(locale, 'conversations.sendFailed'))
+        return status(500, translate(locale, 'conversations.sendFailed'))
       }
     },
     {
       body: t.Object({
         content: t.String({ minLength: 1 }),
       }),
-      detail: 'Send a message in a conversation',
-      isSignedIn: true,
+      detail: { description: 'Send a message in a conversation' },
+      ...signedIn,
     }
   )
 

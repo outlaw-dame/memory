@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import setupPlugin from './setup'
 import {
   ensureMemoryInboxWebhook,
@@ -14,10 +15,7 @@ import { localeFromHeaders, translate } from '../i18n'
 
 const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notifications' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true,
-  })
+  .guard(signedInGuard)
   .get('/activitypods/notifications/status', async ({ set, user, headers }: any) => {
     const locale = localeFromHeaders(headers)
     const dbUser = await getUserById(user.userId)
@@ -39,7 +37,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       502: t.String(),
     },
-    detail: 'Return Memory app registration and webhook status for the current ActivityPods user',
+    detail: { description: 'Return Memory app registration and webhook status for the current ActivityPods user' },
   })
   .post('/activitypods/notifications/bootstrap', async ({ set, user, headers }: any) => {
     const locale = localeFromHeaders(headers)
@@ -70,7 +68,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       502: t.String(),
     },
-    detail: 'Create the Memory inbox webhook after the app has been authorized on the user pod',
+    detail: { description: 'Create the Memory inbox webhook after the app has been authorized on the user pod' },
   })
   .get('/activitypods/notifications', async ({ set, user, headers }: any) => {
     const locale = localeFromHeaders(headers)
@@ -93,7 +91,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       500: t.String(),
     },
-    detail: 'List recent ActivityPods notification deliveries captured by Memory',
+    detail: { description: 'List recent ActivityPods notification deliveries captured by Memory' },
   })
   .get('/activitypods/notifications/grouped', async ({ set, user, headers, query }: any) => {
     const locale = localeFromHeaders(headers)
@@ -136,7 +134,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       500: t.String(),
     },
-    detail: 'List grouped notifications (Mastodon-style grouping for boosts/likes)',
+    detail: { description: 'List grouped notifications (Mastodon-style grouping for boosts/likes)' },
   })
   .patch('/activitypods/notifications/:id/read', async ({ set, user, params, headers }: any) => {
     const locale = localeFromHeaders(headers)
@@ -166,7 +164,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       400: t.String(),
       404: t.String(),
     },
-    detail: 'Mark a single notification as read',
+    detail: { description: 'Mark a single notification as read' },
   })
   .post('/activitypods/notifications/groups/read', async ({ set, user, headers, body }: any) => {
     const locale = localeFromHeaders(headers)
@@ -191,7 +189,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       500: t.String(),
     },
-    detail: 'Mark a grouped notification set as read',
+    detail: { description: 'Mark a grouped notification set as read' },
   })
   .post('/activitypods/notifications/read-all', async ({ set, user, headers }: any) => {
     const locale = localeFromHeaders(headers)
@@ -215,7 +213,7 @@ const activityPodsNotificationsPlugin = new Elysia({ name: 'activitypods-notific
       404: t.String(),
       500: t.String(),
     },
-    detail: 'Mark all notifications as read',
+    detail: { description: 'Mark all notifications as read' },
   })
 
 export default activityPodsNotificationsPlugin

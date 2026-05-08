@@ -13,6 +13,7 @@
  */
 
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from '../elysiaCompat'
 import { createHash, randomUUID } from 'node:crypto'
 import { eq, and, desc, lt, sql, ilike } from 'drizzle-orm'
 import { db } from '../../db/client'
@@ -319,7 +320,7 @@ async function persistCommittedDmProjection(args: {
 
 export const chatRoutes = new Elysia()
   .use(setupPlugin)
-  .guard({ as: 'scoped', isSignedIn: true })
+  .guard(signedInGuard)
 
   // ---------------------------------------------------------------------------
   // GET /chat/listConvos
@@ -664,7 +665,7 @@ export const chatRoutes = new Elysia()
         return { error: error.message }
       }
       console.error('[chatRoutes] Pod DM commit failed', {
-        error: error instanceof Error ? error.message : String(error),
+        status: error instanceof Error ? error.message : String(error),
         actor: actorUri,
         convoId,
       })

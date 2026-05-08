@@ -82,7 +82,7 @@ const mastodonApiPlugin = new Elysia({ name: 'mastodonApi' })
         401: t.Object({ error: t.String() }),
         502: t.Object({ error: t.String() })
       },
-      detail: 'Mastodon-compatible credential account response'
+      detail: { description: 'Mastodon-compatible credential account response' }
     }
   )
   .patch(
@@ -128,7 +128,7 @@ const mastodonApiPlugin = new Elysia({ name: 'mastodonApi' })
         422: t.Object({ error: t.String() }),
         502: t.Object({ error: t.String() })
       },
-      detail: 'Mastodon-compatible account credential update'
+      detail: { description: 'Mastodon-compatible account credential update' }
     }
   )
   .get(
@@ -154,7 +154,7 @@ const mastodonApiPlugin = new Elysia({ name: 'mastodonApi' })
         401: t.Object({ error: t.String() }),
         502: t.Object({ error: t.String() })
       },
-      detail: 'Mastodon-compatible profile response'
+      detail: { description: 'Mastodon-compatible profile response' }
     }
   )
   .patch(
@@ -200,7 +200,7 @@ const mastodonApiPlugin = new Elysia({ name: 'mastodonApi' })
         422: t.Object({ error: t.String() }),
         502: t.Object({ error: t.String() })
       },
-      detail: 'Mastodon-compatible profile update'
+      detail: { description: 'Mastodon-compatible profile update' }
     }
   )
 

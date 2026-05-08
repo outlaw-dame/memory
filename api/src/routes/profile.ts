@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import ActivityPod from '../services/ActivityPod'
 import setupPlugin from './setup'
 import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
@@ -8,10 +9,7 @@ import { normalizeProfileDiscovery, ProfileDiscoveryValidationError } from '../p
 
 const profilePlugin = new Elysia({ name: 'profile' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   .get(
     '/profile',
     async ({ set, user, headers }: any) => {
@@ -35,7 +33,7 @@ const profilePlugin = new Elysia({ name: 'profile' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Fetch the authenticated ActivityPub actor profile'
+      detail: { description: 'Fetch the authenticated ActivityPub actor profile' }
     }
   )
   .put(
@@ -107,7 +105,7 @@ const profilePlugin = new Elysia({ name: 'profile' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Update the authenticated ActivityPub actor profile'
+      detail: { description: 'Update the authenticated ActivityPub actor profile' }
     }
   )
 
