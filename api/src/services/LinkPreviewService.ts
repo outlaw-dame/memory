@@ -89,6 +89,41 @@ function fallbackPreview(url: string): LinkPreviewResult {
   }
 }
 
+async function readCappedTextBody(response: Response, maxBytes: number): Promise<string> {
+  const body = response.body
+  if (!body) return ''
+
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let bytesRead = 0
+  let text = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done || !value) break
+
+      if (bytesRead >= maxBytes) {
+        break
+      }
+
+      const remaining = maxBytes - bytesRead
+      const chunk = value.byteLength > remaining ? value.subarray(0, remaining) : value
+      text += decoder.decode(chunk, { stream: true })
+      bytesRead += chunk.byteLength
+
+      if (chunk.byteLength < value.byteLength) {
+        break
+      }
+    }
+  } finally {
+    try { await reader.cancel() } catch { /* ignore */ }
+  }
+
+  text += decoder.decode()
+  return text
+}
+
 export async function fetchLinkPreview(inputUrl: string): Promise<LinkPreviewResult> {
   const url = sanitizeHttpUrl(inputUrl)
   const cached = cache.get(url)
@@ -120,8 +155,7 @@ export async function fetchLinkPreview(inputUrl: string): Promise<LinkPreviewRes
       return preview
     }
 
-    const fullHtml = await response.text()
-    const html = fullHtml.length > MAX_HTML_BYTES ? fullHtml.slice(0, MAX_HTML_BYTES) : fullHtml
+    const html = await readCappedTextBody(response, MAX_HTML_BYTES)
 
     const title = readMeta(html, 'og:title')
       || readMeta(html, 'twitter:title', 'name')

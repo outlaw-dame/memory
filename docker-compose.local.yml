@@ -92,8 +92,6 @@ services:
       # Redis connection
       REDIS_HOST: redis
       REDIS_PORT: 6379
-    # ActivityPods uses host networking so it can reach the app backend at localhost:8794
-    network_mode: host
     healthcheck:
       test: ['CMD-SHELL', 'curl -sf http://localhost:3000/.well-known/openid-configuration || exit 1']
       interval: 15s
