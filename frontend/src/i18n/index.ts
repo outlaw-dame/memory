@@ -108,6 +108,10 @@ export function formatRelativeTime(
   return formatDateTime(date, { dateStyle: 'medium' }, targetLocale)
 }
 
+export function formatNumber(value: number, targetLocale: SupportedLocale = locale.value): string {
+  return new Intl.NumberFormat(targetLocale).format(value)
+}
+
 export function useI18n() {
   return {
     locale: computed(() => locale.value),
@@ -116,5 +120,6 @@ export function useI18n() {
     setLocale,
     formatDateTime,
     formatRelativeTime,
+    formatNumber
   }
 }

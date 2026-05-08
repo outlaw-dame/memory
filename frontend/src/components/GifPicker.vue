@@ -12,8 +12,14 @@ import { useKlipy, getThumbUrl, type KlipyGif } from '@/composables/useKlipy'
 const emit = defineEmits<{ select: [gif: KlipyGif] }>()
 
 const authStore = useAuthStore()
-const customerId = authStore.user?.name ?? 'guest'
+const customerId = buildKlipyCustomerId(authStore.user)
 const klipy = useKlipy(customerId)
+
+function buildKlipyCustomerId(user: typeof authStore.user): string {
+  const id = user?.id
+  if (typeof id === 'number' && Number.isFinite(id)) return `memory-user-${id}`
+  return 'guest'
+}
 
 // ---------------------------------------------------------------------------
 // State
@@ -99,7 +105,7 @@ async function selectGif(gif: KlipyGif) {
       <input
         v-model="query"
         class="w-full rounded-full bg-white pl-8 pr-3 py-2 text-footnote text-dark outline-none border border-dark-10 placeholder-dark-20"
-        placeholder="Search GIFs..."
+        placeholder="Search KLIPY"
         @input="onQueryInput"
       />
       <button

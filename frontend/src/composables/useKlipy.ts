@@ -8,6 +8,9 @@
 
 const BASE = 'https://api.klipy.com'
 const APP_KEY = import.meta.env.VITE_KLIPY_APP_KEY as string
+const REQUEST_TIMEOUT_MS = 8_000
+const MAX_RETRIES = 2
+const RETRY_BASE_DELAY_MS = 250
 
 function resolveKlipyAppKey(): string {
   const key = typeof APP_KEY === 'string' ? APP_KEY.trim() : ''
@@ -18,6 +21,63 @@ function assertConfigured(appKey: string): void {
   if (!appKey) {
     throw new Error('Klipy API key is missing. Set VITE_KLIPY_APP_KEY.')
   }
+}
+
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value.trim())
+}
+
+function normalizePage(value: number): string {
+  return String(Number.isFinite(value) && value > 0 ? Math.floor(value) : 1)
+}
+
+function normalizePerPage(value: number, max = 50, min = 1): string {
+  const normalized = Number.isFinite(value) && value > 0 ? Math.floor(value) : 24
+  return String(Math.min(Math.max(normalized, min), max))
+}
+
+function isRetryableKlipyStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function klipyRequest(path: string, options?: RequestInit): Promise<Response> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+    try {
+      const response = await fetch(`${BASE}${path}`, {
+        ...options,
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        signal: controller.signal,
+      })
+
+      if (!isRetryableKlipyStatus(response.status) || attempt === MAX_RETRIES) {
+        return response
+      }
+
+      lastError = new Error(`Klipy API retryable status: ${response.status}`)
+    } catch (error) {
+      lastError = error
+      if (attempt === MAX_RETRIES) {
+        throw error
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    const backoffMs = RETRY_BASE_DELAY_MS * 2 ** attempt + Math.floor(Math.random() * 100)
+    await delay(backoffMs)
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Klipy API request failed')
 }
 
 export function isKlipyConfigured(): boolean {
@@ -85,7 +145,7 @@ interface KlipyCategoriesEnvelope {
 // ---------------------------------------------------------------------------
 
 async function klipyFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, options)
+  const res = await klipyRequest(path, options)
   if (!res.ok) throw new Error(`Klipy API error: ${res.status}`)
   const json = await res.json()
   // Trending/search/recent/items wrap in { result, data: { data, ... } }
@@ -99,6 +159,8 @@ async function klipyFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export function useKlipy(customerId: string) {
   const appKey = resolveKlipyAppKey()
+  const encodedAppKey = encodePathSegment(appKey)
+  const encodedCustomerId = encodePathSegment(customerId || 'guest')
 
   /**
    * Trending GIFs — updated throughout the day.
@@ -106,12 +168,12 @@ export function useKlipy(customerId: string) {
   async function trending(page = 1, perPage = 24): Promise<KlipyPage> {
     assertConfigured(appKey)
     const params = new URLSearchParams({
-      page: String(page),
-      per_page: String(perPage),
+      page: normalizePage(page),
+      per_page: normalizePerPage(perPage),
       customer_id: customerId,
       format_filter: 'webp,gif',
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/trending?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${encodedAppKey}/gifs/trending?${params}`)
   }
 
   /**
@@ -120,14 +182,14 @@ export function useKlipy(customerId: string) {
   async function search(q: string, page = 1, perPage = 24): Promise<KlipyPage> {
     assertConfigured(appKey)
     const params = new URLSearchParams({
-      q,
-      page: String(page),
-      per_page: String(perPage),
+      q: q.trim(),
+      page: normalizePage(page),
+      per_page: normalizePerPage(perPage, 50, 8),
       customer_id: customerId,
       format_filter: 'webp,gif',
       content_filter: 'medium',
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/search?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${encodedAppKey}/gifs/search?${params}`)
   }
 
   /**
@@ -136,10 +198,10 @@ export function useKlipy(customerId: string) {
   async function recent(page = 1, perPage = 24): Promise<KlipyPage> {
     assertConfigured(appKey)
     const params = new URLSearchParams({
-      page: String(page),
-      per_page: String(perPage),
+      page: normalizePage(page),
+      per_page: normalizePerPage(perPage, 32),
     })
-    return klipyFetch<KlipyPage>(`/api/v1/${appKey}/gifs/recent/${customerId}?${params}`)
+    return klipyFetch<KlipyPage>(`/api/v1/${encodedAppKey}/gifs/recent/${encodedCustomerId}?${params}`)
   }
 
   /**
@@ -147,8 +209,9 @@ export function useKlipy(customerId: string) {
    */
   async function categories(locale?: string): Promise<KlipyCategory[]> {
     assertConfigured(appKey)
-    const params = locale ? `?locale=${locale}` : ''
-    const result = await klipyFetch<KlipyCategoriesEnvelope>(`/api/v1/${appKey}/gifs/categories${params}`)
+    const normalizedLocale = typeof locale === 'string' ? locale.trim() : ''
+    const params = normalizedLocale ? `?${new URLSearchParams({ locale: normalizedLocale })}` : ''
+    const result = await klipyFetch<KlipyCategoriesEnvelope>(`/api/v1/${encodedAppKey}/gifs/categories${params}`)
     const items = Array.isArray(result?.categories) ? result.categories : []
     return items
       .map(item => {
@@ -177,8 +240,10 @@ export function useKlipy(customerId: string) {
    */
   async function trackShare(slug: string, q?: string): Promise<void> {
     if (!appKey) return
+    const normalizedSlug = slug.trim()
+    if (!normalizedSlug) return
     try {
-      await fetch(`${BASE}/api/v1/${appKey}/gifs/share/${slug}`, {
+      await klipyRequest(`/api/v1/${encodedAppKey}/gifs/share/${encodePathSegment(normalizedSlug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -196,9 +261,11 @@ export function useKlipy(customerId: string) {
    */
   async function removeRecent(slug: string): Promise<void> {
     assertConfigured(appKey)
-    const params = new URLSearchParams({ slug })
-    await fetch(
-      `${BASE}/api/v1/${appKey}/gifs/recent/${customerId}?${params}`,
+    const normalizedSlug = slug.trim()
+    if (!normalizedSlug) return
+    const params = new URLSearchParams({ slug: normalizedSlug })
+    await klipyRequest(
+      `/api/v1/${encodedAppKey}/gifs/recent/${encodedCustomerId}?${params}`,
       { method: 'DELETE' },
     )
   }
