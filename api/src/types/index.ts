@@ -4,6 +4,43 @@ export interface PodProviderSignInResponse {
   newUser: boolean
 }
 
+export interface MediaAttachmentInput {
+  id?: string
+  type: 'Image' | 'Video'
+  mediaType: string
+  url: string
+  name?: string
+  previewUrl?: string
+  state?: 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'expired' | 'deleted'
+}
+
+export interface PublicMediaAttachment {
+  id: string
+  state: 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'expired' | 'deleted'
+  type: 'Image' | 'Video' | 'Audio' | 'Document'
+  kind: 'image' | 'gif' | 'video' | 'audio' | 'unknown'
+  mediaType: string
+  url: string | null
+  sourceUrl: string | null
+  canonicalUrl: string | null
+  previewUrl: string | null
+  thumbnailUrl: string | null
+  gatewayUrl: string | null
+  filebaseCid: string | null
+  digestMultibase: string | null
+  size: number
+  width: number | null
+  height: number | null
+  durationMs: number | null
+  altText: string | null
+  blurhash: string | null
+  errorCode: string | null
+  errorMessage: string | null
+  expiresAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface NoteCreateRequest {
   '@context': string | Record<string, unknown> | Array<string | Record<string, unknown>>
   type: string

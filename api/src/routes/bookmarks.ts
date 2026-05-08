@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/client'
 import { bookmarks } from '../db/schema'
@@ -12,18 +13,15 @@ function makePostId(source: string, atUri?: string | null, objectUri?: string | 
 
 const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   // ------------------------------------------------------------------
   // GET /bookmarks — list all bookmarks for the authenticated user
   // ------------------------------------------------------------------
   .get(
     '/bookmarks',
-    async ({ user, error }: any) => {
+    async ({ user, status }: any) => {
       const userId: number = user.userId
-      if (!userId) return error(401, 'Unauthorized')
+      if (!userId) return status(401, 'Unauthorized')
       const rows = await db
         .select()
         .from(bookmarks)
@@ -48,7 +46,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
         })),
         401: t.String(),
       },
-      detail: 'List all bookmarks for the authenticated user',
+      detail: { description: 'List all bookmarks for the authenticated user' },
     }
   )
   // ------------------------------------------------------------------
@@ -56,16 +54,16 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   // ------------------------------------------------------------------
   .post(
     '/bookmarks',
-    async ({ body, user, error }: any) => {
+    async ({ body, user, status }: any) => {
       const userId: number = user.userId
-      if (!userId) return error(401, 'Unauthorized')
+      if (!userId) return status(401, 'Unauthorized')
       const { source, atUri, objectUri } = body as {
         source: string
         atUri?: string | null
         objectUri?: string | null
       }
       if (!atUri && !objectUri) {
-        return error(400, 'One of atUri or objectUri is required')
+        return status(400, 'One of atUri or objectUri is required')
       }
       // Check for duplicate — one bookmark per user per URI.
       const existing = await db
@@ -102,7 +100,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
         400: t.String(),
         401: t.String(),
       },
-      detail: 'Bookmark a post',
+      detail: { description: 'Bookmark a post' },
     }
   )
   // ------------------------------------------------------------------
@@ -110,15 +108,15 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
   // ------------------------------------------------------------------
   .delete(
     '/bookmarks',
-    async ({ body, user, error }: any) => {
+    async ({ body, user, status }: any) => {
       const userId: number = user.userId
-      if (!userId) return error(401, 'Unauthorized')
+      if (!userId) return status(401, 'Unauthorized')
       const { atUri, objectUri } = body as {
         atUri?: string | null
         objectUri?: string | null
       }
       if (!atUri && !objectUri) {
-        return error(400, 'One of atUri or objectUri is required')
+        return status(400, 'One of atUri or objectUri is required')
       }
       await db
         .delete(bookmarks)
@@ -142,7 +140,7 @@ const bookmarksPlugin = new Elysia({ name: 'bookmarks' })
         400: t.String(),
         401: t.String(),
       },
-      detail: 'Remove a bookmark',
+      detail: { description: 'Remove a bookmark' },
     }
   )
 

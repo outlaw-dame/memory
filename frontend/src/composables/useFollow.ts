@@ -4,7 +4,6 @@ import { t } from '@/i18n'
 import ky, { HTTPError } from 'ky'
 import { getLocalDb } from '@/db/localDb'
 import { localFollows } from '@/db/localSchema'
-import { eq } from 'drizzle-orm'
 
 const isAbsoluteHttpsUrl = (value: string): boolean => {
   try {

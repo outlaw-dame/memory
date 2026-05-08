@@ -205,6 +205,35 @@ export interface ConversationBackfillResult {
   posts: Record<string, unknown>[]
 }
 
+export interface UploadedPodMedia {
+  url: string
+  mediaType: string
+  size: number
+}
+
+  // ---------------------------------------------------------------------------
+  // Process-level profile cache
+  //
+  // Caches the authenticated user's own profile for a short TTL so that repeated
+  // requests within the same Bun process (e.g. multiple route handlers in one
+  // session burst) do not each make a full pod roundtrip.
+  //
+  // Constraints:
+  //   - Only profile data (non-sensitive) is stored; tokens are never cached.
+  //   - Cache key = WebID URI (per-user).
+  //   - updateProfile() must invalidate the entry so writes are never masked.
+  //   - Pod remains source of truth; this is a soft read-through cache only.
+  // ---------------------------------------------------------------------------
+
+  const PROFILE_CACHE_TTL_MS = 5 * 60 * 1_000  // 5 minutes
+
+  interface ProfileCacheEntry {
+    profile: Record<string, unknown>
+    expiresAt: number
+  }
+
+  const profileCache = new Map<string, ProfileCacheEntry>()
+
 export default abstract class ActivityPod {
   static async signIn(endpoint: string, username: string, password: string) {
     const response: PodProviderSignInResponse = await ky
@@ -241,6 +270,30 @@ export default abstract class ActivityPod {
     }
   }
 
+  static async uploadMedia(user: User, file: File, slug: string): Promise<UploadedPodMedia> {
+    const uploadContainerUrl = `${user.endpoint.replace(/\/$/, '')}/${encodeURIComponent(user.userName)}/data/semapps/file`
+    const response = await ky.post(uploadContainerUrl, {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': file.type,
+        Slug: slug,
+      },
+      body: file,
+      timeout: DEFAULT_TIMEOUT,
+      retry: 0,
+    })
+    const location = response.headers.get('Location') || response.headers.get('location')
+    if (!location) {
+      throw new Error('ActivityPods media upload did not return a Location header')
+    }
+
+    return {
+      url: new URL(location, uploadContainerUrl).toString(),
+      mediaType: file.type,
+      size: file.size,
+    }
+  }
+
   static async announceObject(user: User, objectUri: string) {
     const actorUri = user.getWebId()
     const response = await ky
@@ -269,8 +322,14 @@ export default abstract class ActivityPod {
   }
 
   static async getProfile(user: User) {
-    return ky
-      .get(user.getWebId(), {
+    const webId = user.getWebId()
+    const cached = profileCache.get(webId)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.profile
+    }
+
+    const profile = await ky
+      .get(webId, {
         headers: {
           Authorization: `Bearer ${user.token}`,
           Accept: 'application/ld+json, application/json;q=0.9'
@@ -278,10 +337,16 @@ export default abstract class ActivityPod {
         retry: SAFE_RETRY,
         timeout: DEFAULT_TIMEOUT
       })
-      .json<any>()
+      .json<Record<string, unknown>>()
+
+    profileCache.set(webId, { profile, expiresAt: Date.now() + PROFILE_CACHE_TTL_MS })
+    return profile
   }
 
   static async updateProfile(user: User, actor: Record<string, unknown>) {
+    // Invalidate cache before the write so the next getProfile() fetches fresh data.
+    profileCache.delete(user.getWebId())
+
     const response = await ky.put(user.getWebId(), {
       headers: {
         Authorization: `Bearer ${user.token}`,

@@ -24,10 +24,6 @@ const isSending = ref(false)
 const currentConversation = computed(() => conversationsStore.currentConversation)
 const sortedMessages = computed(() => currentConversation.value?.messages ?? [])
 
-const selectedConversation = computed(() =>
-  conversationsStore.conversations.find(conversation => conversation.id === selectedConversationId.value) ?? null,
-)
-
 onMounted(async () => {
   await conversationsStore.fetchConversations()
   if (!selectedConversationId.value && conversationsStore.conversations[0]) {

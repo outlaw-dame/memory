@@ -1,4 +1,5 @@
 import Elysia, { t } from 'elysia'
+import { signedInGuard } from './elysiaCompat'
 import { eq } from 'drizzle-orm'
 import ActivityPod from '../services/ActivityPod'
 import { db } from '../db/client'
@@ -23,22 +24,19 @@ const isAbsoluteHttpsUrl = (value: string): boolean => {
 
 const replyPlugin = new Elysia({ name: 'reply' })
   .use(setupPlugin)
-  .guard({
-    as: 'scoped',
-    isSignedIn: true
-  })
+  .guard(signedInGuard)
   .post(
     '/replies/resolve',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       if (!isAbsoluteHttpsUrl(body.objectUri)) {
-        return error(400, translate(locale, 'reply.objectUriHttps'))
+        return status(400, translate(locale, 'reply.objectUriHttps'))
       }
       try {
         return await ActivityPod.resolveReplyPolicy(user, body.objectUri)
       } catch (e) {
         console.error('Error while resolving reply policy:', e)
-        return error(502, translate(locale, 'reply.resolveFailed'))
+        return status(502, translate(locale, 'reply.resolveFailed'))
       }
     },
     {
@@ -51,21 +49,21 @@ const replyPlugin = new Elysia({ name: 'reply' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Resolve ActivityPub reply policy for an object'
+      detail: { description: 'Resolve ActivityPub reply policy for an object' }
     }
   )
   .post(
     '/replies',
-    async ({ body, user, headers, error }: any) => {
+    async ({ body, user, headers, status }: any) => {
       const locale = localeFromHeaders(headers)
       if (!isAbsoluteHttpsUrl(body.objectUri)) {
-        return error(400, translate(locale, 'reply.objectUriHttps'))
+        return status(400, translate(locale, 'reply.objectUriHttps'))
       }
       // Strip C0/C1 control characters before forwarding
       // eslint-disable-next-line no-control-regex
       const content = (body.content as string).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '').trim()
       if (content.length === 0) {
-        return error(400, translate(locale, 'reply.contentEmpty'))
+        return status(400, translate(locale, 'reply.contentEmpty'))
       }
       try {
         const replyResult = await ActivityPod.replyToObject(user, body.objectUri, content, body.isPublic ?? true)
@@ -101,7 +99,7 @@ const replyPlugin = new Elysia({ name: 'reply' })
         return replyResult
       } catch (e) {
         console.error('Error while submitting reply:', e)
-        return error(502, translate(locale, 'reply.submitFailed'))
+        return status(502, translate(locale, 'reply.submitFailed'))
       }
     },
     {
@@ -117,7 +115,7 @@ const replyPlugin = new Elysia({ name: 'reply' })
         401: t.String(),
         502: t.String()
       },
-      detail: 'Submit an ActivityPub reply, using pending approval automatically when required'
+      detail: { description: 'Submit an ActivityPub reply, using pending approval automatically when required' }
     }
   )
 

@@ -19,6 +19,7 @@
  */
 
 import Elysia, { t } from 'elysia'
+import { signedIn, signedInGuard } from './elysiaCompat'
 import { db } from '../db/client'
 import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords, unifiedFeedCandidatesView, apRemotePosts, apActorCache } from '../db/atBridgeSchema'
 import { desc, eq, and, sql, ilike, or, gt, inArray, type SQL } from 'drizzle-orm'
@@ -48,6 +49,7 @@ import {
   type RepostRecordInput,
 } from '../utils/repostGroups'
 import ActivityPod from '../services/ActivityPod'
+import { BlueskyAppViewClient } from '../services/BlueskyAppViewClient'
 
 type UnifiedFeedRow = {
   id: number
@@ -431,8 +433,7 @@ async function resolveViewerModerationState(
   }
 }
 
-const BSKY_PUBLIC_API = 'https://public.api.bsky.app/xrpc'
-const BSKY_PROFILE_BATCH_SIZE = 25
+const blueskyAppViewClient = BlueskyAppViewClient.fromEnv(process.env, console)
 
 /**
  * For AT rows whose author_name is still a raw DID (handle not yet resolved),
@@ -443,76 +444,64 @@ async function resolveAndCacheHandles(dids: string[]): Promise<Map<string, strin
   const resolved = new Map<string, string>()
   if (dids.length === 0) return resolved
 
-  // Process in batches of BSKY_PROFILE_BATCH_SIZE (API limit is 25).
-  for (let i = 0; i < dids.length; i += BSKY_PROFILE_BATCH_SIZE) {
-    const batch = dids.slice(i, i + BSKY_PROFILE_BATCH_SIZE)
-    const params = batch.map(d => `actors[]=${encodeURIComponent(d)}`).join('&')
-    try {
-      const resp = await fetch(`${BSKY_PUBLIC_API}/app.bsky.actor.getProfiles?${params}`, {
-        signal: AbortSignal.timeout(4000),
-        headers: { 'Accept': 'application/json' },
-      })
-      if (!resp.ok) {
-        console.warn('[AT Bridge] getProfiles returned', resp.status, 'for batch', batch.slice(0, 3))
-        continue
-      }
-      const data = await resp.json() as {
-        profiles?: Array<{
-          did: string
-          handle: string
-          displayName?: string
-          avatar?: string
-          banner?: string
-          followersCount?: number
-          followsCount?: number
-          postsCount?: number
-        }>
-      }
-      const profiles = data?.profiles ?? []
-      for (const profile of profiles) {
-        if (!profile.did || !profile.handle) continue
-        resolved.set(profile.did, profile.handle)
-      }
-      // Upsert resolved handles + profile data into at_identities cache (fire-and-forget; don't block response).
-      const upsertValues = profiles
-        .filter(p => p.did && p.handle)
-        .map(p => ({
-          did: p.did,
-          handle: p.handle,
-          displayName: p.displayName ?? null,
-          avatarUrl: p.avatar ?? null,
-          bannerUrl: p.banner ?? null,
-          followersCount: typeof p.followersCount === 'number' ? p.followersCount : null,
-          followsCount: typeof p.followsCount === 'number' ? p.followsCount : null,
-          postsCount: typeof p.postsCount === 'number' ? p.postsCount : null,
-          isActive: true,
-          resolvedAt: new Date(),
-          updatedAt: new Date(),
-        }))
-      if (upsertValues.length > 0) {
-        db.insert(atIdentities)
-          .values(upsertValues)
-          .onConflictDoUpdate({
-            target: atIdentities.did,
-            set: {
-              handle: sql`EXCLUDED.handle`,
-              displayName: sql`EXCLUDED.display_name`,
-              avatarUrl: sql`EXCLUDED.avatar_url`,
-              bannerUrl: sql`EXCLUDED.banner_url`,
-              followersCount: sql`EXCLUDED.followers_count`,
-              followsCount: sql`EXCLUDED.follows_count`,
-              postsCount: sql`EXCLUDED.posts_count`,
-              resolvedAt: new Date(),
-              updatedAt: new Date(),
-            },
-          })
-          .catch(err => console.warn('[AT Bridge] Failed to cache resolved handles:', err))
-      }
-    } catch (err) {
-      console.warn('[AT Bridge] resolveAndCacheHandles batch failed:', err)
+  try {
+    const profiles = await blueskyAppViewClient.getProfiles(dids)
+    for (const profile of profiles) resolved.set(profile.did, profile.handle)
+
+    const upsertValues = profiles.map(profile => ({
+      did: profile.did,
+      handle: profile.handle,
+      displayName: profile.displayName ?? null,
+      avatarUrl: profile.avatar ?? null,
+      bannerUrl: profile.banner ?? null,
+      followersCount: typeof profile.followersCount === 'number' ? profile.followersCount : null,
+      followsCount: typeof profile.followsCount === 'number' ? profile.followsCount : null,
+      postsCount: typeof profile.postsCount === 'number' ? profile.postsCount : null,
+      isActive: true,
+      resolvedAt: new Date(),
+      updatedAt: new Date(),
+    }))
+
+    if (upsertValues.length > 0) {
+      db.insert(atIdentities)
+        .values(upsertValues)
+        .onConflictDoUpdate({
+          target: atIdentities.did,
+          set: {
+            handle: sql`EXCLUDED.handle`,
+            displayName: sql`EXCLUDED.display_name`,
+            avatarUrl: sql`EXCLUDED.avatar_url`,
+            bannerUrl: sql`EXCLUDED.banner_url`,
+            followersCount: sql`EXCLUDED.followers_count`,
+            followsCount: sql`EXCLUDED.follows_count`,
+            postsCount: sql`EXCLUDED.posts_count`,
+            resolvedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        })
+        .catch(err => console.warn('[AT Bridge] Failed to cache resolved handles:', err))
     }
+  } catch (err) {
+    console.warn('[AT Bridge] resolveAndCacheHandles failed:', err)
   }
   return resolved
+}
+
+function canonicalFeedDedupeKey(row: UnifiedFeedRow): string {
+  const uri = feedRowUri(row)
+  return uri ?? `${row.source}:${row.id}`
+}
+
+function dedupeFeedRows<T extends UnifiedFeedRow>(rows: T[]): T[] {
+  const byKey = new Map<string, T>()
+  for (const row of rows) {
+    const key = canonicalFeedDedupeKey(row)
+    const existing = byKey.get(key)
+    if (!existing || feedSortTimestamp(row) > feedSortTimestamp(existing)) {
+      byKey.set(key, row)
+    }
+  }
+  return [...byKey.values()]
 }
 
 function hasEmbedsMedia(embeds: unknown): boolean {
@@ -1649,7 +1638,7 @@ const subscribeBody = t.Object({
 
 const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   .use(setupPlugin)
-  .guard({ as: 'scoped', isSignedIn: true })
+  .guard(signedInGuard)
 
   // -------------------------------------------------------------------------
   // GET /at/feed — Unified feed (AT + ActivityPods)
@@ -1678,13 +1667,13 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
           ? (() => { const d = new Date(since); return isNaN(d.getTime()) ? null : d })()
           : null
 
-        const candidateRows = await queryFeedCandidates({
+        const candidateRows = dedupeFeedRows(await queryFeedCandidates({
           fetchLimit,
           source: source && source !== 'all' ? source : null,
           hashtag: hashtag?.trim().length ? hashtag : null,
           sinceDate,
           viewerIds: extractCurrentUserIds(user),
-        })
+        }))
         const queryDuration = Date.now() - queryStartTime
         console.log('[AT Bridge /feed] Query executed', { duration: queryDuration, rows: candidateRows.length })
 
@@ -1806,17 +1795,21 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       query: feedQuery,
-      detail: 'Returns a unified feed of ActivityPods and AT Protocol posts',
-      isSignedIn: true,
+      detail: { description: 'Returns a unified feed of ActivityPods and AT Protocol posts' },
+      ...signedIn,
     },
   )
 
   .get(
     '/thread',
-    async ({ query: { rootUri, limit, cursor }, error, user }) => {
+    async ({ query: { rootUri, limit, cursor }, set, user }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const normalizedRootUri = normalizeThreadUri(rootUri)
       if (!normalizedRootUri) {
-        return error(400, 'Invalid rootUri')
+        return status(400, 'Invalid rootUri')
       }
 
       const offset = decodeCursor(cursor)
@@ -1897,13 +1890,13 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         return response
       } catch (err) {
         console.error('[AT Bridge] Failed to fetch thread context:', err)
-        return error(500, 'Failed to fetch thread context')
+        return status(500, 'Failed to fetch thread context')
       }
     },
     {
       query: threadQuery,
-      detail: 'Returns paginated thread context for a root URI',
-      isSignedIn: true,
+      detail: { description: 'Returns paginated thread context for a root URI' },
+      ...signedIn,
       response: {
         200: t.Object({
           rootUri: t.String(),
@@ -1968,10 +1961,14 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts',
-    async ({ body, user, error }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
-        return error(400, 'Choose a valid ActivityPub object URL or AT URI to repost')
+        return status(400, 'Choose a valid ActivityPub object URL or AT URI to repost')
       }
 
       const actorId = normalizeString(user.atprotoDid) ?? user.getWebId()
@@ -2027,8 +2024,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       body: repostBody,
-      detail: 'Create a canonical repost/boost for a feed object',
-      isSignedIn: true,
+      detail: { description: 'Create a canonical repost/boost for a feed object' },
+      ...signedIn,
       response: {
         200: t.Object({
           ok: t.Boolean(),
@@ -2044,10 +2041,14 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts/remove',
-    async ({ body, user, error }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
-        return error(400, 'Choose a valid ActivityPub object URL or AT URI to remove from reposts')
+        return status(400, 'Choose a valid ActivityPub object URL or AT URI to remove from reposts')
       }
 
       const actorId = normalizeString(user.atprotoDid) ?? user.getWebId()
@@ -2092,8 +2093,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       body: repostBody,
-      detail: 'Remove the current viewer canonical repost/boost for a feed object',
-      isSignedIn: true,
+      detail: { description: 'Remove the current viewer canonical repost/boost for a feed object' },
+      ...signedIn,
       response: {
         200: t.Object({
           ok: t.Boolean(),
@@ -2108,10 +2109,14 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/moderation/author',
-    async ({ body, user, error }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const subject = deriveModerationSubject(body)
       if (!subject) {
-        return error(400, 'Unable to determine moderation subject')
+        return status(400, 'Unable to determine moderation subject')
       }
 
       try {
@@ -2124,7 +2129,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         }
       } catch (err) {
         console.error('[AT Bridge] Failed to create viewer moderation decision:', err)
-        return error(502, 'Failed to create viewer moderation decision')
+        return status(502, 'Failed to create viewer moderation decision')
       }
     },
     {
@@ -2134,8 +2139,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         authorWebId: t.String({ minLength: 1, maxLength: 2048 }),
         atUri: t.Optional(t.Union([t.String({ minLength: 1, maxLength: 3072 }), t.Null()])),
       }),
-      detail: 'Create a viewer-specific block or mute for a feed author',
-      isSignedIn: true,
+      detail: { description: 'Create a viewer-specific block or mute for a feed author' },
+      ...signedIn,
       response: {
         200: t.Object({
           ok: t.Boolean(),
@@ -2151,10 +2156,14 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/feed/viewed',
-    async ({ body, user, error }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const objectIds = [...new Set([body.objectId, ...(body.objectIds ?? [])].filter((value): value is string => !!value && value.trim().length > 0))]
       if (objectIds.length === 0) {
-        return error(400, 'objectId or objectIds is required')
+        return status(400, 'objectId or objectIds is required')
       }
 
       try {
@@ -2162,13 +2171,13 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         return { ok: true, recorded: objectIds.length }
       } catch (err) {
         console.error('[AT Bridge] Failed to record viewed feed objects:', err)
-        return error(502, 'Failed to record viewed feed objects')
+        return status(502, 'Failed to record viewed feed objects')
       }
     },
     {
       body: feedViewedBody,
-      detail: 'Record viewed objects for the signed-in user',
-      isSignedIn: true,
+      detail: { description: 'Record viewed objects for the signed-in user' },
+      ...signedIn,
       response: {
         200: t.Object({
           ok: t.Boolean(),
@@ -2244,8 +2253,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       query: paginationQuery,
-      detail: 'Returns AT Protocol posts from the federated firehose',
-      isSignedIn: true,
+      detail: { description: 'Returns AT Protocol posts from the federated firehose' },
+      ...signedIn,
     },
   )
 
@@ -2307,8 +2316,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       query: recordsQuery,
-      detail: 'Returns raw records for supported Bluesky and standard.site lexicons',
-      isSignedIn: true,
+      detail: { description: 'Returns raw records for supported Bluesky and standard.site lexicons' },
+      ...signedIn,
     },
   )
 
@@ -2340,8 +2349,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
     },
     {
       query: paginationQuery,
-      detail: 'Returns cached AT Protocol identities',
-      isSignedIn: true,
+      detail: { description: 'Returns cached AT Protocol identities' },
+      ...signedIn,
     },
   )
 
@@ -2383,8 +2392,8 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
       }
     },
     {
-      detail: 'Returns firehose ingestion health and cursor status',
-      isSignedIn: true,
+      detail: { description: 'Returns firehose ingestion health and cursor status' },
+      ...signedIn,
     },
   )
 
@@ -2393,17 +2402,21 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   // -------------------------------------------------------------------------
   .post(
     '/subscribe',
-    async ({ body, error }) => {
+    async ({ body, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const { sourceId, url, sourceType } = body
 
       // Validate URL format
       try {
         const parsed = new URL(url)
         if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
-          return error(400, 'Source URL must use ws:// or wss:// protocol')
+          return status(400, 'Source URL must use ws:// or wss:// protocol')
         }
       } catch {
-        return error(400, 'Invalid source URL format')
+        return status(400, 'Invalid source URL format')
       }
 
       try {
@@ -2425,22 +2438,24 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
         return {
           success: true,
-          message: `Registered AT firehose source: ${sourceId}`,
+          message: `Stored AT source metadata for UI visibility: ${sourceId}`,
+          warning: 'Memory app does not own AT source runtime. Configure firehose sources in fedify-sidecar.',
           sourceId,
         }
       } catch (err) {
         console.error('[AT Bridge] Failed to register AT source:', err)
-        return error(500, 'Failed to register AT firehose source')
+        return status(500, 'Failed to register AT firehose source')
       }
     },
     {
       body: subscribeBody,
-      detail: 'Register a new AT Protocol firehose source',
-      isSignedIn: true,
+      detail: { description: 'Register a new AT Protocol firehose source' },
+      ...signedIn,
       response: {
         200: t.Object({
           success: t.Boolean(),
           message: t.String(),
+          warning: t.String(),
           sourceId: t.String(),
         }),
         400: t.String(),
@@ -2469,7 +2484,11 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
   .use(setupPlugin)
   .get(
     '/app.bsky.feed.getFeedSkeleton',
-    async ({ query: { feed, limit, cursor }, error: elysiaError }) => {
+    async ({ query: { feed, limit, cursor }, set }) => {
+      const elysiaError = (code: number, body: unknown) => {
+        set.status = code
+        return body
+      }
       // Determine mode from the feed AT URI's rkey.
       const feedRkey = (() => {
         if (!feed) return 'memory-unified'
@@ -2490,12 +2509,12 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
       const fetchLimit = Math.min(300, Math.max(60, normalizedLimit * 6))
 
       try {
-        const candidateRows = await queryFeedCandidates({
+        const candidateRows = dedupeFeedRows(await queryFeedCandidates({
           fetchLimit,
           source: null,
           hashtag: null,
           sinceDate: null,
-        })
+        }))
 
         const cursorScopedRows = keysetCursor !== null
           ? candidateRows.filter(row => isBeforeFeedCursor(row, keysetCursor))
@@ -2531,6 +2550,6 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
         limit: t.Optional(t.Integer({ default: 30, minimum: 1, maximum: 100 })),
         cursor: t.Optional(t.String({ minLength: 1, maxLength: 512 })),
       }),
-      detail: 'AT Protocol feed generator skeleton — returns an ordered list of post AT URIs for Bluesky clients',
+      detail: { description: 'AT Protocol feed generator skeleton — returns an ordered list of post AT URIs for Bluesky clients' },
     },
   )

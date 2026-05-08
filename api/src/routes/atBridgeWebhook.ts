@@ -141,7 +141,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
           state: t.Optional(t.String()),
         })),
       ]),
-      detail: 'Receive trusted bridge events (legacy ingress + canonical intents) from the federation pipeline',
+      detail: { description: 'Receive trusted bridge events (legacy ingress + canonical intents) from the federation pipeline' },
       response: {
         200: t.Object({
           processed: t.Number(),
@@ -165,7 +165,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
       bridgeConfigured: !!process.env.FIREHOSE_BRIDGE_SECRET,
     }),
     {
-      detail: 'AT Protocol bridge webhook health check',
+      detail: { description: 'AT Protocol bridge webhook health check' },
     },
   )
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, h, defineComponent } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import AppIcon from '@/components/AppIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,26 +44,6 @@ function navigate(r: string | null) {
 const displayName = computed(() => auth.user?.name ?? 'User')
 const handle = computed(() => auth.user?.email ? auth.user.email.split('@')[0] : '')
 const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
-
-// Inline icon rendered as small 2×2 grid squares
-const NavIcon = defineComponent({
-  name: 'NavIcon',
-  props: { size: { type: Number, default: 14 } },
-  setup(props) {
-    return () => h('svg', {
-      width: props.size, height: props.size,
-      viewBox: '0 0 24 24', fill: 'none',
-      stroke: 'currentColor', 'stroke-width': '2',
-      'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-      class: 'flex-shrink-0 opacity-60',
-    }, [
-      h('rect', { x: '3', y: '3', width: '7', height: '7' }),
-      h('rect', { x: '14', y: '3', width: '7', height: '7' }),
-      h('rect', { x: '14', y: '14', width: '7', height: '7' }),
-      h('rect', { x: '3', y: '14', width: '7', height: '7' }),
-    ])
-  },
-})
 </script>
 
 <template>
@@ -86,10 +67,7 @@ const NavIcon = defineComponent({
           </div>
         </div>
         <button class="flex-shrink-0 w-7 h-7 rounded-full bg-[rgba(246,99,99,0.15)] flex items-center justify-center">
-          <svg class="w-3.5 h-3.5 text-[rgb(246,99,99)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.73 21a2 2 0 01-3.46 0"/>
-          </svg>
+          <AppIcon name="notifications" :size="14" color="rgb(246,99,99)" />
         </button>
       </div>
 
@@ -102,15 +80,15 @@ const NavIcon = defineComponent({
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               @click="dashboardExpanded = !dashboardExpanded"
             >
-              <NavIcon />
+              <AppIcon name="dashboard" :size="14" color="currentColor" class="opacity-60 flex-shrink-0" />
               <span>{{ item.label }}</span>
-              <svg
-                class="ml-auto w-3 h-3 transition-transform opacity-50"
+              <AppIcon
+                name="chevron-down"
+                :size="12"
+                color="currentColor"
+                class="ml-auto opacity-50 transition-transform"
                 :class="dashboardExpanded ? 'rotate-180' : ''"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              >
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
+              />
             </button>
             <div v-if="dashboardExpanded" class="ml-3 mt-0.5 space-y-0.5">
               <button
@@ -122,7 +100,7 @@ const NavIcon = defineComponent({
                   : 'text-gray-500 hover:bg-gray-50 font-medium'"
                 @click="navigate(child.route)"
               >
-                <NavIcon :size="12" />
+                <AppIcon name="dashboard" :size="12" color="currentColor" class="opacity-60 flex-shrink-0" />
                 <span>{{ child.label }}</span>
               </button>
             </div>
@@ -135,7 +113,7 @@ const NavIcon = defineComponent({
             :class="isActive(item.route) ? 'bg-[rgba(246,99,99,0.12)] text-[rgb(200,60,60)]' : 'text-gray-600 hover:bg-gray-50'"
             @click="navigate(item.route)"
           >
-            <NavIcon />
+            <AppIcon name="dashboard" :size="14" color="currentColor" class="opacity-60 flex-shrink-0" />
             <span>{{ item.label }}</span>
           </button>
         </template>
@@ -183,10 +161,7 @@ const NavIcon = defineComponent({
           <p class="text-[11px] font-semibold text-gray-700">Your Contact Link</p>
           <p class="text-[10px] text-gray-400">Use a link to connect.</p>
           <button class="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-gray-700 transition-colors">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-            </svg>
+            <AppIcon name="copy" :size="12" color="currentColor" />
             Copy
           </button>
         </div>

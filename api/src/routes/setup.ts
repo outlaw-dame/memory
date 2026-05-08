@@ -19,7 +19,7 @@ const setupPlugin = new Elysia({ name: 'setup' })
     applyLocaleHeaders(set, locale)
 
     return {
-      error: (status: number, message: string) => {
+      status: (status: number, message: string) => {
         set.status = status as any
         return message
       }

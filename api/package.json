@@ -18,7 +18,7 @@
     "@types/bun": "^1.2.0",
     "@types/luxon": "^3.4.2",
     "@types/pg": "^8.11.11",
-    "drizzle-kit": "^0.30.2",
+    "drizzle-kit": "^0.31.10",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "typescript": "^5.7.3"
   },
@@ -29,7 +29,7 @@
     "@elysiajs/cors": "^1.2.0",
     "@elysiajs/jwt": "^1.2.0",
     "@sinclair/typebox": "^0.34.14",
-    "drizzle-orm": "^0.38.4",
+    "drizzle-orm": "^0.45.2",
     "drizzle-typebox": "^0.2.1",
     "elysia": "^1.2.10",
     "ky": "^1.7.4",

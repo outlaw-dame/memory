@@ -15,6 +15,7 @@ worker({
   async init() {
     const db = new PGlite('idb://paper-atproto-db', {
       extensions: { vector },
+      relaxedDurability: true,
     })
     await db.waitReady
     return db

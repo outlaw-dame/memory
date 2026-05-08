@@ -74,4 +74,58 @@ describe('buildOutboxPost', () => {
       },
     ])
   })
+
+  it('adds uploaded media attachments to notes and removes duplicates', () => {
+    const result = buildOutboxPost({
+      user: mockUser,
+      content: 'Uploaded media https://cdn.example/photo.jpg',
+      isPublic: true,
+      postType: 'note',
+      attachments: [
+        {
+          type: 'Image',
+          mediaType: 'image/png',
+          url: 'https://pods.example/alice/data/semapps/file/uploaded.png',
+          name: ' Uploaded image ',
+        },
+        {
+          type: 'Image',
+          mediaType: 'image/png',
+          url: 'https://pods.example/alice/data/semapps/file/uploaded.png',
+        },
+      ],
+    })
+
+    expect(result.attachment).toEqual([
+      {
+        type: 'Image',
+        mediaType: 'image/png',
+        url: 'https://pods.example/alice/data/semapps/file/uploaded.png',
+        name: 'Uploaded image',
+      },
+      {
+        type: 'Image',
+        mediaType: 'image/jpeg',
+        url: 'https://cdn.example/photo.jpg',
+      },
+    ])
+  })
+
+  it('rejects unsupported explicit attachment media types', () => {
+    const result = buildOutboxPost({
+      user: mockUser,
+      content: 'No supported uploads',
+      isPublic: true,
+      postType: 'note',
+      attachments: [
+        {
+          type: 'Image',
+          mediaType: 'image/svg+xml',
+          url: 'https://pods.example/alice/data/semapps/file/vector.svg',
+        },
+      ],
+    })
+
+    expect(result.attachment).toBeUndefined()
+  })
 })

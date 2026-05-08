@@ -2,7 +2,7 @@
  * Embedding Web Worker
  *
  * Generates 384-dimensional sentence embeddings using bge-small-en-v1.5 via
- * @xenova/transformers (ONNX Runtime Web).  Runs entirely off the main thread.
+ * @huggingface/transformers (ONNX Runtime Web).  Runs entirely off the main thread.
  *
  * The model (~23 MB quantized) is downloaded once and cached automatically by
  * the browser via the Cache API / IndexedDB managed by transformers.js.
@@ -12,7 +12,7 @@
  *   Response → { id: number, embeddings: number[][] }
  *           | { id: number, error: string }
  */
-import { pipeline, env, type FeatureExtractionPipelineType, type Tensor } from '@xenova/transformers'
+import { pipeline, env, type FeatureExtractionPipeline, type Tensor } from '@huggingface/transformers'
 
 // Use Hugging Face CDN; disable local model path lookup
 env.allowLocalModels = false
@@ -21,13 +21,13 @@ type EmbedRequest = { id: number; texts: string[] }
 type EmbedSuccess = { id: number; embeddings: number[][] }
 type EmbedError = { id: number; error: string }
 
-let extractorPromise: Promise<FeatureExtractionPipelineType> | null = null
+let extractorPromise: Promise<FeatureExtractionPipeline> | null = null
 
 function getExtractor() {
   if (!extractorPromise) {
     extractorPromise = pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5', {
-      quantized: true,
-    }) as Promise<FeatureExtractionPipelineType>
+      dtype: 'q8',
+    }) as Promise<FeatureExtractionPipeline>
   }
   return extractorPromise
 }

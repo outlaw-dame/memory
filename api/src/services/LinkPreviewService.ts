@@ -1,6 +1,17 @@
+import { sanitizeHttpUrl as sharedSanitizeHttpUrl } from '../utils/urlGuards'
+import { secureFetch } from '../utils/secureFetch'
+
 const PREVIEW_CACHE_TTL_MS = 15 * 60 * 1000
 const MAX_HTML_BYTES = 256_000
 const NETWORK_TIMEOUT_MS = 4500
+
+/**
+ * Re-export the shared sanitizer under the legacy name so existing
+ * tests/imports keep working. The synchronous guard semantics are identical.
+ */
+export function sanitizeHttpUrl(raw: string): string {
+  return sharedSanitizeHttpUrl(raw)
+}
 
 export interface LinkPreviewResult {
   url: string
@@ -19,8 +30,6 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>()
 
-const PRIVATE_IP_PATTERN = /^(10\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.)/
-
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
@@ -38,34 +47,6 @@ function sanitizeText(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null
   const normalized = normalizeWhitespace(decodeEntities(value))
   return normalized.length > 0 ? normalized : null
-}
-
-function sanitizeHttpUrl(raw: string): string {
-  if (typeof raw !== 'string' || raw.trim().length === 0) {
-    throw new Error('url must be a non-empty string')
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(raw)
-  } catch {
-    throw new Error('url must be an absolute URL')
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new Error('only http(s) URLs are supported')
-  }
-
-  if (parsed.username || parsed.password) {
-    throw new Error('URL credentials are not allowed')
-  }
-
-  const host = parsed.hostname.toLowerCase()
-  if (host === 'localhost' || host === '0.0.0.0' || host === '::1' || PRIVATE_IP_PATTERN.test(host)) {
-    throw new Error('private or local addresses are not allowed')
-  }
-
-  return parsed.toString()
 }
 
 function readMeta(html: string, key: string, attr: 'property' | 'name' = 'property'): string | null {
@@ -115,22 +96,19 @@ export async function fetchLinkPreview(inputUrl: string): Promise<LinkPreviewRes
     return cached.value
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS)
+  // `secureFetch` runs sanitize → DNS-public-resolution → Safe Browsing on
+  // the initial URL and on every redirect hop, so we don't repeat those
+  // checks here.
+  const { response, finalUrl } = await secureFetch(url, {
+    method: 'GET',
+    timeoutMs: NETWORK_TIMEOUT_MS,
+    headers: {
+      Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+      'User-Agent': 'MemoryLinkPreviewBot/1.0 (+https://memory.local)'
+    },
+  })
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: {
-        Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-        'User-Agent': 'MemoryLinkPreviewBot/1.0 (+https://memory.local)'
-      }
-    })
-
-    const finalUrl = sanitizeHttpUrl(response.url || url)
-
     if (!response.ok) {
       throw new Error(`upstream returned status ${response.status}`)
     }
@@ -184,6 +162,7 @@ export async function fetchLinkPreview(inputUrl: string): Promise<LinkPreviewRes
 
     return preview
   } finally {
-    clearTimeout(timeout)
+    // Drain any remaining body so the connection is released.
+    try { await response.body?.cancel() } catch { /* ignore */ }
   }
 }
