@@ -26,6 +26,10 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
+    // Allow tunnel/proxy hostnames for local development.
+    allowedHosts: true,
+    host: '0.0.0.0',
+    port: 5173,
     proxy: {
       '/api': {
         target: 'http://localhost:8794',
