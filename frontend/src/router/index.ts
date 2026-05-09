@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
+const dashboardUiEnabled = import.meta.env.VITE_ENABLE_PROVIDER_DASHBOARD === 'true'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -171,6 +173,10 @@ const PUBLIC_ROUTES = new Set(['signin', 'signup', 'welcome', 'auth-callback'])
 
 router.beforeEach((to, _, next) => {
   const authStore = useAuthStore()
+
+  if (!dashboardUiEnabled && to.path.startsWith('/dashboard')) {
+    return next({ name: 'settings' })
+  }
 
   // Fail closed: when secure logout cleanup failed, keep user on sign-in
   // until local cache wipe succeeds via retry.

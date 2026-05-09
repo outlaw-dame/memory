@@ -10,6 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const notificationsStore = useNotificationsStore()
+const dashboardUiEnabled = import.meta.env.VITE_ENABLE_PROVIDER_DASHBOARD === 'true'
 
 const hiddenRoutes = new Set(['signin', 'signup', 'welcome', 'experience'])
 const show = computed(() => !hiddenRoutes.has(String(route.name)) && !route.path.startsWith('/dashboard'))
@@ -21,7 +22,9 @@ const items = computed<NavItem[]>(() => [
   { name: 'explore',       route: '/explore',       label: t('nav.explore'),       icon: 'explore'       },
   { name: 'messages',      route: '/messages',      label: t('nav.messages'),      icon: 'messages'      },
   { name: 'notifications', route: '/notifications', label: t('nav.notifications'), icon: 'notifications' },
-  { name: 'dashboard',     route: '/dashboard',     label: 'Dashboard',            icon: 'dashboard'     },
+  ...(dashboardUiEnabled
+    ? [{ name: 'dashboard', route: '/dashboard', label: 'Dashboard', icon: 'dashboard' as IconName }]
+    : []),
 ])
 
 function isActive(item: NavItem): boolean {

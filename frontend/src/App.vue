@@ -8,8 +8,9 @@ import { useI18n } from '@/i18n'
 
 const route = useRoute()
 const { t } = useI18n()
+const dashboardUiEnabled = import.meta.env.VITE_ENABLE_PROVIDER_DASHBOARD === 'true'
 
-const isDashboard = computed(() => route.path.startsWith('/dashboard'))
+const isDashboard = computed(() => dashboardUiEnabled && route.path.startsWith('/dashboard'))
 
 const documentTitle = computed(() => {
   const titleKey = typeof route.meta.titleKey === 'string' ? route.meta.titleKey : 'app.name'
