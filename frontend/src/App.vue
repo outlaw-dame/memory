@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watchEffect } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
@@ -21,7 +21,64 @@ const konstaTheme = useKonstaTheme()
 useNetworkStatus()
 useKeyboard()
 
+// ── Route transition ────────────────────────────────────────────────────────
+
+// Depth 0 = root tabs (no slide animation), depth 1+ = push routes (slide).
+const ROUTE_DEPTH: Record<string, number> = {
+  home: 0, explore: 0, messages: 0, notifications: 0, profile: 0,
+}
+
 const AUTH_ROUTES = new Set(['signin', 'signup', 'welcome', 'experience', 'auth-callback'])
+
+// 'tab-switch' = instant, 'slide-left' = push, 'slide-right' = pop, 'route-fade' = auth/reduced-motion
+const transitionName = ref('tab-switch')
+const reducedMotion = ref(false)
+
+let motionMq: MediaQueryList | null = null
+function onMotionChange(e: MediaQueryListEvent) { reducedMotion.value = e.matches }
+
+onMounted(() => {
+  motionMq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  reducedMotion.value = motionMq.matches
+  motionMq.addEventListener('change', onMotionChange)
+})
+
+onUnmounted(() => {
+  motionMq?.removeEventListener('change', onMotionChange)
+})
+
+router.beforeEach((to, from) => {
+  // Initial page load — no animation
+  if (!from.name) {
+    transitionName.value = 'tab-switch'
+    return
+  }
+
+  const toName = String(to.name ?? '')
+  const fromName = String(from.name ?? '')
+
+  // Auth flows — simple fade
+  if (AUTH_ROUTES.has(toName) || AUTH_ROUTES.has(fromName) || reducedMotion.value) {
+    transitionName.value = 'route-fade'
+    return
+  }
+
+  const toDepth = ROUTE_DEPTH[toName] ?? 1
+  const fromDepth = ROUTE_DEPTH[fromName] ?? 1
+
+  // Root tab switch — instant
+  if (toDepth === 0 && fromDepth === 0) {
+    transitionName.value = 'tab-switch'
+    return
+  }
+
+  // Push deeper → new page slides in from right
+  // Pop back   → old page slides out to right
+  transitionName.value = toDepth >= fromDepth ? 'slide-left' : 'slide-right'
+})
+
+// ── App shell ───────────────────────────────────────────────────────────────
+
 const isAuthRoute = computed(() => AUTH_ROUTES.has(String(route.name)))
 
 const documentTitle = computed(() => {
@@ -66,14 +123,26 @@ onMounted(() => {
     component="div"
     class="flex flex-col overflow-hidden bg-background h-lvh"
   >
-    <!-- Auth routes: full-screen, no shell -->
-    <RouterView v-if="isAuthRoute" class="flex-1" />
+    <!-- Auth routes: full-screen, no shell, simple fade -->
+    <RouterView v-if="isAuthRoute" v-slot="{ Component }">
+      <Transition name="route-fade" mode="out-in">
+        <component :is="Component" :key="route.path" class="flex-1" />
+      </Transition>
+    </RouterView>
 
     <!-- App shell: top bar + scrollable content + tab bar -->
     <template v-else>
       <AppTopBar class="shrink-0" />
-      <main class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-(--padding-main)">
-        <RouterView />
+      <!--
+        overflow-x-hidden clips the entering/leaving view during slide transitions
+        so the 100% translateX doesn't cause a horizontal scrollbar.
+      -->
+      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
+        <RouterView v-slot="{ Component }">
+          <Transition :name="transitionName" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </Transition>
+        </RouterView>
       </main>
       <AppTabBar class="shrink-0" />
     </template>
