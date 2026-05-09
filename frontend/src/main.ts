@@ -1,7 +1,5 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import Vuesax from 'vuesax-alpha'
-
 import App from './App.vue'
 import router from './router'
 import { initLocalDb } from './db/localDb'
@@ -29,6 +27,6 @@ applyPlatformCapabilities()
 // Log effective session policy once for environment-level verification.
 logSessionPolicyConfig()
 
-const app = createApp(App).use(createPinia()).use(router).use(Vuesax)
+const app = createApp(App).use(createPinia()).use(router)
 
 app.mount('#app')

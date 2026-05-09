@@ -26,9 +26,30 @@ const title = computed(() => {
 </script>
 
 <template>
-  <kNavbar v-if="show" :title="title">
+  <kNavbar v-if="show">
     <template v-if="showBack" #left>
       <kNavbarBackLink component="button" @click="router.back()" />
     </template>
+    <template #title>
+      <Transition name="topbar-title">
+        <span :key="title" class="topbar-title-text">{{ title }}</span>
+      </Transition>
+    </template>
   </kNavbar>
 </template>
+
+<style scoped>
+.topbar-title-enter-active,
+.topbar-title-leave-active {
+  transition: opacity 180ms ease;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-title-enter-from,
+.topbar-title-leave-to {
+  opacity: 0;
+}
+</style>

@@ -67,14 +67,4 @@
   --padding-large: 15px;
   --padding-main:  20px;
 
-  /* Vuesax requires RGB channel values (no rgb() wrapper) */
-  --vs-primary: 99, 100, 246;
-  --vs-success: 0, 209, 8;
-  --vs-warn:    246, 178, 99;
-  --vs-danger:  246, 99, 99;
-  --vs-dark:    36, 33, 69;
-}
-
-@layer base {
-  @import 'vuesax-alpha/dist/index.css';
 }
