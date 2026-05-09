@@ -80,6 +80,13 @@ const messages: Record<ApiLocale, Record<string, string>> = {
     'conversations.createFailed': 'Failed to create conversation',
     'conversations.notMember': 'Not a member of this conversation',
     'conversations.sendFailed': 'Failed to send message',
+    'wall.postEmpty': 'Write something before posting on this wall',
+    'wall.postTooLong': 'Wall posts may be at most 500 characters',
+    'wall.targetNotFound': 'That profile was not found',
+    'wall.postNotFound': 'That wall post was not found',
+    'wall.forbidden': 'You do not have permission to do that',
+    'wall.invalidPostId': 'Invalid post ID',
+    'wall.postFailed': 'Could not publish the wall post to your pod',
   },
   es: {
     'common.mustBeSignedIn': 'Debes iniciar sesión para hacer eso',
@@ -155,6 +162,13 @@ const messages: Record<ApiLocale, Record<string, string>> = {
     'conversations.createFailed': 'No se pudo crear la conversación',
     'conversations.notMember': 'No eres miembro de esta conversación',
     'conversations.sendFailed': 'No se pudo enviar el mensaje',
+    'wall.postEmpty': 'Escribe algo antes de publicar en este muro',
+    'wall.postTooLong': 'Las publicaciones del muro pueden tener como máximo 500 caracteres',
+    'wall.targetNotFound': 'No se encontró ese perfil',
+    'wall.postNotFound': 'No se encontró esa publicación del muro',
+    'wall.forbidden': 'No tienes permiso para hacer eso',
+    'wall.invalidPostId': 'ID de publicación no válido',
+    'wall.postFailed': 'No se pudo publicar en el muro de tu pod',
   },
 }
 

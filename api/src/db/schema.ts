@@ -48,8 +48,16 @@ export const posts = table('posts', {
   summary: text('summary'),
   clientPostKey: varchar('client_post_key', { length: 128 }),
   clientPostRequestHash: varchar('client_post_request_hash', { length: 64 }),
+  /**
+   * When set, this post was written on another user's wall (Facebook-style).
+   * The value is the ID of the profile owner whose wall received the post.
+   * Wall posts use the ActivityStreams `target` property (on the Create activity)
+   * to federate the wall context, following Friendica's implementation pattern.
+   */
+  wallTargetUserId: integer('wall_target_user_id').references(() => users.id),
 }, t => [
   uniqueIndex('posts_author_client_key_unique_idx').on(t.authorId, t.clientPostKey).where(sql`${t.clientPostKey} IS NOT NULL`),
+  index('posts_wall_target_user_id_idx').on(t.wallTargetUserId),
 ])
 
 export const mediaAttachments = table('media_attachments', {

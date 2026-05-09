@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { _createPost, _selectUsers } from './types'
-import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin, linkPreviewPlugin, bookmarksPlugin, mediaUploadsPlugin, mediaSidecarCallbackPlugin } from './routes'
+import { postsPlugin, authPlugin, oidcAuthPlugin, oidcClientPlugin, setupPlugin, atBridgePlugin, followPlugin, replyPlugin, actorMetadataPlugin, profilePlugin, mastodonApiPlugin, conversationsPlugin, activityPodsAppPublicPlugin, activityPodsNotificationsPlugin, chatPlugin, linkPreviewPlugin, bookmarksPlugin, mediaUploadsPlugin, mediaSidecarCallbackPlugin, wallPlugin } from './routes'
 import atBridgeWebhookPlugin from './routes/atBridgeWebhook'
 import { xrpcFeedPlugin } from './routes/atBridge'
 import apBridgeWebhookPlugin from './routes/apBridgeWebhook'
@@ -76,6 +76,7 @@ const protectedRoutes = new Elysia({ aot: false })
   .use(linkPreviewPlugin)
   .use(mediaUploadsPlugin)
   .use(chatPlugin)
+  .use(wallPlugin)
 
 export const app = new Elysia({ aot: false })
   // Top-level health check — used by Docker healthcheck and the Mastopod harness

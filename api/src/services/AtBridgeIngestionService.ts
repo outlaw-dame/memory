@@ -29,7 +29,8 @@
 
 import { db } from '../db/client'
 import { atPosts, atIdentities, atFirehoseCursors, atRecords } from '../db/atBridgeSchema'
-import { eq } from 'drizzle-orm'
+import { posts, users } from '../db/schema'
+import { and, eq, isNotNull } from 'drizzle-orm'
 
 // ---------------------------------------------------------------------------
 // Types (mirrors at.ingress.v1 event schema)
@@ -142,10 +143,20 @@ export type CanonicalIntentEvent = CanonicalIntentBase & {
     | 'FollowRemove'
     | 'ProfileUpdate'
     | 'AccountState'
+    /** A note written on another actor's profile wall (org.activitypods.wall.post). */
+    | 'WallPostCreate'
+    /** Deletion of a wall post. */
+    | 'WallPostDelete'
   object?: CanonicalObjectRef
   content?: CanonicalContent
   inReplyTo?: CanonicalObjectRef | null
   subject?: CanonicalActorRef
+  /**
+   * Present on WallPostCreate / WallPostDelete intents.
+   * Identifies the actor whose profile wall the post was written on.
+   * Corresponds to the AS2 `target` property on the ActivityPub Create activity.
+   */
+  wallTarget?: CanonicalActorRef | null
   reactionType?: 'like'
   state?: 'active' | 'suspended' | 'deactivated'
 }
@@ -182,7 +193,12 @@ function parseAtUri(uri: string): { did: string; collection: string; rkey: strin
 }
 
 function isSupportedLexiconCollection(collection: string): boolean {
-  return collection.startsWith('app.bsky.') || collection.startsWith('standard.site.')
+  return (
+    collection.startsWith('app.bsky.') ||
+    collection.startsWith('standard.site.') ||
+    // ActivityPods-specific lexicons (e.g. org.activitypods.wall.post)
+    collection.startsWith('org.activitypods.')
+  )
 }
 
 function extractRecordCreatedAt(record: any): Date {
@@ -272,6 +288,7 @@ function canonicalOperation(kind: CanonicalIntentEvent['kind']): 'create' | 'upd
     case 'ReactionRemove':
     case 'ShareRemove':
     case 'FollowRemove':
+    case 'WallPostDelete':
       return 'delete'
     default:
       return 'create'
@@ -299,6 +316,9 @@ function canonicalCollection(intent: CanonicalIntentEvent): string {
     case 'FollowAdd':
     case 'FollowRemove':
       return 'canonical.follow'
+    case 'WallPostCreate':
+    case 'WallPostDelete':
+      return 'org.activitypods.wall.post'
     case 'ProfileUpdate':
       return 'canonical.profile'
     case 'AccountState':
@@ -353,7 +373,21 @@ function canonicalUrlFromIntent(intent: CanonicalIntentEvent): string | null {
 }
 
 function shouldProjectCanonicalToFeed(intent: CanonicalIntentEvent): boolean {
+  // Wall posts go to the wall, not the main feed.
+  if (intent.kind === 'WallPostCreate' || intent.kind === 'WallPostDelete') return false
   if (intent.kind !== 'PostCreate' && intent.kind !== 'PostEdit') return false
+  return typeof contentFromCanonical(intent) === 'string'
+}
+
+/**
+ * Returns true when a CanonicalIntentEvent represents a wall post that should
+ * be projected into the `posts` table (with `wallTargetUserId` set).
+ * Wall posts must NOT appear in the main feed — they are excluded there by
+ * the `isNull(posts.wallTargetUserId)` filter on feed queries.
+ */
+function shouldProjectCanonicalToWall(intent: CanonicalIntentEvent): boolean {
+  if (intent.kind !== 'WallPostCreate') return false
+  if (!intent.wallTarget) return false
   return typeof contentFromCanonical(intent) === 'string'
 }
 
@@ -657,6 +691,12 @@ export class AtBridgeIngestionService {
         .update(atPosts)
         .set({ isPublic: false })
         .where(eq(atPosts.atUri, uri))
+      // Also hard-delete from the wall projection when this is a wall post removal.
+      if (intent.kind === 'WallPostDelete') {
+        await this.handleCanonicalWallDelete(intent)
+      }
+    } else if (shouldProjectCanonicalToWall(intent)) {
+      await this.handleCanonicalWallCreate(intent, createdAt)
     } else if (shouldProjectCanonicalToFeed(intent)) {
       const content = contentFromCanonical(intent)
       if (content) {
@@ -712,6 +752,143 @@ export class AtBridgeIngestionService {
     }
 
     await this.upsertCanonicalIdentity(intent, authorIdentity, true)
+  }
+
+  /**
+   * Project a WallPostCreate canonical intent into the `posts` table.
+   *
+   * Both the author AND the wall target must be known local users (resolvable
+   * via their webId in the `users` table). If either is unknown — which is
+   * expected for fully federated cross-pod wall posts — we skip the projection
+   * and rely on the `atRecords` entry written earlier for audit.
+   */
+  private async handleCanonicalWallCreate(
+    intent: CanonicalIntentEvent,
+    createdAt: Date,
+  ): Promise<void> {
+    const content = contentFromCanonical(intent)
+    if (!content) return
+
+    // Enforce app-level wall post character limit at ingestion time.
+    const WALL_LIMIT = 500
+    const safeContent = content.length > WALL_LIMIT ? content.slice(0, WALL_LIMIT) : content
+
+    // Resolve wall target (the profile whose wall was written on).
+    const wallTargetWebId =
+      intent.wallTarget?.webId ??
+      intent.wallTarget?.activityPubActorUri ??
+      null
+
+    if (!wallTargetWebId) {
+      console.warn('[AtBridgeIngestion] WallPostCreate missing wallTarget webId — skipping wall projection', {
+        intentId: intent.canonicalIntentId,
+      })
+      return
+    }
+
+    const [wallTargetUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.webId, wallTargetWebId))
+      .limit(1)
+
+    if (!wallTargetUser) {
+      console.warn('[AtBridgeIngestion] WallPostCreate wallTarget not a local user — storing in atRecords only', {
+        wallTargetWebId,
+        intentId: intent.canonicalIntentId,
+      })
+      return
+    }
+
+    // Resolve author (the actor who wrote on the wall).
+    const authorWebId =
+      intent.sourceAccountRef.webId ??
+      intent.sourceAccountRef.activityPubActorUri ??
+      null
+
+    if (!authorWebId) {
+      console.warn('[AtBridgeIngestion] WallPostCreate missing author webId — skipping wall projection', {
+        intentId: intent.canonicalIntentId,
+      })
+      return
+    }
+
+    const [authorUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.webId, authorWebId))
+      .limit(1)
+
+    if (!authorUser) {
+      console.warn('[AtBridgeIngestion] WallPostCreate author not a local user — storing in atRecords only', {
+        authorWebId,
+        intentId: intent.canonicalIntentId,
+      })
+      return
+    }
+
+    // Determine the canonical AP object URI for idempotency checks.
+    const objectUri =
+      intent.object?.activityPubObjectId ??
+      intent.object?.atUri ??
+      null
+
+    // Check for an existing wall post with this objectUri to stay idempotent.
+    if (objectUri) {
+      const [existing] = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(and(eq(posts.objectUri, objectUri), isNotNull(posts.wallTargetUserId)))
+        .limit(1)
+
+      if (existing) return
+    }
+
+    await db.insert(posts).values({
+      authorId: authorUser.id,
+      content: safeContent,
+      hashtags: [],
+      isPublic: true,
+      postType: 'note',
+      objectUri: objectUri ?? null,
+      wallTargetUserId: wallTargetUser.id,
+      createdAt,
+    })
+
+    console.info('[AtBridgeIngestion] Projected WallPostCreate to posts table', {
+      authorId: authorUser.id,
+      wallTargetId: wallTargetUser.id,
+      objectUri,
+    })
+  }
+
+  /**
+   * Hard-delete a wall post from the `posts` table when a WallPostDelete
+   * canonical intent is received. Matches by `objectUri` (the AP Note URI).
+   * If no matching post is found, the deletion is treated as a no-op.
+   */
+  private async handleCanonicalWallDelete(intent: CanonicalIntentEvent): Promise<void> {
+    const objectUri =
+      intent.object?.activityPubObjectId ??
+      intent.object?.atUri ??
+      null
+
+    if (!objectUri) {
+      console.warn('[AtBridgeIngestion] WallPostDelete missing object URI — cannot delete from posts', {
+        intentId: intent.canonicalIntentId,
+      })
+      return
+    }
+
+    const result = await db
+      .delete(posts)
+      .where(and(eq(posts.objectUri, objectUri), isNotNull(posts.wallTargetUserId)))
+
+    console.info('[AtBridgeIngestion] WallPostDelete from posts table', {
+      objectUri,
+      intentId: intent.canonicalIntentId,
+      deleted: Array.isArray(result) ? result.length : 'unknown',
+    })
   }
 
   private async upsertCanonicalIdentity(

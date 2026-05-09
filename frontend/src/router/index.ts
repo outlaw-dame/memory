@@ -2,80 +2,15 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '@/stores/authStore'
 
-const dashboardUiEnabled = import.meta.env.VITE_ENABLE_PROVIDER_DASHBOARD === 'true'
+const dashboardUiEnabled = false
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // ── Dashboard (provider admin panel) ──────────────────────────────────────
+    // Provider dashboard routes are intentionally disabled in Memory.
     {
-      path: '/dashboard',
-      component: () => import('../views/dashboard/DashboardLayout.vue'),
-      meta: { titleKey: 'app.title.dashboard' },
-      children: [
-        {
-          path: '',
-          name: 'dashboard',
-          component: () => import('../views/dashboard/DashboardOverviewView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        // Top-level sections
-        {
-          path: 'network',
-          name: 'dashboard-network',
-          component: () => import('../views/dashboard/DashboardNetworkView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'applications',
-          name: 'dashboard-applications',
-          component: () => import('../views/dashboard/DashboardApplicationsView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'data',
-          name: 'dashboard-data',
-          component: () => import('../views/dashboard/DashboardDataView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        // Dashboard sub-section
-        {
-          path: 'pods',
-          name: 'dashboard-pods',
-          component: () => import('../views/dashboard/DashboardPodsView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'federation',
-          name: 'dashboard-federation',
-          component: () => import('../views/dashboard/DashboardFederationView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'incidents',
-          name: 'dashboard-incidents',
-          component: () => import('../views/dashboard/DashboardIncidentsView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'system-config',
-          name: 'dashboard-system-config',
-          component: () => import('../views/dashboard/DashboardSystemConfigView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'billing',
-          name: 'dashboard-billing',
-          component: () => import('../views/dashboard/DashboardBillingView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-        {
-          path: 'audit',
-          name: 'dashboard-audit',
-          component: () => import('../views/dashboard/DashboardAuditView.vue'),
-          meta: { titleKey: 'app.title.dashboard' },
-        },
-      ],
+      path: '/dashboard/:pathMatch(.*)*',
+      redirect: { name: 'settings' },
     },
 
     // ── Standard app routes ───────────────────────────────────────────────────
@@ -91,7 +26,7 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/SingInView.vue'),
+      component: () => import('../views/SignInView.vue'),
       meta: { titleKey: 'app.title.signin' }
     },
     {
@@ -165,11 +100,23 @@ const router = createRouter({
       name: 'experience',
       component: () => import('../views/ExperienceView.vue'),
       meta: { titleKey: 'app.title.experience' }
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
+      meta: { titleKey: 'app.title.profile' }
+    },
+    {
+      path: '/u/:webId',
+      name: 'user-profile',
+      component: () => import('../views/UserProfileView.vue'),
+      meta: { titleKey: 'app.title.profile' }
     }
   ]
 })
 
-const PUBLIC_ROUTES = new Set(['signin', 'signup', 'welcome', 'auth-callback'])
+const PUBLIC_ROUTES = new Set(['signin', 'signup', 'welcome', 'auth-callback', 'user-profile'])
 
 router.beforeEach((to, _, next) => {
   const authStore = useAuthStore()
