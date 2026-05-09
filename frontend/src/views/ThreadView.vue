@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import PostAudioPlayer from '@/components/PostAudioPlayer.vue'
 import PostPoll from '@/components/PostPoll.vue'
 import PostMediaCarousel from '@/components/PostMediaCarousel.vue'
@@ -12,7 +12,6 @@ import { useAtBridgeStore, type UnifiedFeedItem, type FeedPoll } from '@/stores/
 import { useAuthStore } from '@/stores/authStore'
 import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPreview'
 
-const router = useRouter()
 const route = useRoute()
 const store = useAtBridgeStore()
 const authStore = useAuthStore()
@@ -178,36 +177,7 @@ function formatCount(n: string | undefined): string {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col" style="background: var(--color-pastel-light, #faf7f3);">
-
-    <!-- Sticky header -->
-    <div class="sticky top-0 z-30 flex items-center justify-between px-4 py-3"
-      style="background: var(--color-pastel-light, #faf7f3);">
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full bg-dark-10 flex items-center justify-center hover:bg-dark-20 transition-colors"
-        @click="router.back()"
-      >
-        <svg class="-ml-0.5 w-4 h-4 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M15 18l-6-6 6-6"/>
-        </svg>
-      </button>
-
-      <span class="text-h2 font-black text-dark" style="letter-spacing: -0.03em;">thread.</span>
-
-      <button
-        type="button"
-        class="w-9 h-9 rounded-full bg-dark-10 flex items-center justify-center hover:bg-dark-20 transition-colors"
-        @click="router.back()"
-      >
-        <svg class="w-4 h-4 text-dark" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Scrollable content -->
-    <div class="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-3">
+  <div class="pb-8 flex flex-col gap-3">
 
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center py-16 text-dark-50 text-sm">
@@ -415,6 +385,5 @@ function formatCount(n: string | undefined): string {
       </div>
 
       </template>
-    </div>
   </div>
 </template>

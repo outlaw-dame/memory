@@ -488,16 +488,18 @@ async function createPost() {
           <div class="flex items-center gap-1 text-xs">
             <button
               type="button"
-              :class="pollMode === 'oneOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
               class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              :class="pollMode === 'oneOf' ? 'text-white' : 'bg-dark-10 text-dark'"
+              :style="pollMode === 'oneOf' ? 'background: var(--color-accent);' : ''"
               @click="pollMode = 'oneOf'"
             >
               {{ t('composer.poll.mode.single') }}
             </button>
             <button
               type="button"
-              :class="pollMode === 'anyOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
               class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              :class="pollMode === 'anyOf' ? 'text-white' : 'bg-dark-10 text-dark'"
+              :style="pollMode === 'anyOf' ? 'background: var(--color-accent);' : ''"
               @click="pollMode = 'anyOf'"
             >
               {{ t('composer.poll.mode.multi') }}

@@ -87,10 +87,8 @@ async function submitVote() {
         :key="option.name"
         type="button"
         class="relative flex h-11 items-center overflow-hidden rounded-xl text-left transition-opacity"
-        :class="[
-          !canVote ? 'cursor-default' : 'hover:opacity-90 active:scale-[0.98]',
-          selectedNames.has(option.name) && canVote ? 'ring-2 ring-indigo-400' : ''
-        ]"
+        :class="!canVote ? 'cursor-default' : 'hover:opacity-90 active:scale-[0.98]'"
+        :style="selectedNames.has(option.name) && canVote ? 'outline: 2px solid var(--color-accent); outline-offset: 0px;' : ''"
         :aria-label="t('poll.selectOption', { option: option.name })"
         @click="toggleOption(option.name)"
       >
@@ -118,7 +116,8 @@ async function submitVote() {
     <div v-if="canVote && selectedNames.size > 0" class="px-3 pb-3">
       <button
         type="button"
-        class="text-subHeader h-10 w-full rounded-xl bg-indigo-500 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        class="text-subHeader h-10 w-full rounded-xl font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        style="background: var(--color-accent);"
         :disabled="isSubmitting"
         @click="submitVote"
       >

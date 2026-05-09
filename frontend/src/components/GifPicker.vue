@@ -157,7 +157,8 @@ async function selectGif(gif: KlipyGif) {
       <button
         v-for="gif in gifs"
         :key="gif.slug"
-        class="relative aspect-square rounded-lg overflow-hidden group focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        class="relative aspect-square rounded-lg overflow-hidden group focus:outline-none focus:ring-2"
+        style="--tw-ring-color: var(--color-accent);"
         :title="gif.title"
         @click="selectGif(gif)"
       >
