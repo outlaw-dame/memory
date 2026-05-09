@@ -296,7 +296,7 @@ async function createPost() {
           type="button"
           class="text-footnote rounded-full px-3 py-1.5 font-semibold transition-colors"
           :class="postType === 'note' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
-          :style="postType === 'note' ? 'background: rgb(99,100,246);' : ''"
+          :style="postType === 'note' ? 'background: var(--color-accent);' : ''"
           @click="setPostType('note')"
         >
           {{ t('composer.types.note') }}
@@ -305,7 +305,7 @@ async function createPost() {
           type="button"
           class="text-footnote rounded-full px-3 py-1.5 font-semibold transition-colors"
           :class="postType === 'article' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
-          :style="postType === 'article' ? 'background: rgb(99,100,246);' : ''"
+          :style="postType === 'article' ? 'background: var(--color-accent);' : ''"
           @click="setPostType('article')"
         >
           {{ t('composer.types.article') }}
@@ -650,7 +650,7 @@ async function createPost() {
         </button>
 
         <!-- Post + Advanced Settings split pill -->
-        <div class="ml-auto flex items-center overflow-hidden rounded-full" style="background: rgb(99, 100, 246)">
+        <div class="ml-auto flex items-center overflow-hidden rounded-full" style="background: var(--color-accent)">
           <button
             type="submit"
             :disabled="!canPost"

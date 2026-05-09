@@ -49,16 +49,16 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
 <template>
   <div class="flex h-screen bg-white overflow-hidden">
     <!-- ── Sidebar ──────────────────────────────────────── -->
-    <aside class="w-[220px] flex-shrink-0 flex flex-col border-r border-gray-100 bg-white">
+    <aside class="w-55 shrink-0 flex flex-col border-r border-gray-100 bg-white">
       <!-- Logo -->
       <div class="px-5 pt-5 pb-4">
         <span class="text-lg font-[Butler,serif] tracking-tight">dashboard.</span>
       </div>
 
       <!-- User card -->
-      <div class="mx-3 mb-4 flex items-center justify-between rounded-2xl bg-[rgba(250,247,243,1)] px-3 py-2.5">
+      <div class="mx-3 mb-4 flex items-center justify-between rounded-2xl bg-pastel-light px-3 py-2.5">
         <div class="flex items-center gap-2 min-w-0">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+          <div class="shrink-0 w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
             {{ initials }}
           </div>
           <div class="min-w-0">
@@ -66,7 +66,7 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
             <p class="text-[10px] text-gray-400 truncate leading-tight">{{ handle }}</p>
           </div>
         </div>
-        <button class="flex-shrink-0 w-7 h-7 rounded-full bg-[rgba(246,99,99,0.15)] flex items-center justify-center">
+        <button class="shrink-0 w-7 h-7 rounded-full bg-[rgba(246,99,99,0.15)] flex items-center justify-center">
           <AppIcon name="notifications" :size="14" color="rgb(246,99,99)" />
         </button>
       </div>
@@ -80,7 +80,7 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               @click="dashboardExpanded = !dashboardExpanded"
             >
-              <AppIcon name="dashboard" :size="14" color="currentColor" class="opacity-60 flex-shrink-0" />
+              <AppIcon name="explore" :size="14" color="currentColor" class="opacity-60 shrink-0" />
               <span>{{ item.label }}</span>
               <AppIcon
                 name="chevron-down"
@@ -100,7 +100,7 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
                   : 'text-gray-500 hover:bg-gray-50 font-medium'"
                 @click="navigate(child.route)"
               >
-                <AppIcon name="dashboard" :size="12" color="currentColor" class="opacity-60 flex-shrink-0" />
+                <AppIcon name="explore" :size="12" color="currentColor" class="opacity-60 shrink-0" />
                 <span>{{ child.label }}</span>
               </button>
             </div>
@@ -113,14 +113,14 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
             :class="isActive(item.route) ? 'bg-[rgba(246,99,99,0.12)] text-[rgb(200,60,60)]' : 'text-gray-600 hover:bg-gray-50'"
             @click="navigate(item.route)"
           >
-            <AppIcon name="dashboard" :size="14" color="currentColor" class="opacity-60 flex-shrink-0" />
+            <AppIcon name="explore" :size="14" color="currentColor" class="opacity-60 shrink-0" />
             <span>{{ item.label }}</span>
           </button>
         </template>
       </nav>
 
       <!-- ── Mini stats strip ──────────────────────────── -->
-      <div class="mx-3 mb-3 rounded-2xl bg-[rgba(250,247,243,1)] px-3 py-3 space-y-2">
+      <div class="mx-3 mb-3 rounded-2xl bg-pastel-light px-3 py-3 space-y-2">
         <div class="flex justify-between text-[10px]">
           <span class="text-gray-400">System Health</span>
           <span class="font-semibold text-green-500">Good</span>
@@ -136,7 +136,7 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
               <span class="font-semibold text-gray-600">70%</span>
             </div>
             <div class="h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full rounded-full bg-[rgb(99,100,246)]" style="width:70%"></div>
+              <div class="h-full rounded-full bg-accent" style="width:70%"></div>
             </div>
           </div>
           <div class="flex-1">
@@ -145,7 +145,7 @@ const initials = computed(() => displayName.value.slice(0, 1).toUpperCase())
               <span class="font-semibold text-gray-600">49%</span>
             </div>
             <div class="h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div class="h-full rounded-full bg-[rgb(99,100,246)]" style="width:49%"></div>
+              <div class="h-full rounded-full bg-accent" style="width:49%"></div>
             </div>
           </div>
         </div>

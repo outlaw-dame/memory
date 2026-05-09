@@ -93,8 +93,8 @@ onMounted(() => {
 <template>
   <div class="flex flex-col h-full">
     <!-- ── Page header ──────────────────────────────────────────────────────── -->
-    <header class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-      <h1 class="text-[15px] font-semibold text-gray-800">Overview</h1>
+    <header class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+      <h1 class="text-subHeader font-semibold text-gray-800">Overview</h1>
       <div class="flex items-center gap-3">
         <!-- Time range -->
         <button class="flex items-center gap-1.5 text-[11px] font-medium text-gray-500 bg-gray-50 rounded-lg px-3 py-1.5 hover:bg-gray-100 transition-colors">
@@ -102,8 +102,8 @@ onMounted(() => {
           <svg class="w-3 h-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
         </button>
         <!-- Search -->
-        <div class="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 text-[11px] text-gray-400 w-44 border border-gray-100">
-          <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <div class="flex w-44 items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-1.5 text-[11px] text-gray-400">
+          <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input v-model="search" placeholder="Search" class="bg-transparent outline-none w-full placeholder-gray-300 text-gray-700" />
         </div>
       </div>
@@ -116,34 +116,34 @@ onMounted(() => {
       <div class="grid grid-cols-5 gap-3">
         <!-- Total Pods -->
         <div class="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm">
-          <p class="text-[10px] font-medium text-gray-400 mb-1">Total Pods</p>
-          <p class="text-[22px] font-bold text-gray-800 leading-none">
+          <p class="mb-1 text-caption font-medium text-gray-400">Total Pods</p>
+          <p class="text-h2 font-bold leading-none text-gray-800">
             {{ stats.totalPods }}
-            <span class="text-[13px] font-semibold text-green-500 ml-1">+{{ stats.totalPodsDelta }}</span>
+            <span class="ml-1 text-footnote font-semibold text-green-500">+{{ stats.totalPodsDelta }}</span>
           </p>
         </div>
         <!-- Active Pods -->
         <div class="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm">
-          <p class="text-[10px] font-medium text-gray-400 mb-1">Active Pods</p>
-          <p class="text-[22px] font-bold text-gray-800 leading-none">
+          <p class="mb-1 text-caption font-medium text-gray-400">Active Pods</p>
+          <p class="text-h2 font-bold leading-none text-gray-800">
             {{ stats.activePods }}
-            <span class="text-[13px] font-semibold text-green-500 ml-1">+{{ stats.activePodsDeltaPct }}%</span>
+            <span class="ml-1 text-footnote font-semibold text-green-500">+{{ stats.activePodsDeltaPct }}%</span>
           </p>
         </div>
         <!-- System Health -->
         <div class="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm">
-          <p class="text-[10px] font-medium text-gray-400 mb-1">System Health</p>
-          <p class="text-[22px] font-bold leading-none" :class="healthClass">{{ stats.systemHealth }}</p>
+          <p class="mb-1 text-caption font-medium text-gray-400">System Health</p>
+          <p class="text-h2 font-bold leading-none" :class="healthClass">{{ stats.systemHealth }}</p>
         </div>
         <!-- Federation Status -->
         <div class="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm">
-          <p class="text-[10px] font-medium text-gray-400 mb-1">Federation Status Overview</p>
+          <p class="mb-1 text-caption font-medium text-gray-400">Federation Status Overview</p>
           <p class="text-[18px] font-bold leading-none" :class="fedClass">{{ stats.federationStatus }}</p>
         </div>
         <!-- Critical Alerts -->
         <div class="rounded-2xl border border-gray-100 bg-white px-4 py-3.5 shadow-sm">
-          <p class="text-[10px] font-medium text-gray-400 mb-1">Critical Alerts &amp; Incidents</p>
-          <p class="text-[22px] font-bold text-red-500 leading-none">{{ stats.criticalAlerts }}</p>
+          <p class="mb-1 text-caption font-medium text-gray-400">Critical Alerts &amp; Incidents</p>
+          <p class="text-h2 font-bold leading-none text-red-500">{{ stats.criticalAlerts }}</p>
         </div>
       </div>
 
@@ -156,12 +156,12 @@ onMounted(() => {
             <div class="flex items-start justify-between mb-1">
               <div>
                 <p class="text-[11px] font-medium text-gray-400">Bandwidth</p>
-                <p class="text-[22px] font-bold text-gray-800 leading-tight">
+                <p class="text-h2 font-bold text-gray-800 leading-tight">
                   {{ bandwidthCurrent }}%
                   <span class="text-[12px] font-normal text-gray-400 ml-1">Avg: {{ bandwidthAvg }}%</span>
                 </p>
               </div>
-              <button class="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-lg px-2 py-1 hover:bg-gray-100 transition-colors">
+              <button class="flex items-center gap-1 text-caption text-gray-400 bg-gray-50 rounded-lg px-2 py-1 hover:bg-gray-100 transition-colors">
                 Last 24h
                 <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
               </button>
@@ -171,13 +171,13 @@ onMounted(() => {
           <!-- Sparkline chart -->
           <div class="relative h-16 px-0">
             <!-- Y-axis labels -->
-            <div class="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-1 text-[8px] text-gray-300 pointer-events-none">
+            <div class="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-1 text-caption2 text-gray-300 pointer-events-none">
               <span>100%</span>
               <span>80%</span>
               <span>50%</span>
             </div>
             <!-- X-axis labels -->
-            <div class="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-[8px] text-gray-300 pointer-events-none pb-0.5">
+            <div class="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-caption2 text-gray-300 pointer-events-none pb-0.5">
               <span>24h ago</span>
               <span>Last hour</span>
               <span>Now</span>
@@ -185,12 +185,12 @@ onMounted(() => {
             <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 240 60">
               <defs>
                 <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="rgb(99,100,246)" stop-opacity="0.3"/>
-                  <stop offset="100%" stop-color="rgb(99,100,246)" stop-opacity="0"/>
+                  <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0"/>
                 </linearGradient>
               </defs>
               <path :d="makeArea(bandwidthPoints)" fill="url(#bwGrad)" />
-              <path :d="makePath(bandwidthPoints)" fill="none" stroke="rgb(99,100,246)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path :d="makePath(bandwidthPoints)" fill="none" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
 
@@ -198,7 +198,7 @@ onMounted(() => {
           <div class="px-4 pb-1 space-y-1 mt-1">
             <div v-for="pod in bandwidthPods" :key="pod.name" class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full flex-shrink-0" :class="statusColor(pod.status)"></span>
+                <span class="w-2 h-2 rounded-full shrink-0" :class="statusColor(pod.status)"></span>
                 <span class="text-[11px] text-gray-600">{{ pod.name }}</span>
               </div>
               <div class="flex items-center gap-1.5">
@@ -223,13 +223,13 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <!-- Toggle -->
               <button
-                class="w-8 h-4 rounded-full transition-colors relative flex-shrink-0"
-                :class="bandwidthAlertEnabled ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+                class="w-8 h-4 rounded-full transition-colors relative shrink-0"
+                :class="bandwidthAlertEnabled ? 'bg-accent' : 'bg-gray-200'"
                 @click="bandwidthAlertEnabled = !bandwidthAlertEnabled"
               >
                 <span
                   class="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all"
-                  :class="bandwidthAlertEnabled ? 'left-[18px]' : 'left-0.5'"
+                  :class="bandwidthAlertEnabled ? 'left-4.5' : 'left-0.5'"
                 ></span>
               </button>
               <span class="text-[11px] font-semibold text-gray-400">{{ bandwidthAlertThreshold }}%</span>
@@ -243,11 +243,11 @@ onMounted(() => {
             <div class="flex items-start justify-between mb-1">
               <div>
                 <p class="text-[11px] font-medium text-gray-400">Storage</p>
-                <p class="text-[22px] font-bold text-gray-800 leading-tight">
+                <p class="text-h2 font-bold text-gray-800 leading-tight">
                   {{ storageUsed }}/{{ storageTotal }}
                 </p>
               </div>
-              <button class="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 rounded-lg px-2 py-1 hover:bg-gray-100 transition-colors">
+              <button class="flex items-center gap-1 text-caption text-gray-400 bg-gray-50 rounded-lg px-2 py-1 hover:bg-gray-100 transition-colors">
                 Last month
                 <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
               </button>
@@ -256,12 +256,12 @@ onMounted(() => {
 
           <!-- Sparkline chart -->
           <div class="relative h-16 px-0">
-            <div class="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-1 text-[8px] text-gray-300 pointer-events-none">
+            <div class="absolute left-4 top-0 bottom-0 flex flex-col justify-between py-1 text-caption2 text-gray-300 pointer-events-none">
               <span>100%</span>
               <span>80%</span>
               <span>50%</span>
             </div>
-            <div class="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-[8px] text-gray-300 pointer-events-none pb-0.5">
+            <div class="absolute bottom-0 left-0 right-0 flex justify-between px-4 text-caption2 text-gray-300 pointer-events-none pb-0.5">
               <span>30d ago</span>
               <span>Yesterday</span>
               <span>Now</span>
@@ -269,12 +269,12 @@ onMounted(() => {
             <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 240 60">
               <defs>
                 <linearGradient id="stGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="rgb(99,100,246)" stop-opacity="0.25"/>
-                  <stop offset="100%" stop-color="rgb(99,100,246)" stop-opacity="0"/>
+                  <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0"/>
                 </linearGradient>
               </defs>
               <path :d="makeArea(storagePoints)" fill="url(#stGrad)" />
-              <path :d="makePath(storagePoints)" fill="none" stroke="rgb(99,100,246)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path :d="makePath(storagePoints)" fill="none" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
 
@@ -282,11 +282,11 @@ onMounted(() => {
           <div class="px-4 pb-1 space-y-1 mt-1">
             <div v-for="pod in storagePods" :key="pod.name" class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full flex-shrink-0" :class="statusColor(pod.status)"></span>
+                <span class="w-2 h-2 rounded-full shrink-0" :class="statusColor(pod.status)"></span>
                 <span class="text-[11px] text-gray-600">{{ pod.name }}</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="text-[11px] font-semibold text-[rgb(99,100,246)]">{{ pod.size }}</span>
+                <span class="text-[11px] font-semibold text-[var(--color-accent)]">{{ pod.size }}</span>
                 <svg class="w-4 h-3 text-gray-300" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M1 6 Q4 2 8 6 Q12 10 15 6" stroke-linecap="round"/>
                 </svg>
@@ -305,13 +305,13 @@ onMounted(() => {
             </div>
             <div class="flex items-center gap-2">
               <button
-                class="w-8 h-4 rounded-full transition-colors relative flex-shrink-0"
-                :class="storageAlertEnabled ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+                class="w-8 h-4 rounded-full transition-colors relative shrink-0"
+                :class="storageAlertEnabled ? 'bg-accent' : 'bg-gray-200'"
                 @click="storageAlertEnabled = !storageAlertEnabled"
               >
                 <span
                   class="absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all"
-                  :class="storageAlertEnabled ? 'left-[18px]' : 'left-0.5'"
+                  :class="storageAlertEnabled ? 'left-4.5' : 'left-0.5'"
                 ></span>
               </button>
               <span class="text-[11px] font-semibold text-gray-400">{{ storageAlertThreshold }}</span>

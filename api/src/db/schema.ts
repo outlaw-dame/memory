@@ -64,6 +64,8 @@ export const mediaAttachments = table('media_attachments', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
   postId: integer('post_id').references(() => posts.id),
+  storyUri: text('story_uri'),
+  storyExpiresAt: timestamp('story_expires_at', { withTimezone: true }),
   state: text('state', { enum: ['uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted'] }).notNull().default('uploading'),
   kind: text('kind', { enum: ['image', 'gif', 'video', 'audio', 'unknown'] }).notNull(),
   sourceUrl: text('source_url'),
@@ -91,6 +93,8 @@ export const mediaAttachments = table('media_attachments', {
 }, t => [
   index('media_attachments_user_state_idx').on(t.userId, t.state),
   index('media_attachments_user_post_idx').on(t.userId, t.postId),
+  index('media_attachments_story_uri_idx').on(t.storyUri),
+  index('media_attachments_story_expires_at_idx').on(t.storyExpiresAt),
   index('media_attachments_expires_at_idx').on(t.expiresAt),
   check('media_attachments_state_check', sql`${t.state} IN ('uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted')`),
   check('media_attachments_kind_check', sql`${t.kind} IN ('image', 'gif', 'video', 'audio', 'unknown')`),

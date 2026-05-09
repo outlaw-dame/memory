@@ -133,7 +133,7 @@ function action(peer: FederationPeer) {
             <!-- Toggle -->
             <button
               class="mt-0.5 w-9 h-5 rounded-full transition-colors relative flex-shrink-0"
-              :class="mod.enabled ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+              :class="mod.enabled ? 'bg-accent' : 'bg-gray-200'"
               @click="mod.enabled = !mod.enabled"
             >
               <span
@@ -200,7 +200,7 @@ function action(peer: FederationPeer) {
               </div>
               <button
                 class="w-9 h-5 rounded-full transition-colors relative flex-shrink-0"
-                :class="form.semantic ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+                :class="form.semantic ? 'bg-accent' : 'bg-gray-200'"
                 type="button"
                 @click="form.semantic = !form.semantic"
               >
@@ -249,7 +249,7 @@ function action(peer: FederationPeer) {
             <div class="flex items-center gap-2 pt-1">
               <button
                 :disabled="!form.pattern.trim() || kwPending"
-                class="rounded-lg bg-[rgb(99,100,246)] text-white text-[11px] font-semibold px-4 py-1.5 hover:bg-indigo-600 transition-colors disabled:opacity-40"
+                class="rounded-lg bg-accent text-white text-[11px] font-semibold px-4 py-1.5 hover:bg-indigo-600 transition-colors disabled:opacity-40"
                 type="button"
                 @click="submitRule"
               >

@@ -1,67 +1,82 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
 import CreatePostForm from '@/components/CreatePostForm.vue'
+import StoryComposer from '@/components/StoryComposer.vue'
+import StoryRail from '@/components/StoryRail.vue'
+import StoryViewer from '@/components/StoryViewer.vue'
 import UnifiedFeedList from '@/components/UnifiedFeedList.vue'
-import { ref } from 'vue'
+import AppSegmentedControl from '@/design/components/AppSegmentedControl.vue'
+import type { SegmentItem } from '@/design/components/AppSegmentedControl.vue'
 import { useI18n } from '@/i18n'
+import { useLargeTitleSentinel } from '@/composables/useLargeTitle'
+import { useAtBridgeStore } from '@/stores/atBridgeStore'
 
 type Tab = 'for-you' | 'home' | 'following'
 const activeTab = ref<Tab>('for-you')
 const { t } = useI18n()
+const atBridgeStore = useAtBridgeStore()
+const showStoryComposer = ref(false)
+const storyViewerGroupIndex = ref<number | null>(null)
+
+const tabs = computed<SegmentItem<Tab>[]>(() => [
+  { value: 'for-you',   label: t('home.tabs.forYou')   },
+  { value: 'home',      label: t('home.tabs.home')      },
+  { value: 'following', label: t('home.tabs.following') },
+])
+
+// Large-title sentinel — placed at the bottom edge of the title block.
+// When it scrolls out of view the AppTopBar fades in its inline title.
+const sentinel = ref<HTMLElement | null>(null)
+onMounted(() => {
+  useLargeTitleSentinel(() => sentinel.value)
+  void atBridgeStore.fetchStories()
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <div class="flex justify-end">
-      <RouterLink to="/settings" class="rounded bg-pastel-light px-3 py-2 text-sm font-medium hover:bg-blue-100">
-        {{ t('home.settings') }}
-      </RouterLink>
+  <div class="flex flex-col gap-4 pt-2">
+    <!-- Large title block (iOS pattern) -->
+    <div class="pt-2 pb-1">
+      <h1 class="text-[2rem] font-black tracking-tight text-label leading-none">memory.</h1>
+      <!-- Sentinel sits at the very bottom of the title; observer fires when it exits view -->
+      <div ref="sentinel" class="h-px" aria-hidden="true" />
     </div>
 
-    <!-- Tab switcher -->
-    <div class="flex gap-2 border-b border-gray-200 pb-2">
-      <button
-        class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeTab === 'for-you'
-          ? 'border-b-2 border-blue-600 text-blue-600'
-          : 'text-gray-500 hover:text-gray-700'"
-        @click="activeTab = 'for-you'"
-      >
-        {{ t('home.tabs.forYou') }}
-      </button>
-      <button
-        class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeTab === 'home'
-          ? 'border-b-2 border-blue-600 text-blue-600'
-          : 'text-gray-500 hover:text-gray-700'"
-        @click="activeTab = 'home'"
-      >
-        {{ t('home.tabs.home') }}
-      </button>
-      <button
-        class="rounded-t px-4 py-2 text-sm font-semibold transition-colors"
-        :class="activeTab === 'following'
-          ? 'border-b-2 border-blue-600 text-blue-600'
-          : 'text-gray-500 hover:text-gray-700'"
-        @click="activeTab = 'following'"
-      >
-        {{ t('home.tabs.following') }}
-      </button>
-    </div>
+    <AppSegmentedControl v-model="activeTab" :items="tabs" />
 
-    <!-- For You: algorithmic/balanced feed across all protocols -->
+    <StoryRail
+      :groups="atBridgeStore.storyGroups"
+      :loading="atBridgeStore.isStoriesLoading"
+      :error="atBridgeStore.storiesError"
+      @compose="showStoryComposer = true"
+      @open="storyViewerGroupIndex = $event"
+    />
+
     <div v-if="activeTab === 'for-you'">
       <UnifiedFeedList mode="balanced" />
     </div>
 
-    <!-- Home: chronological timeline with compose -->
     <div v-if="activeTab === 'home'" class="flex flex-col gap-4">
       <CreatePostForm />
       <UnifiedFeedList mode="chronological" />
     </div>
 
-    <!-- Following: posts from people you follow only -->
     <div v-if="activeTab === 'following'">
       <UnifiedFeedList mode="following" />
     </div>
+
+    <StoryComposer
+      v-if="showStoryComposer"
+      @close="showStoryComposer = false"
+      @created="atBridgeStore.fetchStories()"
+    />
+
+    <StoryViewer
+      v-if="storyViewerGroupIndex !== null"
+      :groups="atBridgeStore.storyGroups"
+      :initial-group-index="storyViewerGroupIndex"
+      @close="storyViewerGroupIndex = null"
+      @deleted="atBridgeStore.fetchStories()"
+    />
   </div>
 </template>

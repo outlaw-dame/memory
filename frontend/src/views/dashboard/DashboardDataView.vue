@@ -129,7 +129,7 @@ function traceActionColor(a: MrfTrace['action']): string {
 // ── Storage breakdown ─────────────────────────────────────────────────────────
 
 const storageBreakdown = [
-  { label: 'Media attachments', bytes: 245_366_784, color: 'bg-[rgb(99,100,246)]' },
+  { label: 'Media attachments', bytes: 245_366_784, color: 'bg-accent' },
   { label: 'ActivityPub objects', bytes: 12_582_912, color: 'bg-blue-300' },
   { label: 'AT records',           bytes: 4_194_304,  color: 'bg-sky-300' },
   { label: 'MRF traces',           bytes: 1_048_576,  color: 'bg-green-300' },
@@ -315,7 +315,7 @@ const expandedRecord = ref<AtRecord | null>(null)
         <div class="space-y-2">
           <div v-for="c in uniqueCollections" :key="c" class="flex items-center justify-between">
             <span class="text-[11px] text-gray-500">{{ c }}</span>
-            <span class="text-[11px] font-semibold text-[rgb(99,100,246)]">{{ atRecords.filter(r => r.collection === c).length }} records</span>
+            <span class="text-[11px] font-semibold text-[var(--color-accent)]">{{ atRecords.filter(r => r.collection === c).length }} records</span>
           </div>
         </div>
       </div>

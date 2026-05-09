@@ -202,7 +202,7 @@ function validateForm(): void {
     <MemoryButton
       :loading="isRequesting"
       @click="submitForm"
-      class="mb-(--padding-large) w-full"
+      class="mb-(--padding-large) w-full bg-accent text-white"
       :disabled="!formIsValid"
     >
       {{ t('common.actions.signUp') }}

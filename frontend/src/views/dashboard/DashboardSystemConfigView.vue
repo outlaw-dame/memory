@@ -72,7 +72,7 @@ function save() {
     <header class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
       <h1 class="text-[15px] font-semibold text-gray-800">System Configuration</h1>
       <button
-        class="text-[11px] font-semibold bg-[rgb(99,100,246)] text-white px-4 py-1.5 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors"
+        class="text-[11px] font-semibold bg-accent text-white px-4 py-1.5 rounded-xl hover:bg-accent-pressed transition-colors"
         @click="save"
       >
         Save Changes
@@ -97,7 +97,7 @@ function save() {
             </div>
             <button
               class="ml-4 w-9 h-5 rounded-full transition-colors relative flex-shrink-0"
-              :class="flag.enabled ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+              :class="flag.enabled ? 'bg-accent' : 'bg-gray-200'"
               @click="flag.enabled = !flag.enabled"
             >
               <span
@@ -122,7 +122,7 @@ function save() {
                 v-for="opt in ['filter', 'reject'] as const"
                 :key="opt"
                 class="text-[11px] font-medium px-3 py-1 rounded-lg transition-colors capitalize"
-                :class="mediaPolicy.blockedAction === opt ? 'bg-[rgb(99,100,246)] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'"
+                :class="mediaPolicy.blockedAction === opt ? 'bg-accent text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'"
                 @click="mediaPolicy.blockedAction = opt"
               >{{ opt }}</button>
             </div>
@@ -133,14 +133,14 @@ function save() {
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Min sensitive confidence</span>
               <div class="flex items-center gap-2">
-                <input v-model.number="mediaPolicy.minSensitiveConfidence" type="range" min="0" max="1" step="0.01" class="flex-1 accent-[rgb(99,100,246)]"/>
+                <input v-model.number="mediaPolicy.minSensitiveConfidence" type="range" min="0" max="1" step="0.01" class="flex-1 accent-[var(--color-accent)]"/>
                 <span class="text-[11px] font-semibold text-gray-600 w-10 text-right">{{ (mediaPolicy.minSensitiveConfidence * 100).toFixed(0) }}%</span>
               </div>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Min blocked confidence</span>
               <div class="flex items-center gap-2">
-                <input v-model.number="mediaPolicy.minBlockedConfidence" type="range" min="0" max="1" step="0.01" class="flex-1 accent-[rgb(99,100,246)]"/>
+                <input v-model.number="mediaPolicy.minBlockedConfidence" type="range" min="0" max="1" step="0.01" class="flex-1 accent-[var(--color-accent)]"/>
                 <span class="text-[11px] font-semibold text-gray-600 w-10 text-right">{{ (mediaPolicy.minBlockedConfidence * 100).toFixed(0) }}%</span>
               </div>
             </label>
@@ -150,26 +150,26 @@ function save() {
           <div class="grid grid-cols-2 gap-4">
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">PDQ min quality (0–100)</span>
-              <input v-model.number="mediaPolicy.minPdqQuality" type="number" min="0" max="100" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="mediaPolicy.minPdqQuality" type="number" min="0" max="100" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">PDQ Hamming threshold (0–256)</span>
-              <input v-model.number="mediaPolicy.pdqHammingThreshold" type="number" min="0" max="256" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="mediaPolicy.pdqHammingThreshold" type="number" min="0" max="256" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
           </div>
 
           <!-- Toggles -->
           <div class="flex flex-wrap gap-4">
             <label class="flex items-center gap-2 text-[11px] text-gray-600 cursor-pointer select-none">
-              <input v-model="mediaPolicy.applySensitiveFlag" type="checkbox" class="accent-[rgb(99,100,246)]"/>
+              <input v-model="mediaPolicy.applySensitiveFlag" type="checkbox" class="accent-[var(--color-accent)]"/>
               Apply sensitive flag
             </label>
             <label class="flex items-center gap-2 text-[11px] text-gray-600 cursor-pointer select-none">
-              <input v-model="mediaPolicy.setContentWarning" type="checkbox" class="accent-[rgb(99,100,246)]"/>
+              <input v-model="mediaPolicy.setContentWarning" type="checkbox" class="accent-[var(--color-accent)]"/>
               Set content warning
             </label>
             <label class="flex items-center gap-2 text-[11px] text-gray-600 cursor-pointer select-none">
-              <input v-model="mediaPolicy.traceReasons" type="checkbox" class="accent-[rgb(99,100,246)]"/>
+              <input v-model="mediaPolicy.traceReasons" type="checkbox" class="accent-[var(--color-accent)]"/>
               Trace reasons
             </label>
           </div>
@@ -177,7 +177,7 @@ function save() {
           <!-- Content warning text -->
           <label class="flex flex-col gap-1">
             <span class="text-[11px] font-medium text-gray-500">Content warning text</span>
-            <input v-model="mediaPolicy.contentWarningText" type="text" maxlength="160" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)] w-72"/>
+            <input v-model="mediaPolicy.contentWarningText" type="text" maxlength="160" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent w-72"/>
           </label>
 
           <!-- Sensitive labels -->
@@ -194,7 +194,7 @@ function save() {
               </span>
             </div>
             <div class="flex gap-2">
-              <input v-model="newSensitiveLabel" type="text" placeholder="Add label…" class="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] outline-none focus:border-[rgb(99,100,246)] w-40" @keyup.enter="addSensitiveLabel"/>
+              <input v-model="newSensitiveLabel" type="text" placeholder="Add label…" class="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] outline-none focus:border-accent w-40" @keyup.enter="addSensitiveLabel"/>
               <button class="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-colors" @click="addSensitiveLabel">Add</button>
             </div>
           </div>
@@ -213,7 +213,7 @@ function save() {
               </span>
             </div>
             <div class="flex gap-2">
-              <input v-model="newBlockedLabel" type="text" placeholder="Add label…" class="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] outline-none focus:border-[rgb(99,100,246)] w-40" @keyup.enter="addBlockedLabel"/>
+              <input v-model="newBlockedLabel" type="text" placeholder="Add label…" class="rounded-lg border border-gray-200 px-2.5 py-1 text-[11px] outline-none focus:border-accent w-40" @keyup.enter="addBlockedLabel"/>
               <button class="text-[11px] bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-colors" @click="addBlockedLabel">Add</button>
             </div>
           </div>
@@ -228,7 +228,7 @@ function save() {
             <p class="text-[12px] font-medium text-gray-700">Rate limiting enabled</p>
             <button
               class="w-9 h-5 rounded-full transition-colors relative"
-              :class="rateLimit.enabled ? 'bg-[rgb(99,100,246)]' : 'bg-gray-200'"
+              :class="rateLimit.enabled ? 'bg-accent' : 'bg-gray-200'"
               @click="rateLimit.enabled = !rateLimit.enabled"
             >
               <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all" :class="rateLimit.enabled ? 'left-[20px]' : 'left-0.5'"></span>
@@ -237,19 +237,19 @@ function save() {
           <div class="grid grid-cols-2 gap-4">
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Global capacity (activities)</span>
-              <input v-model.number="rateLimit.globalCapacity" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="rateLimit.globalCapacity" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Global refill rate (/hr)</span>
-              <input v-model.number="rateLimit.globalRefillRate" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="rateLimit.globalRefillRate" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Per-instance capacity</span>
-              <input v-model.number="rateLimit.perInstanceCapacity" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="rateLimit.perInstanceCapacity" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-[11px] font-medium text-gray-500">Per-instance refill rate (/hr)</span>
-              <input v-model.number="rateLimit.perInstanceRefillRate" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+              <input v-model.number="rateLimit.perInstanceRefillRate" type="number" class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] outline-none focus:border-accent"/>
             </label>
           </div>
         </div>

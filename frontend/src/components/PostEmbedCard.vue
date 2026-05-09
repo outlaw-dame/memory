@@ -64,11 +64,11 @@ function open() {
       <button
         type="button"
         class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-dark-10"
-        style="background: rgba(99,100,246,0.12);"
+        style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);"
         @click.stop="open"
         aria-label="Open post"
       >
-        <svg class="w-4 h-4" style="color:rgb(99,100,246)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="w-4 h-4" style="color:var(--color-accent)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
         </svg>
       </button>
@@ -94,7 +94,7 @@ function open() {
         v-if="post.embedCount"
         type="button"
         class="text-caption font-semibold hover:underline"
-        style="color: rgb(99,100,246);"
+        style="color: var(--color-accent);"
         @click.stop="open"
       >{{ post.embedCount }}</button>
       <span v-if="post.viewCount" class="text-caption text-dark-50">{{ post.viewCount }} views</span>
@@ -104,9 +104,9 @@ function open() {
     <div class="flex items-center gap-2 px-3.5 pb-3.5">
       <button type="button"
         class="flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-dark-10"
-        style="background:rgba(99,100,246,0.12);"
+        style="background:color-mix(in srgb, var(--color-accent) 12%, transparent);"
         @click.stop>
-        <svg class="w-3.5 h-3.5" style="color:rgb(99,100,246)" viewBox="0 0 24 24" fill="currentColor">
+        <svg class="w-3.5 h-3.5" style="color:var(--color-accent)" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
         </svg>
       </button>

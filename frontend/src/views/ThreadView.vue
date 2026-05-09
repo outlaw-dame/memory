@@ -188,7 +188,7 @@ function formatCount(n: string | undefined): string {
         class="w-9 h-9 rounded-full bg-dark-10 flex items-center justify-center hover:bg-dark-20 transition-colors"
         @click="router.back()"
       >
-        <svg class="w-4 h-4 text-dark ml-[-2px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="-ml-0.5 w-4 h-4 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M15 18l-6-6 6-6"/>
         </svg>
       </button>
@@ -215,26 +215,26 @@ function formatCount(n: string | undefined): string {
       </div>
 
       <!-- Error state -->
-      <div v-else-if="error" class="rounded-[var(--radius-default,25px)] bg-white shadow-sm p-6 text-center text-dark-50 text-sm">
+      <div v-else-if="error" class="rounded-default bg-white p-6 text-center text-sm text-dark-50 shadow-sm">
         {{ error }}
       </div>
 
       <template v-else-if="rootPost">
 
       <!-- ── Root post card ── -->
-      <div class="rounded-[var(--radius-default,25px)] bg-white shadow-sm p-4 flex flex-col gap-3">
+      <div class="rounded-default bg-white p-4 shadow-sm flex flex-col gap-3">
 
         <!-- Author row -->
         <div class="flex items-start gap-3">
           <div
-            class="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold select-none"
+            class="h-10 w-10 shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold select-none"
             :style="{ background: rootPost.avatarColor }"
           >{{ rootPost.avatarInitials }}</div>
 
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
               <span class="text-subHeader font-bold text-dark">{{ rootPost.authorName }}</span>
-              <span class="flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0" style="background: #1d9bf0;">
+              <span class="flex items-center justify-center w-4 h-4 rounded-full shrink-0" style="background: #1d9bf0;">
                 <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                 </svg>
@@ -242,7 +242,7 @@ function formatCount(n: string | undefined): string {
             </div>
             <div class="flex items-center gap-1.5 mt-0.5">
               <span class="text-caption text-dark-50">{{ rootPost.timeAgo }}</span>
-              <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round">
+              <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round">
                 <circle cx="10" cy="10" r="4"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/>
               </svg>
               <span class="text-caption font-medium" style="color: #22c55e;">{{ rootPost.federationDomain }}</span>
@@ -251,8 +251,8 @@ function formatCount(n: string | undefined): string {
 
           <button
             type="button"
-            class="rounded-full px-4 py-1.5 text-footnote font-bold text-white flex-shrink-0"
-            style="background: rgb(99,100,246);"
+            class="rounded-full px-4 py-1.5 text-footnote font-bold text-white shrink-0"
+            style="background: var(--color-accent);"
           >Follow</button>
         </div>
 
@@ -281,7 +281,7 @@ function formatCount(n: string | undefined): string {
           <!-- Reply -->
           <button type="button"
             class="flex items-center gap-1.5 rounded-full px-3 py-2 text-footnote font-semibold transition-colors"
-            style="background: rgba(99,100,246,0.12); color: rgb(99,100,246);">
+            style="background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent);">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
             </svg>
@@ -331,19 +331,19 @@ function formatCount(n: string | undefined): string {
         <!-- Left connector bracket -->
         <div class="absolute left-7 top-0 bottom-4 w-0.5 rounded-full bg-dark-10 z-0" />
 
-        <div class="relative z-10 rounded-[var(--radius-default,25px)] bg-white shadow-sm p-4 flex flex-col gap-3">
+        <div class="relative z-10 rounded-default bg-white p-4 shadow-sm flex flex-col gap-3">
 
           <!-- Author row -->
           <div class="flex items-start gap-3">
             <div
-              class="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold select-none"
+              class="h-10 w-10 shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold select-none"
               :style="{ background: reply.avatarColor }"
             >{{ reply.avatarInitials }}</div>
 
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
                 <span class="text-subHeader font-bold text-dark">{{ reply.authorName }}</span>
-                <span class="flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0" style="background: #1d9bf0;">
+                <span class="flex items-center justify-center w-4 h-4 rounded-full shrink-0" style="background: #1d9bf0;">
                   <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                   </svg>
@@ -351,7 +351,7 @@ function formatCount(n: string | undefined): string {
               </div>
               <div class="flex items-center gap-1.5 mt-0.5">
                 <span class="text-caption text-dark-50">{{ reply.timeAgo }}</span>
-                <svg class="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round">
+                <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round">
                   <circle cx="10" cy="10" r="4"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/>
                 </svg>
                 <span class="text-caption font-medium" style="color: #22c55e;">{{ reply.federationDomain }}</span>
@@ -359,14 +359,14 @@ function formatCount(n: string | undefined): string {
               <!-- answering to -->
               <p v-if="reply.inReplyToName" class="text-caption text-dark-50 mt-0.5">
                 answering to
-                <span class="font-semibold" style="color: rgb(99,100,246);">{{ reply.inReplyToName }}</span>
+                <span class="font-semibold" style="color: var(--color-accent);">{{ reply.inReplyToName }}</span>
               </p>
             </div>
 
             <button
               type="button"
-              class="rounded-full px-4 py-1.5 text-footnote font-bold text-white flex-shrink-0"
-              style="background: rgb(99,100,246);"
+              class="rounded-full px-4 py-1.5 text-footnote font-bold text-white shrink-0"
+              style="background: var(--color-accent);"
             >Follow</button>
           </div>
 

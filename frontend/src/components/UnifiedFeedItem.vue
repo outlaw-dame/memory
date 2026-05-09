@@ -360,10 +360,10 @@ async function onRepostClick() {
 </script>
 
 <template>
-  <div class="rounded-default flex flex-col gap-3 bg-white p-[var(--padding-main)] shadow-sm">
+  <div class="rounded-default flex flex-col gap-3 bg-white p-(--padding-main) shadow-sm">
     <div v-if="repostSummary" class="text-footnote flex items-center gap-2 font-semibold text-emerald-700">
       <span
-        class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
         style="background: rgba(34, 197, 94, 0.12)"
       >
         <svg
@@ -387,7 +387,7 @@ async function onRepostClick() {
       <div class="flex items-start gap-3">
         <!-- Avatar -->
         <div
-          class="flex h-11 w-11 flex-shrink-0 select-none items-center justify-center rounded-full text-sm font-bold text-white"
+          class="flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-full text-sm font-bold text-white"
           style="background: #1a1a2e"
         >
           {{ getInitials(item.authorName) }}
@@ -399,7 +399,7 @@ async function onRepostClick() {
             <p class="text-subHeader text-dark truncate font-bold">{{ item.authorName }}</p>
             <!-- Verified badge: blue circle with white check -->
             <span
-              class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full"
+              class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
               style="background: #1d9bf0"
             >
               <svg class="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
@@ -417,7 +417,7 @@ async function onRepostClick() {
             <!-- Federation source with node icon -->
             <span class="text-caption flex items-center gap-0.5 font-semibold" style="color: #22c55e">
               <svg
-                class="h-2.5 w-2.5 flex-shrink-0"
+                class="h-2.5 w-2.5 shrink-0"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -438,9 +438,9 @@ async function onRepostClick() {
         <!-- Follow button — all posts -->
         <button
           :disabled="isFollowing(item.authorWebId)"
-          class="text-footnote flex-shrink-0 rounded-full px-4 py-1.5 font-bold text-white transition-opacity"
+          class="text-footnote shrink-0 rounded-full px-4 py-1.5 font-bold text-white transition-opacity"
           :class="isFollowing(item.authorWebId) ? 'cursor-not-allowed opacity-40' : 'hover:opacity-85'"
-          style="background: rgb(99, 100, 246)"
+          style="background: var(--color-accent)"
           @click.stop="item.source === 'activitypods' ? follow(item.authorWebId) : undefined"
         >
           {{ isFollowing(item.authorWebId) ? t('common.actions.following') : t('common.actions.follow') }}
@@ -451,7 +451,7 @@ async function onRepostClick() {
         <div class="flex items-center gap-2">
           <span
             class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
-            style="background: rgba(99, 100, 246, 0.12); color: rgb(99, 100, 246)"
+            style="background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent)"
           >
             {{ t('feed.article.badge') }}
           </span>
@@ -477,7 +477,7 @@ async function onRepostClick() {
             target="_blank"
             rel="noopener noreferrer"
             class="text-footnote inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-semibold transition-opacity hover:opacity-80"
-            style="background: rgba(99, 100, 246, 0.1); color: rgb(99, 100, 246)"
+            style="background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent)"
           >
             {{ t('feed.article.open') }}
             <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -529,7 +529,7 @@ async function onRepostClick() {
       <!-- Reply -->
       <button
         class="text-footnote flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition-opacity hover:opacity-80"
-        style="background: rgba(99, 100, 246, 0.12); color: rgb(99, 100, 246)"
+        style="background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent)"
         @click="openReplyComposer"
       >
         <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -601,6 +601,6 @@ async function onRepostClick() {
     />
 
     <!-- More actions bottom sheet -->
-    <MoreActionsSheet v-if="isMoreActionsOpen" :item="item" @close="isMoreActionsOpen = false" />
+    <MoreActionsSheet v-model:opened="isMoreActionsOpen" :item="item" />
   </div>
 </template>

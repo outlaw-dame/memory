@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
-import { RouterView } from 'vue-router'
-import { useRoute } from 'vue-router'
-import ControlBar from '@/components/ControlBar.vue'
-import BottomNav from '@/components/BottomNav.vue'
+import { computed, onMounted, watchEffect } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
+import { Capacitor } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
+import { StatusBar, Style } from '@capacitor/status-bar'
+import { kApp } from 'konsta/vue'
+import AppTopBar from '@/design/components/AppTopBar.vue'
+import AppTabBar from '@/design/components/AppTabBar.vue'
+import { useKonstaTheme } from '@/design/composables/useKonstaTheme'
+import { useNetworkStatus } from '@/composables/useNetworkStatus'
+import { useKeyboard } from '@/composables/useKeyboard'
 import { useI18n } from '@/i18n'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
-const dashboardUiEnabled = import.meta.env.VITE_ENABLE_PROVIDER_DASHBOARD === 'true'
+const konstaTheme = useKonstaTheme()
 
-const isDashboard = computed(() => dashboardUiEnabled && route.path.startsWith('/dashboard'))
+// Initialize application-wide singletons
+useNetworkStatus()
+useKeyboard()
+
+const AUTH_ROUTES = new Set(['signin', 'signup', 'welcome', 'experience', 'auth-callback'])
+const isAuthRoute = computed(() => AUTH_ROUTES.has(String(route.name)))
 
 const documentTitle = computed(() => {
   const titleKey = typeof route.meta.titleKey === 'string' ? route.meta.titleKey : 'app.name'
@@ -20,23 +32,50 @@ const documentTitle = computed(() => {
 watchEffect(() => {
   document.title = documentTitle.value
 })
+
+onMounted(() => {
+  if (!Capacitor.isNativePlatform()) return
+
+  // Configure status bar for a full-bleed native feel
+  StatusBar.setStyle({ style: Style.Light }).catch(() => {})
+  StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
+
+  // Handle Android hardware back button
+  if (Capacitor.getPlatform() === 'android') {
+    CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (canGoBack) {
+        router.back()
+      } else {
+        CapApp.exitApp()
+      }
+    }).catch(() => {})
+  }
+})
 </script>
 
 <template>
-  <!-- Dashboard routes get their own full-page layout via nested RouterView -->
-  <RouterView v-if="isDashboard" />
-
-  <!-- Standard app layout for all other routes -->
-  <div
-    v-else
-    class="memoryContainer bg-pastel-dark grid h-lvh grid-rows-[fit-content(100%)_auto] items-stretch px-[var(--padding-main)]"
+  <!--
+    kApp sets the Konsta theme context (ios or material) for all child
+    components. dark=false keeps Memory in its default light-mode palette.
+    The flex-col + h-lvh layout gives us a three-row shell:
+      top bar (shrink-0) / scrollable content (flex-1) / tab bar (shrink-0)
+  -->
+  <kApp
+    :theme="konstaTheme"
+    :dark="false"
+    component="div"
+    class="flex flex-col overflow-hidden bg-background h-lvh"
   >
-    <header class="py-[var(--padding-main)]">
-      <ControlBar />
-    </header>
-    <main class="overflow-y-auto pb-20">
-      <RouterView />
-    </main>
-    <BottomNav />
-  </div>
+    <!-- Auth routes: full-screen, no shell -->
+    <RouterView v-if="isAuthRoute" class="flex-1" />
+
+    <!-- App shell: top bar + scrollable content + tab bar -->
+    <template v-else>
+      <AppTopBar class="shrink-0" />
+      <main class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-(--padding-main)">
+        <RouterView />
+      </main>
+      <AppTabBar class="shrink-0" />
+    </template>
+  </kApp>
 </template>

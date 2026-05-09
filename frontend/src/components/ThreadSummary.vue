@@ -142,7 +142,7 @@ watch(
     <!-- Thread metadata + expand button -->
     <div
       class="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5"
-      style="background: rgba(99, 100, 246, 0.06)"
+      style="background: color-mix(in srgb, var(--color-accent) 6%, transparent)"
     >
       <div class="flex items-center gap-3">
         <!-- Metrics -->
@@ -151,14 +151,14 @@ watch(
             class="h-3.5 w-3.5"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="rgba(99,100,246,0.7)"
+            stroke="color-mix(in srgb, var(--color-accent) 70%, transparent)"
             stroke-width="2.5"
             stroke-linecap="round"
             stroke-linejoin="round"
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span class="text-footnote font-semibold" style="color: rgb(99, 100, 246)">{{ replyCountLabel }}</span>
+          <span class="text-footnote font-semibold" style="color: var(--color-accent)">{{ replyCountLabel }}</span>
         </div>
 
         <span class="text-footnote text-dark-20">·</span>
@@ -177,7 +177,7 @@ watch(
         :disabled="isLoadingThread"
         class="text-footnote flex-shrink-0 rounded-full px-4 py-1.5 font-semibold transition-opacity"
         :class="isExpanded ? 'text-white' : 'bg-white text-indigo-600 shadow-sm hover:bg-indigo-50'"
-        :style="isExpanded ? 'background: rgb(99,100,246);' : ''"
+        :style="isExpanded ? 'background: var(--color-accent);' : ''"
         @click="toggleExpand"
       >
         {{ isLoadingThread ? t('thread.loading') : isExpanded ? t('thread.hide') : t('thread.view') }}
@@ -207,7 +207,7 @@ watch(
           <button
             :disabled="isLoadingThread"
             class="text-footnote rounded-full px-4 py-2 font-semibold transition-opacity hover:opacity-80"
-            style="background: rgba(99, 100, 246, 0.1); color: rgb(99, 100, 246)"
+            style="background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent)"
             @click="loadMoreReplies"
           >
             {{ isLoadingThread ? t('thread.loading') : t('thread.loadMore') }}
@@ -223,7 +223,7 @@ watch(
 
     <!-- Expand loading state (before first fetch) -->
     <div v-else-if="isLoadingThread" class="flex items-center justify-center gap-2 py-4">
-      <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="rgba(99,100,246,0.6)" stroke-width="2">
+      <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="color-mix(in srgb, var(--color-accent) 60%, transparent)" stroke-width="2">
         <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.1" />
         <path d="M4 12a8 8 0 0 1 15.464-3.535" stroke="currentColor" />
       </svg>

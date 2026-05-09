@@ -153,7 +153,7 @@ const demoPost = {
 
       <form @submit.prevent="submitSearch">
         <div class="relative">
-          <div class="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-dark-40 flex-shrink-0" />
+          <div class="absolute left-4 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-dark-40 shrink-0" />
           <input
             v-model="searchQuery"
             type="search"
@@ -174,7 +174,7 @@ const demoPost = {
     >
       <button
         type="button"
-        class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full"
+        class="h-9 w-9 shrink-0 flex items-center justify-center rounded-full"
         style="background: rgba(55,55,55,0.1); color: rgba(55,55,55,0.6);"
         @click="exitSearch"
       >
@@ -183,7 +183,7 @@ const demoPost = {
 
       <form class="flex-1" @submit.prevent="submitSearch">
         <div class="relative">
-          <div class="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-dark-40 flex-shrink-0" />
+          <div class="absolute left-4 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-dark-40 shrink-0" />
           <input
             v-model="searchQuery"
             type="search"
@@ -253,7 +253,7 @@ const demoPost = {
             :class="i < people.length - 1 ? 'border-b border-dark-5' : ''"
           >
             <div
-              class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+              class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
               :style="{ background: person.color }"
             >{{ person.initials }}</div>
             <div class="flex-1 min-w-0">
@@ -262,10 +262,10 @@ const demoPost = {
             </div>
             <button
               type="button"
-              class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+              class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
               :style="isFollowing(person.id)
                 ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                : 'background:rgb(99,100,246);color:#fff;'"
+                : 'background:var(--color-accent);color:#fff;'"
               @click="follow(person.id)"
             >{{ isFollowing(person.id) ? 'Unfollow' : 'Follow' }}</button>
           </div>
@@ -282,8 +282,8 @@ const demoPost = {
           </p>
           <button
             type="button"
-            class="flex-shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-            style="background: rgb(99,100,246);"
+            class="shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+            style="background: var(--color-accent);"
           >
             Launch!
           </button>
@@ -300,7 +300,7 @@ const demoPost = {
               :class="i < people.length - 1 ? 'border-b border-dark-5' : ''"
             >
               <div
-                class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                class="w-11 h-11 rounded-full shrink-0 flex items-center justify-center text-white text-sm font-bold"
                 :style="{ background: person.color }"
               >{{ person.initials }}</div>
               <div class="flex-1 min-w-0">
@@ -309,16 +309,16 @@ const demoPost = {
               </div>
               <button
                 type="button"
-                class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+                class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
                 :style="isFollowing(person.id)
                   ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                  : 'background:rgb(99,100,246);color:#fff;'"
+                  : 'background:var(--color-accent);color:#fff;'"
                 @click="follow(person.id)"
               >{{ isFollowing(person.id) ? 'Unfollow' : 'Follow' }}</button>
             </div>
           </div>
           <div class="flex justify-end mt-1.5 pr-1">
-            <button type="button" class="text-xs font-semibold" style="color: rgba(99,100,246,0.55);">View more...</button>
+            <button type="button" class="text-xs font-semibold" style="color: color-mix(in srgb, var(--color-accent) 55%, transparent);">View more...</button>
           </div>
         </div>
 
@@ -332,8 +332,8 @@ const demoPost = {
               class="flex items-center gap-3 px-4 py-3"
               :class="i < trendingTags.length - 1 ? 'border-b border-dark-5' : ''"
             >
-              <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background: rgba(99,100,246,0.12);">
-                <span class="text-lg font-black" style="color: rgb(99,100,246);">#</span>
+              <div class="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center" style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+                <span class="text-lg font-black" style="color: var(--color-accent);">#</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-bold text-dark">#{{ t.tag }}</p>
@@ -341,16 +341,16 @@ const demoPost = {
               </div>
               <button
                 type="button"
-                class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+                class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
                 :style="followedTags.has(t.tag)
                   ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                  : 'background:rgb(99,100,246);color:#fff;'"
+                  : 'background:var(--color-accent);color:#fff;'"
                 @click="toggleTag(t.tag)"
               >{{ followedTags.has(t.tag) ? 'Followed' : 'Follow' }}</button>
             </div>
           </div>
           <div class="flex justify-end mt-1.5 pr-1">
-            <button type="button" class="text-xs font-semibold" style="color: rgba(99,100,246,0.55);">View more...</button>
+            <button type="button" class="text-xs font-semibold" style="color: color-mix(in srgb, var(--color-accent) 55%, transparent);">View more...</button>
           </div>
         </div>
 
@@ -359,13 +359,13 @@ const demoPost = {
           <p class="text-base font-bold text-dark mb-2 px-1">Posts</p>
           <div class="rounded-2xl bg-white p-4 flex flex-col gap-3">
             <div class="flex items-start gap-3">
-              <div class="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold" :style="{ background: demoPost.avatarColor }">
+              <div class="h-11 w-11 shrink-0 flex items-center justify-center rounded-full text-white text-sm font-bold" :style="{ background: demoPost.avatarColor }">
                 {{ demoPost.avatarInitials }}
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5">
                   <span class="text-sm font-bold text-dark">{{ demoPost.authorName }}</span>
-                  <span class="flex items-center justify-center w-4 h-4 rounded-full flex-shrink-0" style="background:#1d9bf0;">
+                  <span class="flex items-center justify-center w-4 h-4 rounded-full shrink-0" style="background:#1d9bf0;">
                     <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
                   </span>
                 </div>
@@ -374,7 +374,7 @@ const demoPost = {
                   <span class="text-xs font-semibold" style="color:#22c55e;">· {{ demoPost.federationDomain }}</span>
                 </div>
               </div>
-              <button type="button" class="rounded-xl px-4 py-1.5 text-xs font-bold text-white flex-shrink-0" style="background:rgb(99,100,246);">Follow</button>
+              <button type="button" class="rounded-xl px-4 py-1.5 text-xs font-bold text-white shrink-0" style="background:var(--color-accent);">Follow</button>
             </div>
             <p class="text-sm text-dark leading-snug">{{ demoPost.content }}</p>
             <PostEmbedCard :post="demoPost.embed" />
@@ -400,8 +400,8 @@ const demoPost = {
             class="flex items-center gap-3 px-4 py-3"
             :class="i < trendingTags.length - 1 ? 'border-b border-dark-5' : ''"
           >
-            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background: rgba(99,100,246,0.12);">
-              <span class="text-lg font-black" style="color: rgb(99,100,246);">#</span>
+            <div class="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center" style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+              <span class="text-lg font-black" style="color: var(--color-accent);">#</span>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-bold text-dark">#{{ t.tag }}</p>
@@ -409,10 +409,10 @@ const demoPost = {
             </div>
             <button
               type="button"
-              class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+              class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
               :style="followedTags.has(t.tag)
                 ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                : 'background:rgb(99,100,246);color:#fff;'"
+                : 'background:var(--color-accent);color:#fff;'"
               @click="toggleTag(t.tag)"
             >{{ followedTags.has(t.tag) ? 'Followed' : 'Follow' }}</button>
           </div>
@@ -429,8 +429,8 @@ const demoPost = {
             class="flex items-center gap-3 px-4 py-3"
             :class="i < recommendedTags.length - 1 ? 'border-b border-dark-5' : ''"
           >
-            <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background: rgba(99,100,246,0.08);">
-              <span class="text-lg font-black" style="color: rgba(99,100,246,0.7);">#</span>
+            <div class="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center" style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);">
+              <span class="text-lg font-black" style="color: color-mix(in srgb, var(--color-accent) 70%, transparent);">#</span>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-bold text-dark">#{{ t.tag }}</p>
@@ -438,10 +438,10 @@ const demoPost = {
             </div>
             <button
               type="button"
-              class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+              class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
               :style="followedTags.has(t.tag)
                 ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                : 'background:rgb(99,100,246);color:#fff;'"
+                : 'background:var(--color-accent);color:#fff;'"
               @click="toggleTag(t.tag)"
             >{{ followedTags.has(t.tag) ? 'Followed' : 'Follow' }}</button>
           </div>
@@ -459,7 +459,7 @@ const demoPost = {
             :class="i < people.length - 1 ? 'border-b border-dark-5' : ''"
           >
             <div
-              class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+              class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
               :style="{ background: person.color }"
             >{{ person.initials }}</div>
             <div class="flex-1 min-w-0">
@@ -468,10 +468,10 @@ const demoPost = {
             </div>
             <button
               type="button"
-              class="rounded-xl px-5 py-2 text-sm font-bold flex-shrink-0 transition-colors"
+              class="rounded-xl px-5 py-2 text-sm font-bold shrink-0 transition-colors"
               :style="isFollowing(person.id)
                 ? 'background:rgba(55,55,55,0.1);color:rgba(55,55,55,0.55);'
-                : 'background:rgb(99,100,246);color:#fff;'"
+                : 'background:var(--color-accent);color:#fff;'"
               @click="follow(person.id)"
             >{{ isFollowing(person.id) ? 'Unfollow' : 'Follow' }}</button>
           </div>

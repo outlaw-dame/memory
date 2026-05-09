@@ -187,7 +187,7 @@ function toPopularLabel(item: PopularFeedItem): string {
         :class="store.feedSource === src.value
           ? 'text-white'
           : 'bg-white text-dark-50 hover:bg-dark-10 shadow-sm'"
-        :style="store.feedSource === src.value ? 'background: rgb(99,100,246);' : ''"
+        :style="store.feedSource === src.value ? 'background: var(--color-accent);' : ''"
         @click="store.setFeedSource(src.value)"
       >
         {{ src.label }}
@@ -204,7 +204,7 @@ function toPopularLabel(item: PopularFeedItem): string {
         :class="store.timelineMode === m.value
           ? 'text-white'
           : 'bg-white text-dark-50 hover:bg-dark-10 shadow-sm'"
-        :style="store.timelineMode === m.value ? 'background: rgb(99,100,246);' : ''"
+        :style="store.timelineMode === m.value ? 'background: var(--color-accent);' : ''"
         @click="store.setTimelineMode(m.value)"
       >
         {{ m.label }}
@@ -221,7 +221,7 @@ function toPopularLabel(item: PopularFeedItem): string {
       />
       <button
         class="rounded-full px-4 py-2 text-footnote font-semibold text-white transition-opacity hover:opacity-85"
-        style="background: rgb(99,100,246);"
+        style="background: var(--color-accent);"
         type="submit"
       >
         Filter
@@ -241,7 +241,7 @@ function toPopularLabel(item: PopularFeedItem): string {
       v-if="store.isLoading && store.unifiedFeed.length === 0"
       class="rounded-default bg-white shadow-sm flex flex-col items-center gap-3 py-14 text-center"
     >
-      <AppIcon name="loader" :size="28" color="rgba(99,100,246,0.5)" class="animate-spin" />
+      <AppIcon name="loader" :size="28" color="color-mix(in srgb, var(--color-accent) 50%, transparent)" class="animate-spin" />
       <p class="text-footnote text-dark-50">Loading feed…</p>
     </div>
 
@@ -256,8 +256,8 @@ function toPopularLabel(item: PopularFeedItem): string {
       class="rounded-default bg-white shadow-sm flex flex-col items-center gap-4 py-16 px-8 text-center"
     >
       <!-- Icon -->
-      <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: rgba(99,100,246,0.08);">
-        <AppIcon name="messages" :size="28" color="rgb(99,100,246)" />
+      <div class="w-16 h-16 rounded-full flex items-center justify-center" style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);">
+        <AppIcon name="messages" :size="28" color="var(--color-accent)" />
       </div>
 
       <div class="flex flex-col gap-1.5">
@@ -276,7 +276,7 @@ function toPopularLabel(item: PopularFeedItem): string {
       <button
         v-if="store.hashtagFilter"
         class="rounded-full px-4 py-2 text-footnote font-semibold text-white transition-opacity hover:opacity-85"
-        style="background: rgb(99,100,246);"
+        style="background: var(--color-accent);"
         @click="store.clearHashtagFilter()"
       >
         Clear filter
@@ -324,7 +324,7 @@ function toPopularLabel(item: PopularFeedItem): string {
               <span class="text-[11px] text-dark-50">{{ toPopularLabel(item) }}</span>
               <span
                 class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style="background: rgba(99,100,246,0.12); color: rgb(99,100,246);"
+                style="background: color-mix(in srgb, var(--color-accent) 12%, transparent); color: var(--color-accent);"
               >
                 Score {{ item.score.toFixed(1) }}
               </span>
@@ -347,7 +347,7 @@ function toPopularLabel(item: PopularFeedItem): string {
     <div v-if="store.unifiedFeed.length > 0" class="flex justify-center py-2">
       <button
         class="rounded-full px-5 py-2 text-footnote font-semibold transition-opacity hover:opacity-80"
-        style="background: rgba(99,100,246,0.1); color: rgb(99,100,246);"
+        style="background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent);"
         :disabled="store.isLoading"
         @click="store.fetchUnifiedFeed(true)"
       >

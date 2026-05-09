@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { and, eq, inArray, isNull, lt } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, lt } from 'drizzle-orm'
 import { db } from '../db/client'
 import { mediaAttachments } from '../db/schema'
 import type { MediaAttachmentInput } from '../types'
@@ -24,6 +24,8 @@ export interface PublicMediaAttachment {
   url: string | null
   sourceUrl: string | null
   canonicalUrl: string | null
+  storyUri: string | null
+  storyExpiresAt: string | null
   previewUrl: string | null
   thumbnailUrl: string | null
   gatewayUrl: string | null
@@ -147,6 +149,7 @@ export function normalizeMediaAttachmentIds(ids: string[]): string[] {
 export async function cleanupExpiredMediaAttachments(userId?: number): Promise<void> {
   const conditions = [
     isNull(mediaAttachments.postId),
+    isNull(mediaAttachments.storyUri),
     inArray(mediaAttachments.state, ['uploading', 'uploaded', 'failed']),
     lt(mediaAttachments.expiresAt, new Date()),
   ]
@@ -161,6 +164,30 @@ export async function cleanupExpiredMediaAttachments(userId?: number): Promise<v
       state: 'expired',
       errorCode: 'MEDIA_ATTACHMENT_EXPIRED',
       errorMessage: 'Upload was not attached to a post before it expired',
+      updatedAt: new Date(),
+    })
+    .where(and(...conditions))
+}
+
+export async function cleanupExpiredStoryMediaAttachments(userId?: number): Promise<void> {
+  const conditions = [
+    isNull(mediaAttachments.postId),
+    isNotNull(mediaAttachments.storyUri),
+    inArray(mediaAttachments.state, ['uploaded', 'ready']),
+    lt(mediaAttachments.storyExpiresAt, new Date()),
+  ]
+
+  if (typeof userId === 'number' && userId > 0) {
+    conditions.push(eq(mediaAttachments.userId, userId))
+  }
+
+  await db
+    .update(mediaAttachments)
+    .set({
+      state: 'expired',
+      errorCode: 'MEDIA_ATTACHMENT_EXPIRED',
+      errorMessage: 'Story media attachment expired',
+      expiresAt: new Date(),
       updatedAt: new Date(),
     })
     .where(and(...conditions))
@@ -298,7 +325,7 @@ export async function deleteOwnedUnattachedMediaAttachment(userId: number, id: s
   const [row] = await db
     .update(mediaAttachments)
     .set({ state: 'deleted', expiresAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(mediaAttachments.userId, userId), eq(mediaAttachments.id, id), isNull(mediaAttachments.postId)))
+    .where(and(eq(mediaAttachments.userId, userId), eq(mediaAttachments.id, id), isNull(mediaAttachments.postId), isNull(mediaAttachments.storyUri)))
     .returning()
   return row ?? null
 }
@@ -326,7 +353,7 @@ export async function resolveAttachableMediaAttachments(userId: number, ids: str
     throw new MediaAttachmentError(404, 'media.attachments.notFound', 'Media attachment not found')
   }
 
-  const invalid = orderedRows.find(row => row && (!isNullish(row.postId) || !isAttachableState(row.state) || !row.sourceUrl))
+  const invalid = orderedRows.find(row => row && (!isNullish(row.postId) || !isNullish(row.storyUri) || !isAttachableState(row.state) || !row.sourceUrl))
   if (invalid) {
     throw new MediaAttachmentError(409, 'media.attachments.notAttachable', 'Media attachment is not attachable')
   }
@@ -341,7 +368,40 @@ export async function markMediaAttachmentsAttached(userId: number, ids: string[]
   await db
     .update(mediaAttachments)
     .set({ postId, expiresAt: null, updatedAt: new Date() })
-    .where(and(eq(mediaAttachments.userId, userId), inArray(mediaAttachments.id, uniqueIds), isNull(mediaAttachments.postId)))
+    .where(and(eq(mediaAttachments.userId, userId), inArray(mediaAttachments.id, uniqueIds), isNull(mediaAttachments.postId), isNull(mediaAttachments.storyUri)))
+}
+
+export async function markMediaAttachmentAttachedToStory(
+  userId: number,
+  id: string,
+  storyUri: string,
+  storyExpiresAt: Date,
+): Promise<void> {
+  if (!isMediaAttachmentId(id)) {
+    throw new MediaAttachmentError(400, 'media.attachments.invalid', 'Invalid media attachment id')
+  }
+
+  await db
+    .update(mediaAttachments)
+    .set({
+      storyUri,
+      storyExpiresAt,
+      expiresAt: storyExpiresAt,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(mediaAttachments.userId, userId), eq(mediaAttachments.id, id), isNull(mediaAttachments.postId), isNull(mediaAttachments.storyUri)))
+}
+
+export async function markStoryMediaAttachmentDeleted(userId: number, storyUri: string): Promise<void> {
+  await db
+    .update(mediaAttachments)
+    .set({
+      state: 'deleted',
+      storyExpiresAt: new Date(),
+      expiresAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(mediaAttachments.userId, userId), eq(mediaAttachments.storyUri, storyUri), isNull(mediaAttachments.postId)))
 }
 
 export function toPublicMediaAttachment(row: MediaAttachmentRow): PublicMediaAttachment {
@@ -356,6 +416,8 @@ export function toPublicMediaAttachment(row: MediaAttachmentRow): PublicMediaAtt
     url: row.canonicalUrl || row.sourceUrl,
     sourceUrl: row.sourceUrl,
     canonicalUrl: row.canonicalUrl,
+    storyUri: row.storyUri,
+    storyExpiresAt: row.storyExpiresAt ? row.storyExpiresAt.toISOString() : null,
     previewUrl: row.previewUrl,
     thumbnailUrl: row.thumbnailUrl,
     gatewayUrl: row.gatewayUrl,

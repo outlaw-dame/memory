@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
-useRoute()
 
 const showSources = ref(true)
 const speed = ref(1.0)
@@ -112,10 +111,10 @@ function mediaGridCols(count: number): string {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col" style="background: var(--color-pastel-light, #f0ede8);">
+  <div class="min-h-screen flex flex-col" style="background: var(--color-surface);">
 
     <!-- Sticky header -->
-    <div class="sticky top-0 z-20 flex items-center justify-center px-4 pt-5 pb-3" style="background: var(--color-pastel-light, #f0ede8);">
+    <div class="sticky top-0 z-20 flex items-center justify-center px-4 pt-5 pb-3" style="background: var(--color-surface);">
       <h1 class="font-black text-dark" style="font-size: 1.5rem; letter-spacing: -0.04em;">experience.</h1>
       <button
         type="button"
@@ -144,11 +143,11 @@ function mediaGridCols(count: number): string {
           <!-- Header (padded) — only when there's content -->
           <div v-if="block.content || block.poll" class="px-4 pt-4 flex items-center gap-3">
             <div
-              class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+              class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
               :style="{ background: block.avatarColor }"
             >{{ block.avatarInitials }}</div>
             <span class="text-sm font-bold text-dark flex-1">{{ block.authorName }}</span>
-            <button type="button" class="rounded-xl px-4 py-1.5 text-xs font-bold text-white flex-shrink-0" style="background: rgb(99,100,246);">Follow</button>
+            <button type="button" class="rounded-xl px-4 py-1.5 text-xs font-bold text-white shrink-0" style="background: var(--color-accent);">Follow</button>
           </div>
 
           <!-- Content text -->
@@ -160,13 +159,13 @@ function mediaGridCols(count: number): string {
               <p class="text-sm font-bold text-dark mb-2 leading-snug">{{ block.poll.question }}</p>
               <div class="flex flex-col gap-1.5">
                 <div v-for="opt in block.poll.options" :key="opt.text" class="flex items-center gap-2">
-                  <div class="flex-1 relative rounded-lg overflow-hidden" style="height: 38px; background: rgba(99,100,246,0.08);">
+                  <div class="flex-1 relative rounded-lg overflow-hidden" style="height: 38px; background: color-mix(in srgb, var(--color-accent) 8%, transparent);">
                     <div
                       class="absolute inset-y-0 left-0 rounded-lg"
-                      style="background: rgba(99,100,246,0.28);"
+                      style="background: color-mix(in srgb, var(--color-accent) 28%, transparent);"
                       :style="{ width: opt.percent + '%' }"
                     />
-                    <span class="absolute inset-0 flex items-center px-3 text-sm font-semibold" style="color: rgb(80,81,200);">{{ opt.text }}</span>
+                    <span class="absolute inset-0 flex items-center px-3 text-sm font-semibold" style="color: var(--color-accent);">{{ opt.text }}</span>
                   </div>
                   <span class="text-sm font-semibold text-dark-50 w-10 text-right">{{ opt.percent }}%</span>
                 </div>
@@ -184,14 +183,14 @@ function mediaGridCols(count: number): string {
               style="aspect-ratio: 1;"
             >
               <img :src="m.url" :alt="m.alt ?? ''" class="w-full h-full object-cover" />
-              <span v-if="m.isGif" class="absolute bottom-1.5 right-1.5 text-[10px] font-bold bg-black/60 text-white rounded px-1.5 py-0.5">GIF</span>
+              <span v-if="m.isGif" class="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-caption font-bold text-white">GIF</span>
             </div>
           </div>
 
           <!-- If media-only post: author footer inside card -->
           <div v-if="!block.content && !block.poll && block.media?.length" class="px-4 py-3 flex items-center gap-2">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
               :style="{ background: block.avatarColor }"
             >{{ block.avatarInitials }}</div>
             <span class="text-sm font-bold text-dark flex-1">{{ block.authorName }}</span>
@@ -217,7 +216,7 @@ function mediaGridCols(count: number): string {
           <!-- Author row -->
           <div class="flex items-center gap-2.5 mt-1">
             <div
-              class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              class="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-white text-xs font-bold"
               :style="{ background: block.avatarColor }"
             >{{ block.avatarInitials }}</div>
             <span class="text-sm font-bold text-dark flex-1">{{ block.authorName }}</span>
@@ -229,11 +228,11 @@ function mediaGridCols(count: number): string {
         <div v-else-if="block.type === 'ai'" class="rounded-2xl bg-white shadow-sm p-5 flex flex-col gap-3">
           <p class="text-sm text-dark leading-relaxed">
             <template v-for="(part, pi) in block.parts" :key="pi">
-              <a v-if="typeof part === 'object'" :href="part.link" style="color: rgb(99,100,246); text-decoration: underline;">{{ part.text }}</a>
+              <a v-if="typeof part === 'object'" :href="part.link" style="color: var(--color-accent); text-decoration: underline;">{{ part.text }}</a>
               <span v-else>{{ part }}</span>
             </template>
           </p>
-          <p class="text-sm font-bold" style="color: rgb(99,100,246);">written by AI-Experience.</p>
+          <p class="text-sm font-bold" style="color: var(--color-accent);">written by AI-Experience.</p>
         </div>
 
       </template>
@@ -241,8 +240,8 @@ function mediaGridCols(count: number): string {
 
     <!-- Fixed bottom action bar -->
     <div
-      class="fixed bottom-0 inset-x-0 px-4 pb-safe pt-3 pb-5 flex items-center gap-2"
-      style="background: var(--color-pastel-light, #f0ede8);"
+      class="fixed bottom-0 inset-x-0 flex items-center gap-2 px-4 pt-3"
+      style="background: var(--color-surface); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem);"
     >
       <button
         type="button"
@@ -253,7 +252,7 @@ function mediaGridCols(count: number): string {
 
       <button
         type="button"
-        class="flex-shrink-0 rounded-full px-5 py-3.5 text-sm font-bold text-white flex items-center gap-1.5 transition-opacity hover:opacity-85"
+        class="shrink-0 rounded-full px-5 py-3.5 text-sm font-bold text-white flex items-center gap-1.5 transition-opacity hover:opacity-85"
         style="background: #1c1c1e;"
         @click="cycleSpeed"
       >

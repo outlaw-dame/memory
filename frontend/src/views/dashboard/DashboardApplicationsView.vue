@@ -209,7 +209,7 @@ function createToken() {
         </div>
         <!-- New token -->
         <button
-          class="flex items-center gap-1.5 text-[11px] font-semibold bg-[rgb(99,100,246)] text-white px-3 py-1.5 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors"
+          class="flex items-center gap-1.5 text-[11px] font-semibold bg-accent text-white px-3 py-1.5 rounded-xl hover:bg-accent-pressed transition-colors"
           @click="newTokenModal = true"
         >
           New Token
@@ -307,7 +307,7 @@ function createToken() {
         <div class="space-y-4">
           <label class="flex flex-col gap-1">
             <span class="text-[11px] font-medium text-gray-500">Token name</span>
-            <input v-model="newTokenName" type="text" placeholder="e.g. Backup script" class="rounded-xl border border-gray-200 px-3 py-2 text-[12px] outline-none focus:border-[rgb(99,100,246)]"/>
+            <input v-model="newTokenName" type="text" placeholder="e.g. Backup script" class="rounded-xl border border-gray-200 px-3 py-2 text-[12px] outline-none focus:border-accent"/>
           </label>
           <div>
             <p class="text-[11px] font-medium text-gray-500 mb-2">Scopes</p>
@@ -315,7 +315,7 @@ function createToken() {
               <button
                 v-for="s in AVAILABLE_SCOPES" :key="s"
                 class="text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-colors text-left"
-                :class="newTokenScopes.includes(s) ? 'border-[rgb(99,100,246)] bg-[rgba(99,100,246,0.08)] text-[rgb(80,81,220)]' : 'border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100'"
+                :class="newTokenScopes.includes(s) ? 'border-accent bg-accent/8 text-accent-pressed' : 'border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100'"
                 @click="toggleScope(s)"
               >{{ s }}</button>
             </div>
@@ -323,7 +323,7 @@ function createToken() {
           <div class="flex gap-2 pt-1">
             <button class="flex-1 text-[12px] font-semibold bg-gray-50 text-gray-600 py-2 rounded-xl hover:bg-gray-100 transition-colors" @click="newTokenModal = false">Cancel</button>
             <button
-              class="flex-1 text-[12px] font-semibold bg-[rgb(99,100,246)] text-white py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors disabled:opacity-50"
+              class="flex-1 text-[12px] font-semibold bg-accent text-white py-2 rounded-xl hover:bg-accent-pressed transition-colors disabled:opacity-50"
               :disabled="!newTokenName.trim() || newTokenScopes.length === 0"
               @click="createToken"
             >Create Token</button>

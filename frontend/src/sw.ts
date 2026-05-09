@@ -1,17 +1,25 @@
-/**
- * Memory App Service Worker
- *
- * Responsibilities:
- *   1. Cache static assets (stale-while-revalidate)
- *   2. Network-only pass-through for API requests (caching happens at PGlite layer)
- *   3. Relay SYNC_NOW messages to all open clients on reconnection
- */
-const CACHE = 'memory-v1'
+/// <reference lib="webworker" />
+/// <reference no-default-lib="true" />
 
-const PRECACHE_URLS = ['/', '/index.html']
+declare const self: ServiceWorkerGlobalScope
+
+// vite-plugin-pwa (injectManifest strategy) replaces this token at build time
+// with an array of all hashed build assets for cache-busting.
+// IMPORTANT: __WB_MANIFEST must appear exactly once in the compiled output.
+declare const __WB_MANIFEST: Array<{ url: string; revision: string | null }>
+
+interface SyncEvent extends ExtendableEvent {
+  readonly tag: string
+}
+
+const CACHE = 'memory-v2'
+
+// Merge build-time injected asset URLs with the required shell entries.
+// Deduplicate so '/' and '/index.html' don't appear twice if already in the manifest.
+const PRECACHE_URLS = [...new Set(['/', '/index.html', ...__WB_MANIFEST.map(e => e.url)])]
 
 // ---------------------------------------------------------------------------
-// Install — precache shell
+// Install — precache shell + all hashed build assets
 // ---------------------------------------------------------------------------
 
 self.addEventListener('install', event => {
@@ -24,7 +32,7 @@ self.addEventListener('install', event => {
 })
 
 // ---------------------------------------------------------------------------
-// Activate — prune old caches and claim clients immediately
+// Activate — prune stale caches and claim clients immediately
 // ---------------------------------------------------------------------------
 
 self.addEventListener('activate', event => {
@@ -37,13 +45,13 @@ self.addEventListener('activate', event => {
 })
 
 // ---------------------------------------------------------------------------
-// Fetch — network-first for API, stale-while-revalidate for static assets
+// Fetch — network-only for API, stale-while-revalidate for static assets
 // ---------------------------------------------------------------------------
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
 
-  // Let API calls pass through — PGlite handles local caching
+  // Network-only: API calls are handled by PGlite at the app layer
   if (
     url.pathname.startsWith('/at/') ||
     url.pathname.startsWith('/posts') ||
@@ -52,7 +60,7 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  // Stale-while-revalidate for static assets
+  // Stale-while-revalidate: serve cached immediately, refresh in background
   event.respondWith(
     caches.match(event.request).then(cached => {
       const network = fetch(event.request).then(res => {
@@ -71,7 +79,7 @@ self.addEventListener('fetch', event => {
 // ---------------------------------------------------------------------------
 
 self.addEventListener('message', event => {
-  if (event.data?.type === 'TRIGGER_SYNC') {
+  if ((event as ExtendableMessageEvent).data?.type === 'TRIGGER_SYNC') {
     self.clients
       .matchAll({ includeUncontrolled: true, type: 'window' })
       .then(clients => clients.forEach(c => c.postMessage({ type: 'SYNC_NOW' })))
@@ -83,8 +91,9 @@ self.addEventListener('message', event => {
 // ---------------------------------------------------------------------------
 
 self.addEventListener('sync', event => {
-  if (event.tag === 'flush-pending-writes') {
-    event.waitUntil(
+  const syncEvent = event as SyncEvent
+  if (syncEvent.tag === 'flush-pending-writes') {
+    syncEvent.waitUntil(
       self.clients
         .matchAll({ includeUncontrolled: true, type: 'window' })
         .then(clients => clients.forEach(c => c.postMessage({ type: 'SYNC_NOW' }))),

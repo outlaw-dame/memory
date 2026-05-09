@@ -114,14 +114,14 @@ export interface CanonicalContent {
 
 export interface CanonicalIntentBase {
   canonicalIntentId: string
-  sourceProtocol: 'activitypub' | 'atproto'
+  sourceProtocol: 'activitypub' | 'atproto' | 'activitypods'
   sourceEventId: string
   sourceAccountRef: CanonicalActorRef
   createdAt: string
   observedAt: string
   visibility: unknown
   provenance: {
-    originProtocol: 'activitypub' | 'atproto'
+    originProtocol: 'activitypub' | 'atproto' | 'activitypods'
     originEventId: string
     originAccountId?: string | null
     mirroredFromCanonicalIntentId?: string | null
@@ -147,6 +147,10 @@ export type CanonicalIntentEvent = CanonicalIntentBase & {
     | 'WallPostCreate'
     /** Deletion of a wall post. */
     | 'WallPostDelete'
+    /** 24-hour ATProto/Memory story slide. */
+    | 'StoryCreate'
+    /** Deletion of a story slide. */
+    | 'StoryDelete'
   object?: CanonicalObjectRef
   content?: CanonicalContent
   inReplyTo?: CanonicalObjectRef | null
@@ -285,6 +289,7 @@ function canonicalOperation(kind: CanonicalIntentEvent['kind']): 'create' | 'upd
     case 'ProfileUpdate':
       return 'update'
     case 'PostDelete':
+    case 'StoryDelete':
     case 'ReactionRemove':
     case 'ShareRemove':
     case 'FollowRemove':
@@ -319,6 +324,9 @@ function canonicalCollection(intent: CanonicalIntentEvent): string {
     case 'WallPostCreate':
     case 'WallPostDelete':
       return 'org.activitypods.wall.post'
+    case 'StoryCreate':
+    case 'StoryDelete':
+      return 'org.activitypods.story.slide'
     case 'ProfileUpdate':
       return 'canonical.profile'
     case 'AccountState':

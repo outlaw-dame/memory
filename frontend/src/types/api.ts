@@ -42,6 +42,8 @@ export interface PublicMediaAttachment {
   url: string | null
   sourceUrl: string | null
   canonicalUrl: string | null
+  storyUri: string | null
+  storyExpiresAt: string | null
   previewUrl: string | null
   thumbnailUrl: string | null
   gatewayUrl: string | null

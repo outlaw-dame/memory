@@ -99,15 +99,15 @@ async function submitVote() {
           class="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
           :style="{
             width: hasVoted || isClosed ? `${optionPercent(option.voteCount)}%` : '0%',
-            background: selectedNames.has(option.name) ? 'rgba(99,100,246,0.35)' : 'rgba(99,100,246,0.18)'
+            background: selectedNames.has(option.name) ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'color-mix(in srgb, var(--color-accent) 18%, transparent)'
           }"
         />
         <!-- Label -->
         <div class="relative flex w-full items-center justify-between px-4">
-          <span class="text-subHeader font-semibold" style="color: rgb(99, 100, 246)">
+          <span class="text-subHeader font-semibold" style="color: var(--color-accent)">
             {{ option.name }}
           </span>
-          <span v-if="hasVoted || isClosed" class="text-subHeader font-bold" style="color: rgb(99, 100, 246)">
+          <span v-if="hasVoted || isClosed" class="text-subHeader font-bold" style="color: var(--color-accent)">
             {{ optionPercent(option.voteCount) }}%
           </span>
         </div>

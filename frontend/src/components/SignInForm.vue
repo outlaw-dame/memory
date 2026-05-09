@@ -25,13 +25,12 @@ const logoutRetryLabel = computed(() => {
     </p>
     <MemoryButton
       v-if="authStore.logoutBlocked"
-      class="p w-full"
-      success
+      class="w-full bg-accent text-white"
       @click="authStore.retrySecureLogout()"
     >
       {{ logoutRetryLabel }}
     </MemoryButton>
-    <MemoryButton v-else class="p w-full" success @click="authStore.signinWithOidc()">
+    <MemoryButton v-else class="w-full bg-accent text-white" @click="authStore.signinWithOidc()">
       {{ t('signin.continueWithActivityPods') }}
     </MemoryButton>
   </div>

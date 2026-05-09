@@ -82,7 +82,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
 </script>
 
 <template>
-  <section class="mx-auto flex w-full max-w-[560px] flex-col gap-4 pb-24">
+  <section class="mx-auto flex w-full max-w-140 flex-col gap-4 pb-24">
     <header class="flex items-start justify-between gap-4">
       <div>
         <p class="text-[14px] uppercase tracking-[0.2em] text-dark/40">{{ t('notifications.product') }}</p>
@@ -102,7 +102,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
       <button
         v-if="notificationsStore.groupedItems.some(group => group.unreadCount > 0)"
         type="button"
-        class="rounded-full border border-dark/20 px-3 py-1.5 text-[13px] font-medium text-dark hover:bg-dark/5"
+        class="rounded-full border border-dark/20 px-3 py-1.5 text-footnote font-medium text-dark hover:bg-dark/5"
         @click="notificationsStore.markAllRead"
       >
         {{ t('notifications.actions.markAllRead') }}
@@ -115,7 +115,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
 
     <div v-if="notificationsStore.status" class="rounded-[28px] bg-pastel-light px-5 py-5 text-dark">
       <p class="text-[14px] uppercase tracking-[0.16em] text-dark/40">{{ t('notifications.statusLabel') }}</p>
-      <p class="mt-2 text-[20px] font-semibold">
+      <p class="mt-2 text-h3 font-semibold">
         <span v-if="!notificationsStore.status.installed">{{ t('notifications.status.authorizationRequired') }}</span>
         <span v-else-if="notificationsStore.status.hasInboxWebhook">{{ t('notifications.status.watching', { topic: notificationsStore.status.inboxTopic }) }}</span>
         <span v-else-if="notificationsStore.deferPodReauth">{{ t('notifications.status.deferPrompt') }}</span>
@@ -165,13 +165,13 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
           <h2 class="mt-1 text-[24px] leading-tight text-dark">
             {{ t('notifications.group.summary', { count: group.totalCount }) }}
           </h2>
-          <p v-if="group.actors.length > 0" class="mt-1 text-[13px] text-dark/60 break-all">
+          <p v-if="group.actors.length > 0" class="mt-1 break-all text-footnote text-dark/60">
             {{ actorPreview(group.actors) }}
             <span v-if="group.actorCount > group.actors.length">{{ t('notifications.group.moreActors', { count: group.actorCount - group.actors.length }) }}</span>
           </p>
         </div>
         <div class="text-right">
-          <p class="text-[13px] text-dark/50">{{ formatWhen(group.latestAt) }}</p>
+          <p class="text-footnote text-dark/50">{{ formatWhen(group.latestAt) }}</p>
           <p v-if="group.unreadCount > 0" class="mt-1 text-[12px] font-semibold text-[#9c5f00]">
             {{ t('notifications.group.unread', { count: group.unreadCount }) }}
           </p>
@@ -193,7 +193,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
         <button
           v-if="group.unreadCount > 0"
           type="button"
-          class="rounded-full border border-dark/20 px-3 py-1.5 text-[13px] font-medium text-dark hover:bg-dark/5"
+          class="rounded-full border border-dark/20 px-3 py-1.5 text-footnote font-medium text-dark hover:bg-dark/5"
           @click="notificationsStore.markGroupRead(group.notificationIds)"
         >
           {{ t('notifications.actions.markRead') }}
@@ -215,7 +215,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
           <p class="text-[14px] uppercase tracking-[0.16em] text-dark/40">{{ item.activityType }}</p>
           <h2 class="mt-1 text-[26px] leading-tight text-dark">{{ getNotificationLabel(item.activityType) }}</h2>
         </div>
-        <p class="text-right text-[13px] text-dark/50">{{ formatWhen(item.publishedAt || item.createdAt) }}</p>
+        <p class="text-right text-footnote text-dark/50">{{ formatWhen(item.publishedAt || item.createdAt) }}</p>
       </div>
 
       <dl class="mt-4 grid gap-2 text-[14px] text-dark/70">
@@ -237,7 +237,7 @@ function actorPreview(actors: Array<{ actorUri: string }>) {
         <button
           v-if="!item.isRead"
           type="button"
-          class="rounded-full border border-dark/20 px-3 py-1.5 text-[13px] font-medium text-dark hover:bg-dark/5"
+          class="rounded-full border border-dark/20 px-3 py-1.5 text-footnote font-medium text-dark hover:bg-dark/5"
           @click="notificationsStore.markNotificationRead(item.id)"
         >
           {{ t('notifications.actions.markRead') }}

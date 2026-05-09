@@ -15,13 +15,13 @@ function onHashtagClick(hashtag: string): void {
 </script>
 
 <template>
-  <div class="Posts flex flex-col gap-[var(--gap-default)] py-[var(--gap-default)]">
+  <div class="Posts flex flex-col gap-(--gap-default) py-(--gap-default)">
     <div
-      class="rounded-default bg-pastel-light p-[var(--padding-main)]"
+      class="rounded-default bg-surface p-(--padding-main)"
       v-for="post in postsStore.posts"
       :key="post.id"
     >
-      <div class="user flex flex-row gap-[var(--gap-default)]">
+      <div class="user flex flex-row gap-(--gap-default)">
         <AppIcon name="user-circle" :size="27" color="rgba(55,55,55,0.4)" />
         <div class="w-full">
           <p class="text-footnote font-bold">{{ post.author.name }}</p>
@@ -29,6 +29,7 @@ function onHashtagClick(hashtag: string): void {
         </div>
         <MemoryButton
             :disabled="isFollowing(post.author.webId)"
+            class="bg-accent text-white text-xs px-4 py-1.5"
             @click="follow(post.author.webId)"
           >{{ isFollowing(post.author.webId) ? 'Following' : 'Follow' }}</MemoryButton>
       </div>
