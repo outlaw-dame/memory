@@ -272,13 +272,24 @@ const storiesPlugin = new Elysia({ name: 'stories', prefix: '/at' })
         await markMediaAttachmentAttachedToStory(user.userId, attachment.id, uri, expiresAt)
 
         const stored = await findActiveStoryByUri(uri)
-        return { story: stored ? await storyItemFromRow(stored, user, new Set([uri])) : null }
+        if (!stored) {
+          return routeError(set, 500, 'Story was created but could not be retrieved')
+        }
+        return { story: await storyItemFromRow(stored, user, new Set([uri])) }
       } catch (error) {
         if (error instanceof MediaAttachmentError) {
           return routeError(set, error.status, error.message)
         }
+        if (error instanceof Error && (
+          error.message.startsWith('expiresAt') ||
+          error.message.startsWith('createdAt') ||
+          error.message.startsWith('alt') ||
+          error.message.startsWith('Story links')
+        )) {
+          return routeError(set, 400, error.message)
+        }
         console.error('[Stories] Failed to create story:', error)
-        return routeError(set, 400, error instanceof Error ? error.message : 'Story create failed')
+        return routeError(set, 500, 'Story create failed')
       }
     },
     {
@@ -318,7 +329,7 @@ const storiesPlugin = new Elysia({ name: 'stories', prefix: '/at' })
         return { ok: true }
       } catch (error) {
         console.error('[Stories] Failed to delete story:', error)
-        return routeError(set, 400, error instanceof Error ? error.message : 'Story delete failed')
+        return routeError(set, 500, 'Story delete failed')
       }
     },
     {
@@ -386,7 +397,10 @@ async function listStoryGroups(
   })
 
   const uris = activeRows.map(row => row.atUri)
-  const viewed = await resolveViewedObjectIds(user.getWebId(), uris)
+  const viewed = await resolveViewedObjectIds(user.getWebId(), uris).catch((err: unknown) => {
+    console.warn('[Stories] Viewership resolve failed, continuing without seen state:', err)
+    return new Set<string>()
+  })
 
   const groupsByActor = new Map<string, StoryGroup>()
   for (const row of activeRows) {
@@ -756,7 +770,10 @@ async function resolveViewedObjectIds(actorId: string, objectIds: string[]): Pro
     body: JSON.stringify({ actorId, objectIds }),
   })
 
-  if (!response.ok) throw new Error(`Viewership resolve failed: ${response.status}`)
+  if (!response.ok) {
+    console.warn('[Stories] Viewership resolve returned non-OK status:', response.status)
+    return new Set<string>()
+  }
   const payload = await readJson(response)
   const viewedObjectIds = Array.isArray((payload as any)?.viewedObjectIds)
     ? (payload as any).viewedObjectIds.filter((value: unknown): value is string => typeof value === 'string')
