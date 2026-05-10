@@ -9,6 +9,7 @@ import AppSegmentedControl from '@/design/components/AppSegmentedControl.vue'
 import type { SegmentItem } from '@/design/components/AppSegmentedControl.vue'
 import { useI18n } from '@/i18n'
 import { useLargeTitleSentinel } from '@/composables/useLargeTitle'
+import { useScrollRestore } from '@/composables/useScrollRestore'
 import { useAtBridgeStore } from '@/stores/atBridgeStore'
 
 type Tab = 'for-you' | 'home' | 'following'
@@ -26,6 +27,8 @@ const tabs = computed<SegmentItem<Tab>[]>(() => [
 
 // Large-title sentinel — placed at the bottom edge of the title block.
 // When it scrolls out of view the AppTopBar fades in its inline title.
+useScrollRestore()
+
 const sentinel = ref<HTMLElement | null>(null)
 onMounted(() => {
   useLargeTitleSentinel(() => sentinel.value)

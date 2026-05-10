@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watchEffect } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watchEffect, provide } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
@@ -11,6 +11,9 @@ import { useKonstaTheme } from '@/design/composables/useKonstaTheme'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useI18n } from '@/i18n'
+
+const mainRef = ref<HTMLElement | null>(null)
+provide('scrollEl', mainRef)
 
 const route = useRoute()
 const router = useRouter()
@@ -77,6 +80,14 @@ router.beforeEach((to, from) => {
   transitionName.value = toDepth >= fromDepth ? 'slide-left' : 'slide-right'
 })
 
+// Reset scroll on push navigation so the new page starts at the top.
+// beforeEach guard (in useScrollRestore) saves the position before this fires.
+router.afterEach(() => {
+  if (transitionName.value === 'slide-left' && mainRef.value) {
+    mainRef.value.scrollTop = 0
+  }
+})
+
 // ── App shell ───────────────────────────────────────────────────────────────
 
 const isAuthRoute = computed(() => AUTH_ROUTES.has(String(route.name)))
@@ -137,7 +148,7 @@ onMounted(() => {
         overflow-x-hidden clips the entering/leaving view during slide transitions
         so the 100% translateX doesn't cause a horizontal scrollbar.
       -->
-      <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
+      <main ref="mainRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
         <RouterView v-slot="{ Component }">
           <Transition :name="transitionName" mode="out-in">
             <component :is="Component" :key="route.path" />
