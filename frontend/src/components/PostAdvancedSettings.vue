@@ -117,7 +117,7 @@ function done() {
         <button
           type="button"
           class="flex-shrink-0 mt-0.5 w-12 h-7 rounded-full transition-colors duration-200 relative"
-          :style="isPublic ? 'background: rgb(99,100,246);' : 'background: rgba(55,55,55,0.15);'"
+          :style="isPublic ? 'background: var(--color-accent);' : 'background: rgba(55,55,55,0.15);'"
           @click="isPublic = !isPublic"
           :aria-label="isPublic ? t('composer.advanced.publicAccess.disable') : t('composer.advanced.publicAccess.enable')"
         >
@@ -229,7 +229,7 @@ function done() {
           <span
             v-if="hasContentWarning"
             class="rounded-full px-3 py-1 text-footnote font-semibold text-white flex-shrink-0"
-            style="background: rgb(99,100,246);"
+            style="background: var(--color-accent);"
           >{{ contentWarningStatusLabel }}</span>
         </button>
 
@@ -251,7 +251,7 @@ function done() {
         <button
           type="button"
           class="w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style="background: linear-gradient(135deg, rgb(99,100,246) 0%, rgb(168,85,247) 100%);"
+          style="background: linear-gradient(135deg, var(--color-accent) 0%, rgb(168,85,247) 100%);"
         >
           <div class="w-9 h-9 flex items-center justify-center rounded-xl bg-white/20 flex-shrink-0">
             <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

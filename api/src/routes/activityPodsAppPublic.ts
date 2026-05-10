@@ -2,6 +2,8 @@ import Elysia, { t } from 'elysia'
 import { applyLocaleHeaders, localeFromHeaders, translate } from '../i18n'
 import { getMemoryApplicationDocument, getRequiredAccessNeedGroupDocument, getUserById, maybePersistDirectMessage, recordNotificationDelivery, verifyWebhookTarget } from '../services/ActivityPodsNotifications'
 
+const MAX_WEBHOOK_BODY_BYTES = 200_000
+
 const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public' })
   .get('/activitypods/app', ({ set }) => {
     set.headers['Content-Type'] = 'application/ld+json'
@@ -36,9 +38,19 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
       return translate(locale, 'activitypods.webhooks.unauthorized')
     }
 
+    const contentLengthHeader = request.headers.get('content-length')
+    if (contentLengthHeader) {
+      const contentLength = Number.parseInt(contentLengthHeader, 10)
+      if (Number.isFinite(contentLength) && contentLength > MAX_WEBHOOK_BODY_BYTES) {
+        set.status = 413
+        return translate(locale, 'activitypods.webhooks.payloadTooLarge')
+      }
+    }
+
     let parsedBody =
       typeof body === 'string'
         ? (() => {
+            if (body.length > MAX_WEBHOOK_BODY_BYTES) return null
             try {
               return JSON.parse(body) as Record<string, unknown>
             } catch {
@@ -48,19 +60,6 @@ const activityPodsAppPublicPlugin = new Elysia({ name: 'activitypods-app-public'
         : body && typeof body === 'object' && !Array.isArray(body)
           ? (body as Record<string, unknown>)
           : null
-
-    if (!parsedBody) {
-      try {
-        const rawText = await request.text()
-        if (rawText.length > 200_000) {
-          set.status = 413
-          return translate(locale, 'activitypods.webhooks.payloadTooLarge')
-        }
-        parsedBody = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : null
-      } catch {
-        parsedBody = null
-      }
-    }
 
     if (!parsedBody) {
       set.status = 400

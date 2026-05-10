@@ -45,8 +45,8 @@ const BAR_COUNT = 56
         :style="{
           height: `${barHeight(i - 1) * 100}%`,
           background: (i - 1) / BAR_COUNT <= progress
-            ? 'rgb(99,100,246)'
-            : 'rgba(99,100,246,0.18)',
+            ? 'var(--color-accent)'
+            : 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
         }"
       />
     </div>

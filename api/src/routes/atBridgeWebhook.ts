@@ -65,6 +65,13 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
 
       // Process events
       const events = Array.isArray(body) ? body : [body]
+
+      // Enforce a batch-size cap to prevent resource exhaustion.
+      const MAX_BATCH = 500
+      if (events.length > MAX_BATCH) {
+        set.status = 400
+        return `Batch too large: max ${MAX_BATCH} events per request`
+      }
       const results = {
         processed: 0,
         failed: 0,
@@ -119,6 +126,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
           content: t.Optional(t.Any()),
           inReplyTo: t.Optional(t.Any()),
           subject: t.Optional(t.Any()),
+          wallTarget: t.Optional(t.Any()),
           reactionType: t.Optional(t.String()),
           state: t.Optional(t.String()),
         }),
@@ -137,6 +145,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
           content: t.Optional(t.Any()),
           inReplyTo: t.Optional(t.Any()),
           subject: t.Optional(t.Any()),
+          wallTarget: t.Optional(t.Any()),
           reactionType: t.Optional(t.String()),
           state: t.Optional(t.String()),
         })),
@@ -148,6 +157,7 @@ const atBridgeWebhookPlugin = new Elysia({ name: 'at-bridge-webhook', prefix: '/
           failed: t.Number(),
           total: t.Number(),
         }),
+        400: t.String(),
         401: t.String(),
         503: t.String(),
       },

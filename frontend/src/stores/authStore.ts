@@ -51,7 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
   // API
   // Eden treaty requires the Elysia App type parameter for full inference;
   // without it the client cannot be statically typed on the frontend.
-   
+
   const client = treaty(getApiBaseUrl(), {
     onRequest() {
       return {
@@ -354,7 +354,7 @@ export const useAuthStore = defineStore('auth', () => {
       setUser(signupResponse.user)
       markSessionStartedNow()
       router.push({ name: 'home' })
-    } else if (status === 500) {
+    } else {
       return response as ApiErrors
     }
   }

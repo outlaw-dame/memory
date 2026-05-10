@@ -70,7 +70,7 @@ defineExpose({ applyResult })
         {{ statusMessage }}
       </div>
       <div class="flex gap-2">
-        <MemoryButton v-if="policy.mayReply" :disabled="isSubmitting" @click="onSubmit">
+        <MemoryButton v-if="policy.mayReply" :disabled="isSubmitting" class="bg-accent text-white" @click="onSubmit">
           {{ isSubmitting ? 'Sending…' : 'Send Reply' }}
         </MemoryButton>
         <button class="rounded px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100" type="button" @click="emit('cancel')">

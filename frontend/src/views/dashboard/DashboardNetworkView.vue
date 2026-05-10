@@ -219,7 +219,7 @@ async function followBack(c: Contact) {
           </select>
           <!-- New Request -->
           <button
-            class="flex items-center gap-1.5 text-[11px] font-semibold bg-[rgb(99,100,246)] text-white px-3 py-1.5 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors"
+            class="flex items-center gap-1.5 text-[11px] font-semibold bg-accent text-white px-3 py-1.5 rounded-xl hover:bg-accent-pressed transition-colors"
             @click="openRequest"
           >
             New Request
@@ -325,7 +325,7 @@ async function followBack(c: Contact) {
           <div class="space-y-2">
             <button
               v-if="detailContact.relationshipStatus === 'pending-in'"
-              class="w-full text-[12px] font-semibold bg-[rgb(99,100,246)] text-white py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors"
+              class="w-full text-[12px] font-semibold bg-accent text-white py-2 rounded-xl hover:bg-accent-pressed transition-colors"
               @click="followBack(detailContact)"
             >
               Follow Back
@@ -377,11 +377,11 @@ async function followBack(c: Contact) {
                 v-model="requestUri"
                 type="url"
                 placeholder="https://mastodon.social/users/example"
-                class="flex-1 text-[12px] rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-[rgb(99,100,246)] placeholder-gray-300"
+                class="flex-1 text-[12px] rounded-xl border border-gray-200 px-3 py-2 outline-none focus:border-accent placeholder-gray-300"
                 @keyup.enter="resolveRequest"
               />
               <button
-                class="text-[12px] font-semibold bg-[rgb(99,100,246)] text-white px-4 py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors disabled:opacity-50"
+                class="text-[12px] font-semibold bg-accent text-white px-4 py-2 rounded-xl hover:bg-accent-pressed transition-colors disabled:opacity-50"
                 :disabled="requestState === 'resolving' || !requestUri.trim()"
                 @click="resolveRequest"
               >
@@ -407,7 +407,7 @@ async function followBack(c: Contact) {
                 Back
               </button>
               <button
-                class="flex-1 text-[12px] font-semibold bg-[rgb(99,100,246)] text-white py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors disabled:opacity-50"
+                class="flex-1 text-[12px] font-semibold bg-accent text-white py-2 rounded-xl hover:bg-accent-pressed transition-colors disabled:opacity-50"
                 :disabled="requestBusy"
                 @click="sendFollow"
               >

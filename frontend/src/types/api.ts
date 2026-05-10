@@ -1,12 +1,11 @@
 import type { App } from '#api/index.ts'
-import type { _createUser, _selectUsers, viablePodProviders } from '#api/types'
-import type { Static } from '@sinclair/typebox'
+import type { CreateUser as ApiCreateUser, SelectUsers, SignUpBody } from '#api/types'
 
 // Enums
-export type ProviderEndpoints = Static<typeof viablePodProviders>
+export type ProviderEndpoints = SignUpBody['providerEndpoint']
 
 // Table entries
-type DbUser = Static<typeof _selectUsers>
+type DbUser = SelectUsers
 export type User = Omit<DbUser, 'podToken'>
 
 /** FEP-9967: poll options for a new Question post. */
@@ -43,6 +42,8 @@ export interface PublicMediaAttachment {
   url: string | null
   sourceUrl: string | null
   canonicalUrl: string | null
+  storyUri: string | null
+  storyExpiresAt: string | null
   previewUrl: string | null
   thumbnailUrl: string | null
   gatewayUrl: string | null
@@ -90,7 +91,7 @@ export interface CreatePost {
   /** When set, the post is published as a Question (FEP-9967 poll). */
   poll?: CreatePoll | null
 }
-export type CreateUser = Static<typeof _createUser>
+export type CreateUser = ApiCreateUser
 
 // Route Responses
 

@@ -85,6 +85,8 @@ services:
     environment:
       SEMAPPS_JENA_PASSWORD: localadmin
       SEMAPPS_APP_LANG: en
+      # Explicit app API target when running fully containerized local stack.
+      API_URL: http://api:8794
       # Disable Mapbox (not needed for local dev — only used for address autocomplete)
       SEMAPPS_MAPBOX_ACCESS_TOKEN: ''
       # Use the local Fuseki instance
@@ -92,8 +94,6 @@ services:
       # Redis connection
       REDIS_HOST: redis
       REDIS_PORT: 6379
-    # ActivityPods uses host networking so it can reach the app backend at localhost:8794
-    network_mode: host
     healthcheck:
       test: ['CMD-SHELL', 'curl -sf http://localhost:3000/.well-known/openid-configuration || exit 1']
       interval: 15s
@@ -137,11 +137,12 @@ services:
       DB_URL: postgres://postgres:localpassword@pg:5432/memory
       JWT_SECRET: local-dev-jwt-secret-change-in-prod
       API_PORT: 8794
-      FRONTEND_URL: http://localhost:5174
+      FRONTEND_URL: http://localhost:5173
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
       AP_BRIDGE_SECRET: ${AP_BRIDGE_SECRET:-change-me-ap-secret}
-      POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://localhost:3000}
-      ACTIVITYPUB_PROXY_BASE_URL: ${ACTIVITYPUB_PROXY_BASE_URL:-http://localhost:3000}
+      # Inside the API container, reach ActivityPods via Compose service DNS.
+      POD_PROVIDER_BASE_URL: ${POD_PROVIDER_BASE_URL:-http://activitypods:3000}
+      ACTIVITYPUB_PROXY_BASE_URL: ${ACTIVITYPUB_PROXY_BASE_URL:-http://activitypods:3000}
     networks:
       - default
       - activitypods-network
@@ -184,7 +185,8 @@ services:
       api:
         condition: service_healthy
     environment:
-      MEMORY_WEBHOOK_URL: http://localhost:8794/at/webhook/ingress
+      # Sidecar runs in Docker and should call the API container over service DNS.
+      MEMORY_WEBHOOK_URL: http://api:8794/at/webhook/ingress
       FIREHOSE_BRIDGE_SECRET: local-bridge-secret-123
       # Preferred mode selector: mock | relay | jetstream
       FIREHOSE_MODE: ${FIREHOSE_MODE:-jetstream}
