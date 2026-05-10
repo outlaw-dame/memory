@@ -85,6 +85,8 @@ services:
     environment:
       SEMAPPS_JENA_PASSWORD: localadmin
       SEMAPPS_APP_LANG: en
+      # Explicit app API target when running fully containerized local stack.
+      API_URL: http://api:8794
       # Disable Mapbox (not needed for local dev — only used for address autocomplete)
       SEMAPPS_MAPBOX_ACCESS_TOKEN: ''
       # Use the local Fuseki instance

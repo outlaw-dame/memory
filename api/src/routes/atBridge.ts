@@ -627,8 +627,12 @@ async function loadRepostCandidateRows(params: {
   hashtag?: string | null
   sinceDate?: Date | null
   viewerIds?: ReadonlySet<string>
+  followedAuthorIds?: readonly string[]
 }): Promise<UnifiedFeedRow[]> {
-  const { fetchLimit, source, hashtag, sinceDate, viewerIds = new Set<string>() } = params
+  const { fetchLimit, source, hashtag, sinceDate, viewerIds = new Set<string>(), followedAuthorIds } = params
+  const normalizedFollowed = followedAuthorIds
+    ? [...new Set(followedAuthorIds.map(id => id.trim()).filter(id => id.length > 0))]
+    : []
 
   const recordFilters: SQL[] = [
     eq(atRecords.isActive, true),
@@ -636,6 +640,9 @@ async function loadRepostCandidateRows(params: {
   ]
   if (sinceDate) {
     recordFilters.push(gt(atRecords.createdAt, sinceDate))
+  }
+  if (normalizedFollowed.length > 0) {
+    recordFilters.push(sql`${atRecords.authorDid} = ANY(${normalizedFollowed}::text[])`)
   }
 
   const boostRecords = await db
@@ -935,6 +942,7 @@ async function queryFeedCandidates(params: {
     hashtag,
     sinceDate,
     viewerIds,
+    followedAuthorIds,
   })
 
   return mergeRepostRows(postRows, repostRows, fetchLimit)
