@@ -286,7 +286,7 @@ onMounted(() => {
                 <span class="text-[11px] text-gray-600">{{ pod.name }}</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="text-[11px] font-semibold text-[var(--color-accent)]">{{ pod.size }}</span>
+                <span class="text-[11px] font-semibold" style="color: var(--color-accent)">{{ pod.size }}</span>
                 <svg class="w-4 h-3 text-gray-300" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M1 6 Q4 2 8 6 Q12 10 15 6" stroke-linecap="round"/>
                 </svg>
