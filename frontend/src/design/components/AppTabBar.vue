@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useHaptics, ImpactStyle } from '@/composables/useHaptics'
 import AppIcon from '@/components/AppIcon.vue'
-import type { IconName } from '@/components/AppIcon.types'
+import type { AppIconName } from '@/components/AppIcon.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,7 +17,7 @@ const { impact } = useHaptics()
 const HIDDEN_ROUTES = new Set(['signin', 'signup', 'welcome', 'experience', 'auth-callback'])
 const show = computed(() => !HIDDEN_ROUTES.has(String(route.name)))
 
-interface NavItem { name: string; route: string; label: string; icon: IconName }
+interface NavItem { name: string; route: string; label: string; icon: AppIconName }
 
 const items = computed<NavItem[]>(() => [
   { name: 'home',          route: '/',              label: t('nav.home'),          icon: 'home'          },

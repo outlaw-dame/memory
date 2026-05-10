@@ -138,7 +138,7 @@ const demoPost = {
           style="background: rgba(55,55,55,0.1); color: rgba(55,55,55,0.6);"
           @click="router.back()"
         >
-          <AppIcon name="chevron-left" :size="16" color="currentColor" />
+          <AppIcon name="back" :size="16" color="currentColor" />
         </button>
         <h1 class="font-black text-dark" style="font-size: 1.75rem; letter-spacing: -0.04em;">explore.</h1>
         <button
