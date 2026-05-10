@@ -112,7 +112,9 @@ export default defineConfig({
           if (id.includes('@electric-sql/pglite')) return 'pglite'
           if (id.includes('@huggingface/transformers')) return 'transformers'
           if (id.includes('/vue') || id.includes('/pinia') || id.includes('/vue-router')) return 'vue-vendor'
-          return 'vendor'
+          // Let Rollup choose remaining chunk boundaries to avoid cross-chunk
+          // cycles between pglite internals and a forced catch-all vendor chunk.
+          return
         }
       }
     }
