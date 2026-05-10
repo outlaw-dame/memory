@@ -40,6 +40,9 @@ import chevronForwardOutline     from 'ionicons/dist/svg/chevron-forward-outline
 import chevronDownOutline        from 'ionicons/dist/svg/chevron-down-outline.svg?raw'
 import closeOutline              from 'ionicons/dist/svg/close-outline.svg?raw'
 import settingsOutline           from 'ionicons/dist/svg/settings-outline.svg?raw'
+import lockClosedOutline         from 'ionicons/dist/svg/lock-closed-outline.svg?raw'
+import globeOutline              from 'ionicons/dist/svg/globe-outline.svg?raw'
+import mailOutline               from 'ionicons/dist/svg/mail-outline.svg?raw'
 
 const IONICONS: Record<string, string> = {
   'home-outline':                  homeOutline,
@@ -71,6 +74,9 @@ const IONICONS: Record<string, string> = {
   'chevron-down-outline':          chevronDownOutline,
   'close-outline':                 closeOutline,
   'settings-outline':              settingsOutline,
+  'lock-closed-outline':           lockClosedOutline,
+  'globe-outline':                 globeOutline,
+  'mail-outline':                  mailOutline,
 }
 
 // ── Custom protocol glyphs ───────────────────────────────────────────────────
@@ -80,14 +86,9 @@ const IONICONS: Record<string, string> = {
 const CUSTOM_ICONS: Record<CustomIconName, string> = {
   'verified-mark': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg>`,
 
-  // Three nodes connected by lines — represents a federated network graph.
-  'federation': `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="4.5" r="2.5" fill="currentColor"/><circle cx="4" cy="19.5" r="2.5" fill="currentColor"/><circle cx="20" cy="19.5" r="2.5" fill="currentColor"/><path d="M12 7L4 17M12 7L20 17M4 19.5h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-
-  // Concentric broadcast arcs + anchor dot — ActivityPub broadcasting concept.
-  'activitypub': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M5 17.5a9 9 0 0 1 0-11M19 6.5a9 9 0 0 1 0 11M8.5 14.5a4.5 4.5 0 0 1 0-5M15.5 9.5a4.5 4.5 0 0 1 0 5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>`,
-
-  // @ glyph — AT Protocol identity.
-  'atproto': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1A10 10 0 1 0 12 22"/></svg>`,
+  // Three nodes connected in a triangle — generic Fediverse network symbol.
+  // Platform-specific logos live in ProtocolLogo.vue.
+  'fediverse': `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="4.5" r="2.5" fill="currentColor"/><circle cx="4" cy="19.5" r="2.5" fill="currentColor"/><circle cx="20" cy="19.5" r="2.5" fill="currentColor"/><path d="M12 7L4 17M12 7L20 17M4 19.5h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
 }
 
 // ── Props ────────────────────────────────────────────────────────────────────

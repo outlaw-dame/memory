@@ -3,10 +3,12 @@ import { useRouter } from 'vue-router'
 import { kList, kListItem, kToggle, kBlockTitle } from 'konsta/vue'
 import { useI18n } from '@/i18n'
 import { useNotificationsStore } from '@/stores/notificationsStore'
+import { useAppearanceStore } from '@/stores/appearanceStore'
 
 const router = useRouter()
 const { availableLocales, locale, setLocale, t } = useI18n()
 const notificationsStore = useNotificationsStore()
+const appearance = useAppearanceStore()
 
 function onLocaleChange(event: Event) {
   const target = event.target as HTMLSelectElement | null
@@ -47,6 +49,35 @@ function onWindowHoursChange(event: Event) {
     </kList>
     <p class="px-(--padding-main) text-xs text-label-secondary">{{ t('settings.language.description') }}</p>
     <p class="px-(--padding-main) mt-0.5 text-xs text-label-tertiary">{{ t('settings.language.updatesImmediately') }}</p>
+
+    <!-- ── Feed appearance ───────────────────────────────────────────────────── -->
+    <kBlockTitle>Feed</kBlockTitle>
+    <kList>
+      <kListItem title="Show source badge" subtitle="Protocol logo next to each post">
+        <template #after>
+          <kToggle
+            :checked="appearance.showProtocolBadge"
+            @change="(e: Event) => { appearance.showProtocolBadge = (e.target as HTMLInputElement).checked }"
+          />
+        </template>
+      </kListItem>
+      <kListItem title="Show visibility indicator" subtitle="Lock icon on followers-only posts">
+        <template #after>
+          <kToggle
+            :checked="appearance.showVisibilityIndicator"
+            @change="(e: Event) => { appearance.showVisibilityIndicator = (e.target as HTMLInputElement).checked }"
+          />
+        </template>
+      </kListItem>
+      <kListItem title="Show client app" subtitle="'via Memory / Tusky / …' in thread view">
+        <template #after>
+          <kToggle
+            :checked="appearance.showClientApp"
+            @change="(e: Event) => { appearance.showClientApp = (e.target as HTMLInputElement).checked }"
+          />
+        </template>
+      </kListItem>
+    </kList>
 
     <!-- ── Notification grouping ───────────────────────────────────────────── -->
     <kBlockTitle>{{ t('settings.appearance.title') }}</kBlockTitle>

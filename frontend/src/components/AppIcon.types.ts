@@ -37,14 +37,16 @@ export type AppIconName =
   | 'settings'
   // System
   | 'loader'
-  // Protocol identity glyphs (custom inline SVG)
+  // Visibility
+  | 'lock'
+  | 'globe'
+  | 'mail'
+  // Protocol / network glyphs (custom inline SVG — generic, not platform logos)
+  | 'fediverse'
   | 'verified-mark'
-  | 'federation'
-  | 'activitypub'
-  | 'atproto'
 
 /** Names backed by project-owned inline SVG paths — not from any glyph library. */
-export type CustomIconName = 'verified-mark' | 'federation' | 'activitypub' | 'atproto'
+export type CustomIconName = 'verified-mark' | 'fediverse'
 
 // ── Icon source descriptors ─────────────────────────────────────────────────
 
@@ -124,12 +126,15 @@ export const APP_ICON_REGISTRY = {
     fallback: { type: 'lucide',   component: Loader2 as Component },
   },
 
-  // Protocol identity glyphs — inline SVG, platform-independent.
-  // Replace SVG paths with real brand assets when design delivers them.
-  'verified-mark':         { ios: { type: 'custom', name: 'verified-mark' }, material: { type: 'custom', name: 'verified-mark' } },
-  'federation':            { ios: { type: 'custom', name: 'federation'    }, material: { type: 'custom', name: 'federation'    } },
-  'activitypub':           { ios: { type: 'custom', name: 'activitypub'   }, material: { type: 'custom', name: 'activitypub'   } },
-  'atproto':               { ios: { type: 'custom', name: 'atproto'       }, material: { type: 'custom', name: 'atproto'       } },
+  // Visibility
+  'lock':          { ios: { type: 'ionicon',  name: 'lock-closed-outline' }, material: { type: 'material', name: 'lock'              } },
+  'globe':         { ios: { type: 'ionicon',  name: 'globe-outline'        }, material: { type: 'material', name: 'public'             } },
+  'mail':          { ios: { type: 'ionicon',  name: 'mail-outline'          }, material: { type: 'material', name: 'mail'               } },
+
+  // Generic Fediverse glyph — use for settings/info contexts, not platform logos.
+  // Platform-specific logos live in src/design/logos/ProtocolLogo.vue.
+  'fediverse':     { ios: { type: 'custom', name: 'fediverse'    }, material: { type: 'custom', name: 'fediverse'    } },
+  'verified-mark': { ios: { type: 'custom', name: 'verified-mark' }, material: { type: 'custom', name: 'verified-mark' } },
 } satisfies Record<AppIconName, PlatformIconDefinition>
 
 // Back-compat alias — remove once all callsites use AppIconName.

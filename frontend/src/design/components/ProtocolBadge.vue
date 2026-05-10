@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import AppIcon from '@/components/AppIcon.vue'
-import type { AppIconName } from '@/components/AppIcon.types'
+import ProtocolLogo from '@/design/logos/ProtocolLogo.vue'
+import type { ProtocolLogoName } from '@/design/logos/protocolLogoTypes'
 
 type Protocol = 'atproto' | 'activitypub'
 
@@ -8,9 +8,9 @@ const props = defineProps<{
   protocol: Protocol
 }>()
 
-const CONFIG: Record<Protocol, { icon: AppIconName; label: string; class: string }> = {
-  atproto:     { icon: 'atproto',     label: 'AT Protocol', class: 'bg-indigo-50 text-indigo-600'  },
-  activitypub: { icon: 'activitypub', label: 'ActivityPub', class: 'bg-emerald-50 text-emerald-600' },
+const CONFIG: Record<Protocol, { logo: ProtocolLogoName; label: string; class: string; short: string }> = {
+  atproto:     { logo: 'atproto',     label: 'AT Protocol', class: 'bg-indigo-50 text-indigo-600',   short: 'AT' },
+  activitypub: { logo: 'activitypub', label: 'ActivityPub', class: 'bg-emerald-50 text-emerald-600', short: 'AP' },
 }
 
 const cfg = CONFIG[props.protocol]
@@ -22,7 +22,7 @@ const cfg = CONFIG[props.protocol]
     :class="cfg.class"
     :aria-label="cfg.label"
   >
-    <AppIcon :name="cfg.icon" :size="11" color="currentColor" />
-    {{ protocol === 'atproto' ? 'AT' : 'AP' }}
+    <ProtocolLogo :name="cfg.logo" :size="11" color="currentColor" />
+    {{ cfg.short }}
   </span>
 </template>

@@ -28,7 +28,7 @@ const CLASSES: Record<FederationSource, string> = {
     :class="CLASSES[source]"
     :aria-label="LABELS[source]"
   >
-    <AppIcon v-if="showIcon" name="federation" :size="11" color="currentColor" />
+    <AppIcon v-if="showIcon" name="fediverse" :size="11" color="currentColor" />
     {{ LABELS[source] }}
   </span>
 </template>

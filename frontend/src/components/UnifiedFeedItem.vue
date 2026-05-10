@@ -18,6 +18,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useFollow } from '@/composables/useFollow'
 import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPreview'
 import { useReply, type ReplyPolicyResolution, type ReplySubmissionResult } from '@/composables/useReply'
+import PostMetadataRow from '@/features/feed/PostMetadataRow.vue'
+import { resolvePostSourceMetadata } from '@/features/feed/postSourceMetadata'
 
 const props = defineProps<{
   item: UnifiedFeedItem
@@ -319,13 +321,7 @@ function formatRelativeTime(dateStr: string | null): string {
   return formatLocalizedRelativeTime(dateStr)
 }
 
-function getFederationDomain(item: UnifiedFeedItem): string {
-  try {
-    return new URL(item.authorProviderEndpoint).hostname
-  } catch {
-    return item.source === 'atproto' ? 'atproto' : 'activitypods'
-  }
-}
+const sourceMetadata = computed(() => resolvePostSourceMetadata(props.item))
 
 async function openReplyComposer() {
   if (!props.item.objectUri) return
@@ -411,27 +407,12 @@ async function onRepostClick() {
               </svg>
             </span>
           </div>
-          <div class="mt-0.5 flex items-center gap-1">
-            <span class="text-caption text-dark-50">{{ formatRelativeTime(item.createdAt) }}</span>
-            <span class="text-caption text-dark-20">·</span>
-            <!-- Federation source with node icon -->
-            <span class="text-caption flex items-center gap-0.5 font-semibold" style="color: #22c55e">
-              <svg
-                class="h-2.5 w-2.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="5" r="2" />
-                <circle cx="5" cy="19" r="2" />
-                <circle cx="19" cy="19" r="2" />
-                <path d="M12 7v4m0 0l-5 5m5-5l5 5" />
-              </svg>
-              {{ getFederationDomain(item) }}
-            </span>
+          <div class="mt-0.5">
+            <PostMetadataRow
+              :metadata="sourceMetadata"
+              :created-at="item.createdAt"
+              compact
+            />
           </div>
         </div>
 
