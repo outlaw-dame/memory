@@ -5,7 +5,7 @@ const emit = defineEmits<{ close: []; highlightSources: []; reSummarize: [] }>()
 <template>
   <div
     class="rounded-3xl p-5 relative overflow-hidden"
-    style="background: linear-gradient(135deg, rgb(99,100,246) 0%, rgb(168,85,247) 100%);"
+    style="background: linear-gradient(135deg, var(--color-accent) 0%, rgb(168,85,247) 100%);"
   >
     <!-- Close button -->
     <button

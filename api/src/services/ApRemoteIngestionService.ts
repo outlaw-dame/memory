@@ -33,6 +33,7 @@ const AS_PUBLIC = 'https://www.w3.org/ns/activitystreams#Public'
 const MAX_CONTENT_LENGTH = 100_000
 const MAX_URI_LENGTH = 3072
 const MAX_ACTIVITIES_PER_BATCH = 100
+const MAX_ACTOR_DOC_BYTES = 512_000
 const AP_ACTOR_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 /** In-flight fetch guard — prevents concurrent duplicate fetches of the same actor. */
@@ -113,6 +114,56 @@ function parsePublished(value: unknown): Date {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return new Date()
   return clampToNow(parsed)
+}
+
+async function readJsonBodyCapped(response: Response, maxBytes: number): Promise<Record<string, unknown> | null> {
+  const contentLengthHeader = response.headers.get('content-length')
+  if (contentLengthHeader) {
+    const contentLength = Number.parseInt(contentLengthHeader, 10)
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      return null
+    }
+  }
+
+  const body = response.body
+  if (!body) return null
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let bytesRead = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done || !value) break
+
+      bytesRead += value.byteLength
+      if (bytesRead > maxBytes) {
+        return null
+      }
+
+      chunks.push(value)
+    }
+  } finally {
+    try { await reader.cancel() } catch { /* ignore */ }
+  }
+
+  const merged = new Uint8Array(bytesRead)
+  let offset = 0
+  for (const chunk of chunks) {
+    merged.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  try {
+    const raw = new TextDecoder().decode(merged)
+    const parsed = JSON.parse(raw)
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null
+  } catch {
+    return null
+  }
 }
 
 function stableRepostId(actorUri: string, objectUri: string): string {
@@ -291,7 +342,8 @@ async function cacheApActorIfStale(actorUri: string): Promise<void> {
     })()
     if (!resp || !resp.ok) return
 
-    const actor = await resp.json() as Record<string, unknown>
+    const actor = await readJsonBodyCapped(resp, MAX_ACTOR_DOC_BYTES)
+    if (!actor) return
 
     const preferredUsername = typeof actor['preferredUsername'] === 'string'
       ? actor['preferredUsername'].slice(0, 512)

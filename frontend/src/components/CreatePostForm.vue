@@ -269,16 +269,16 @@ async function createPost() {
   <form @submit.prevent="createPost">
     <div class="rounded-default flex flex-col overflow-hidden bg-white shadow-sm">
       <!-- Author row -->
-      <div class="flex items-center gap-3 px-[var(--padding-main)] pt-[var(--padding-main)]">
+      <div class="flex items-center gap-3 px-(--padding-main) pt-(--padding-main)">
         <div
-          class="flex h-10 w-10 flex-shrink-0 select-none items-center justify-center rounded-full text-sm font-bold text-white"
+          class="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full text-sm font-bold text-white"
           style="background: #1a1a2e"
         >
           {{ getInitials(displayName) }}
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-subHeader text-dark font-bold">{{ displayName }}</span>
-          <span class="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full" style="background: #1d9bf0">
+          <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full" style="background: #1d9bf0">
             <svg class="h-2.5 w-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
               <path
                 fill-rule="evenodd"
@@ -291,12 +291,12 @@ async function createPost() {
       </div>
 
       <!-- Post type -->
-      <div class="flex gap-2 px-[var(--padding-main)] pt-3">
+      <div class="flex gap-2 px-(--padding-main) pt-3">
         <button
           type="button"
           class="text-footnote rounded-full px-3 py-1.5 font-semibold transition-colors"
           :class="postType === 'note' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
-          :style="postType === 'note' ? 'background: rgb(99,100,246);' : ''"
+          :style="postType === 'note' ? 'background: var(--color-accent);' : ''"
           @click="setPostType('note')"
         >
           {{ t('composer.types.note') }}
@@ -305,14 +305,14 @@ async function createPost() {
           type="button"
           class="text-footnote rounded-full px-3 py-1.5 font-semibold transition-colors"
           :class="postType === 'article' ? 'text-white' : 'bg-dark-10 text-dark-50 hover:bg-dark-10'"
-          :style="postType === 'article' ? 'background: rgb(99,100,246);' : ''"
+          :style="postType === 'article' ? 'background: var(--color-accent);' : ''"
           @click="setPostType('article')"
         >
           {{ t('composer.types.article') }}
         </button>
       </div>
 
-      <div v-if="postType === 'article'" class="flex flex-col gap-3 px-[var(--padding-main)] pb-1 pt-3">
+      <div v-if="postType === 'article'" class="flex flex-col gap-3 px-(--padding-main) pb-1 pt-3">
         <div class="flex flex-col gap-1.5">
           <label class="text-footnote text-dark font-semibold" for="composer-article-title">
             {{ t('composer.article.titleLabel') }}
@@ -349,24 +349,24 @@ async function createPost() {
       <textarea
         id="composer-textarea"
         v-model="content"
-        class="text-dark w-full resize-none appearance-none border-none bg-transparent px-[var(--padding-main)] py-3 text-base leading-snug outline-none"
+        class="text-dark w-full resize-none appearance-none border-none bg-transparent px-(--padding-main) py-3 text-base leading-snug outline-none"
         rows="5"
         :placeholder="composerPlaceholder"
       />
 
       <!-- Character counter -->
-      <div class="flex justify-end px-[var(--padding-main)] pb-2">
+      <div class="flex justify-end px-(--padding-main) pb-2">
         <span class="text-caption" :class="isOverLimit ? 'text-red-500' : 'text-dark-50'">
           {{ characterCountLabel }}
         </span>
       </div>
 
-      <div v-if="composerLinkPreview" class="px-[var(--padding-main)] pb-3">
+      <div v-if="composerLinkPreview" class="px-(--padding-main) pb-3">
         <PostLinkPreview :preview="composerLinkPreview" />
       </div>
 
       <!-- Out-of-band hashtags -->
-      <div class="px-[var(--padding-main)] pb-3">
+      <div class="px-(--padding-main) pb-3">
         <input
           v-model="outOfBandHashtags"
           class="border-dark-10 text-dark w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
@@ -377,7 +377,7 @@ async function createPost() {
       <!-- Text formatting toolbar -->
       <div
         v-if="showFormatting"
-        class="border-dark-10 flex items-center gap-1 border-t px-[var(--padding-main)] pb-2 pt-2"
+        class="border-dark-10 flex items-center gap-1 border-t px-(--padding-main) pb-2 pt-2"
       >
         <button
           type="button"
@@ -408,13 +408,13 @@ async function createPost() {
       <!-- GIF picker -->
       <div
         v-if="postType === 'note' && showGifPicker"
-        class="border-dark-10 border-t px-[var(--padding-main)] pb-3 pt-3"
+        class="border-dark-10 border-t px-(--padding-main) pb-3 pt-3"
       >
         <GifPicker @select="onGifSelect" />
       </div>
 
       <!-- Selected GIF preview -->
-      <div v-if="postType === 'note' && selectedGif && !showGifPicker" class="relative mx-[var(--padding-main)] mb-3">
+      <div v-if="postType === 'note' && selectedGif && !showGifPicker" class="relative mx-(--padding-main) mb-3">
         <img :src="getEmbedUrl(selectedGif)" :alt="selectedGif.title" class="max-h-48 w-full rounded-xl object-cover" />
         <button
           type="button"
@@ -431,7 +431,7 @@ async function createPost() {
       </div>
 
       <!-- Uploaded media previews -->
-      <div v-if="selectedMediaAttachments.length > 0" class="mx-[var(--padding-main)] mb-3 grid grid-cols-2 gap-2">
+      <div v-if="selectedMediaAttachments.length > 0" class="mx-(--padding-main) mb-3 grid grid-cols-2 gap-2">
         <div
           v-for="(attachment, index) in selectedMediaAttachments"
           :key="attachment.id || attachment.url"
@@ -472,14 +472,14 @@ async function createPost() {
         </div>
       </div>
 
-      <div v-if="mediaUploadError" class="px-[var(--padding-main)] pb-3 text-sm text-red-500">
+      <div v-if="mediaUploadError" class="px-(--padding-main) pb-3 text-sm text-red-500">
         {{ mediaUploadError }}
       </div>
 
       <!-- Poll editor (FEP-9967) -->
       <div
         v-if="showPoll"
-        class="bg-pastel-light border-dark-10 mx-[var(--padding-main)] mb-3 flex flex-col gap-2 rounded-2xl border p-3"
+        class="bg-pastel-light border-dark-10 mx-(--padding-main) mb-3 flex flex-col gap-2 rounded-2xl border p-3"
       >
         <!-- Header row -->
         <div class="flex items-center justify-between">
@@ -488,16 +488,18 @@ async function createPost() {
           <div class="flex items-center gap-1 text-xs">
             <button
               type="button"
-              :class="pollMode === 'oneOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
               class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              :class="pollMode === 'oneOf' ? 'text-white' : 'bg-dark-10 text-dark'"
+              :style="pollMode === 'oneOf' ? 'background: var(--color-accent);' : ''"
               @click="pollMode = 'oneOf'"
             >
               {{ t('composer.poll.mode.single') }}
             </button>
             <button
               type="button"
-              :class="pollMode === 'anyOf' ? 'bg-indigo-500 text-white' : 'bg-dark-10 text-dark'"
               class="rounded-full px-2.5 py-1 font-semibold transition-colors"
+              :class="pollMode === 'anyOf' ? 'text-white' : 'bg-dark-10 text-dark'"
+              :style="pollMode === 'anyOf' ? 'background: var(--color-accent);' : ''"
               @click="pollMode = 'anyOf'"
             >
               {{ t('composer.poll.mode.multi') }}
@@ -527,7 +529,7 @@ async function createPost() {
           <button
             v-if="pollOptions.length > 2"
             type="button"
-            class="text-dark-50 hover:text-dark flex-shrink-0 transition-colors"
+            class="text-dark-50 hover:text-dark shrink-0 transition-colors"
             :aria-label="t('composer.poll.removeOption')"
             @click="removePollOption(i)"
           >
@@ -559,10 +561,10 @@ async function createPost() {
       </div>
 
       <!-- Divider -->
-      <div class="bg-dark-10 mx-[var(--padding-main)] h-px" />
+      <div class="bg-dark-10 mx-(--padding-main) h-px" />
 
       <!-- Bottom toolbar -->
-      <div class="flex items-center gap-1 px-[var(--padding-main)] py-3">
+      <div class="flex items-center gap-1 px-(--padding-main) py-3">
         <!-- GIF -->
         <button
           v-if="postType === 'note'"
@@ -650,7 +652,7 @@ async function createPost() {
         </button>
 
         <!-- Post + Advanced Settings split pill -->
-        <div class="ml-auto flex items-center overflow-hidden rounded-full" style="background: rgb(99, 100, 246)">
+        <div class="ml-auto flex items-center overflow-hidden rounded-full" style="background: var(--color-accent)">
           <button
             type="submit"
             :disabled="!canPost"
@@ -662,7 +664,7 @@ async function createPost() {
             </svg>
           </button>
           <!-- vertical divider -->
-          <div class="h-5 w-px flex-shrink-0 bg-white/30" />
+          <div class="h-5 w-px shrink-0 bg-white/30" />
           <!-- gear button -->
           <button
             type="button"

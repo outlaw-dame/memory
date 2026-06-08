@@ -231,6 +231,58 @@ export interface AtRecord {
   record?: Record<string, unknown> | null
 }
 
+export interface StoryLink {
+  uri: string
+  title?: string
+}
+
+export interface StoryMediaView {
+  kind: 'image' | 'video'
+  mimeType: string
+  alt: string
+  url: string | null
+  cid: string | null
+  aspectRatio: { width: number; height: number } | null
+  durationMs: number | null
+}
+
+export interface StoryItem {
+  uri: string
+  cid: string | null
+  media: StoryMediaView
+  text: string | null
+  links: StoryLink[]
+  createdAt: string
+  expiresAt: string
+  expiresInSeconds: number
+  visibility: 'public' | 'unlisted'
+  seen: boolean
+  viewerCanDelete: boolean
+}
+
+export interface StoryGroup {
+  actor: {
+    did: string
+    handle: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    isViewer: boolean
+  }
+  latestAt: string
+  seen: boolean
+  items: StoryItem[]
+}
+
+export interface CreateStoryInput {
+  mediaAttachmentId: string
+  alt: string
+  text?: string
+  links?: StoryLink[]
+  visibility?: 'public' | 'unlisted'
+  expiresAt?: string
+  idempotencyKey?: string
+}
+
 interface ProtocolWeights {
   activitypods: number
   atproto: number
@@ -261,6 +313,7 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   const atPosts = ref<AtPost[]>([])
   const atRecords = ref<AtRecord[]>([])
   const unifiedFeed = ref<UnifiedFeedItem[]>([])
+  const storyGroups = ref<StoryGroup[]>([])
   const firehoseStatus = ref<{
     sources: FirehoseStatus[]
     stats: { totalAtPosts: number; totalAtIdentities: number; totalAtRecords: number }
@@ -271,7 +324,9 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   const protocolWeights = ref<ProtocolWeights>({ activitypods: 50, atproto: 50 })
   const hashtagFilter = ref('')
   const isLoading = ref(false)
+  const isStoriesLoading = ref(false)
   const error = ref<string | null>(null)
+  const storiesError = ref<string | null>(null)
   const threadContextCache = ref<Record<string, ThreadCacheEntry>>({})
   const moderationRevision = ref(0)
 
@@ -286,6 +341,7 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
   // -------------------------------------------------------------------------
 
   const hasAtContent = computed(() => atPosts.value.length > 0)
+  const hasStories = computed(() => storyGroups.value.some(group => group.items.length > 0))
   const isFirehoseConnected = computed(() =>
     firehoseStatus.value.sources.some(s => s.isConnected),
   )
@@ -540,6 +596,83 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     }
   }
 
+  async function fetchStories(mode: 'following' | 'all' = 'following'): Promise<void> {
+    if (isStoriesLoading.value) return
+
+    isStoriesLoading.value = true
+    storiesError.value = null
+
+    try {
+      const payload = await apiFetch<{ groups: StoryGroup[] }>(
+        `/at/stories?mode=${mode}&limit=30`,
+      )
+      storyGroups.value = payload.groups
+    } catch (err) {
+      storiesError.value = err instanceof Error ? err.message : 'Failed to fetch stories'
+      console.error('[AtBridgeStore] fetchStories error:', err)
+    } finally {
+      isStoriesLoading.value = false
+    }
+  }
+
+  async function createStory(input: CreateStoryInput): Promise<StoryItem | null> {
+    storiesError.value = null
+
+    try {
+      const response = await apiFetch<{ story: StoryItem | null }>('/at/stories', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+      await fetchStories()
+      return response.story
+    } catch (err) {
+      storiesError.value = err instanceof Error ? err.message : 'Failed to create story'
+      console.error('[AtBridgeStore] createStory error:', err)
+      return null
+    }
+  }
+
+  async function deleteStory(uri: string): Promise<boolean> {
+    storiesError.value = null
+
+    try {
+      await apiFetch<{ ok: boolean }>(`/at/stories?uri=${encodeURIComponent(uri)}`, {
+        method: 'DELETE',
+      })
+      for (const group of storyGroups.value) {
+        group.items = group.items.filter(item => item.uri !== uri)
+      }
+      storyGroups.value = storyGroups.value.filter(group => group.items.length > 0)
+      await fetchStories()
+      return true
+    } catch (err) {
+      storiesError.value = err instanceof Error ? err.message : 'Failed to delete story'
+      console.error('[AtBridgeStore] deleteStory error:', err)
+      return false
+    }
+  }
+
+  async function markStoriesViewed(uris: string[]): Promise<void> {
+    const uniqueUris = [...new Set(uris.filter(Boolean))]
+    if (uniqueUris.length === 0) return
+
+    for (const group of storyGroups.value) {
+      for (const item of group.items) {
+        if (uniqueUris.includes(item.uri)) item.seen = true
+      }
+      group.seen = group.items.every(item => item.seen)
+    }
+
+    try {
+      await apiFetch<{ ok: boolean; recorded: number }>('/at/stories/viewed', {
+        method: 'POST',
+        body: JSON.stringify({ uris: uniqueUris }),
+      })
+    } catch (err) {
+      console.warn('[AtBridgeStore] markStoriesViewed warning:', err)
+    }
+  }
+
   /**
    * Fetch paginated thread context using cache-first semantics.
    */
@@ -763,12 +896,14 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     atPosts.value = []
     atRecords.value = []
     unifiedFeed.value = []
+    storyGroups.value = []
     firehoseStatus.value = { sources: [], stats: { totalAtPosts: 0, totalAtIdentities: 0, totalAtRecords: 0 } }
     feedSource.value = 'all'
     timelineMode.value = 'balanced'
     protocolWeights.value = { activitypods: 50, atproto: 50 }
     hashtagFilter.value = ''
     error.value = null
+    storiesError.value = null
     clearThreadCache()
     moderationRevision.value = 0
     unifiedFeedOffset.value = 0
@@ -783,18 +918,22 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     atPosts,
     atRecords,
     unifiedFeed,
+    storyGroups,
     firehoseStatus,
     feedSource,
     timelineMode,
     protocolWeights,
     hashtagFilter,
     isLoading,
+    isStoriesLoading,
     error,
+    storiesError,
     threadContextCache,
     moderationRevision,
 
     // Computed
     hasAtContent,
+    hasStories,
     isFirehoseConnected,
 
     // Actions
@@ -802,6 +941,10 @@ export const useAtBridgeStore = defineStore('atBridge', () => {
     fetchAtPosts,
     fetchAtRecords,
     fetchFirehoseStatus,
+    fetchStories,
+    createStory,
+    deleteStory,
+    markStoriesViewed,
     fetchThreadContext,
     moderateAuthor,
     toggleRepost,

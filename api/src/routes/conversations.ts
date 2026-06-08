@@ -110,7 +110,11 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .get(
     '/conversations/:id',
-    async ({ params: { id }, user, headers, status }) => {
+    async ({ params: { id }, user, headers, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const locale = localeFromHeaders(headers)
       try {
         const conv = await db
@@ -149,7 +153,11 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .post(
     '/conversations',
-    async ({ body, user, headers, status }) => {
+    async ({ body, user, headers, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const locale = localeFromHeaders(headers)
       const { type, name, memberIds } = body as {
         type: 'dm' | 'group'
@@ -195,7 +203,11 @@ const conversationsRoutes = new Elysia({ name: 'conversations' })
   )
   .post(
     '/conversations/:id/messages',
-    async ({ params: { id }, body, user, headers, status }) => {
+    async ({ params: { id }, body, user, headers, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const locale = localeFromHeaders(headers)
       const { content } = body as { content: string }
 

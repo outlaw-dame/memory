@@ -128,7 +128,7 @@ async function selectGif(gif: KlipyGif) {
         :class="activeTab === tab
           ? 'text-white'
           : 'bg-white text-dark-50 hover:bg-dark-10'"
-        :style="activeTab === tab ? 'background: rgb(99,100,246);' : ''"
+        :style="activeTab === tab ? 'background: var(--color-accent);' : ''"
         @click="activeTab = tab"
       >
         {{ tab }}
@@ -157,7 +157,8 @@ async function selectGif(gif: KlipyGif) {
       <button
         v-for="gif in gifs"
         :key="gif.slug"
-        class="relative aspect-square rounded-lg overflow-hidden group focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        class="relative aspect-square rounded-lg overflow-hidden group focus:outline-none focus:ring-2"
+        style="--tw-ring-color: var(--color-accent);"
         :title="gif.title"
         @click="selectGif(gif)"
       >
@@ -186,7 +187,7 @@ async function selectGif(gif: KlipyGif) {
     <button
       v-if="hasMore && gifs.length > 0"
       class="rounded-full py-1.5 text-caption font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
-      style="background: rgba(99,100,246,0.1); color: rgb(99,100,246);"
+      style="background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent);"
       :disabled="isLoading"
       @click="load(true)"
     >

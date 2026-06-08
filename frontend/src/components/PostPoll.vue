@@ -87,10 +87,8 @@ async function submitVote() {
         :key="option.name"
         type="button"
         class="relative flex h-11 items-center overflow-hidden rounded-xl text-left transition-opacity"
-        :class="[
-          !canVote ? 'cursor-default' : 'hover:opacity-90 active:scale-[0.98]',
-          selectedNames.has(option.name) && canVote ? 'ring-2 ring-indigo-400' : ''
-        ]"
+        :class="!canVote ? 'cursor-default' : 'hover:opacity-90 active:scale-[0.98]'"
+        :style="selectedNames.has(option.name) && canVote ? 'outline: 2px solid var(--color-accent); outline-offset: 0px;' : ''"
         :aria-label="t('poll.selectOption', { option: option.name })"
         @click="toggleOption(option.name)"
       >
@@ -99,15 +97,15 @@ async function submitVote() {
           class="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
           :style="{
             width: hasVoted || isClosed ? `${optionPercent(option.voteCount)}%` : '0%',
-            background: selectedNames.has(option.name) ? 'rgba(99,100,246,0.35)' : 'rgba(99,100,246,0.18)'
+            background: selectedNames.has(option.name) ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'color-mix(in srgb, var(--color-accent) 18%, transparent)'
           }"
         />
         <!-- Label -->
         <div class="relative flex w-full items-center justify-between px-4">
-          <span class="text-subHeader font-semibold" style="color: rgb(99, 100, 246)">
+          <span class="text-subHeader font-semibold" style="color: var(--color-accent)">
             {{ option.name }}
           </span>
-          <span v-if="hasVoted || isClosed" class="text-subHeader font-bold" style="color: rgb(99, 100, 246)">
+          <span v-if="hasVoted || isClosed" class="text-subHeader font-bold" style="color: var(--color-accent)">
             {{ optionPercent(option.voteCount) }}%
           </span>
         </div>
@@ -118,7 +116,8 @@ async function submitVote() {
     <div v-if="canVote && selectedNames.size > 0" class="px-3 pb-3">
       <button
         type="button"
-        class="text-subHeader h-10 w-full rounded-xl bg-indigo-500 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        class="text-subHeader h-10 w-full rounded-xl font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        style="background: var(--color-accent);"
         :disabled="isSubmitting"
         @click="submitVote"
       >

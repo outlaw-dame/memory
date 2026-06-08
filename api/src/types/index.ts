@@ -65,6 +65,14 @@ export interface NoteCreateRequest {
   htmlMfm?: boolean
   /** FEP-c16b: raw source before MFM rendering */
   source?: { content: string; mediaType: string }
+  /**
+   * ActivityStreams 2.0 `target` property — used for wall posts.
+   * When present, identifies the actor URI of the profile whose wall this post
+   * is being written on (following Friendica's AP wall implementation pattern).
+   * The outer `Create` activity will carry this as the `target` when sent to
+   * the ActivityPods outbox.
+   */
+  target?: string
 }
 
 // Export all Types from diffrent files

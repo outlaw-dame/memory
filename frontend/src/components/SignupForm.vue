@@ -5,7 +5,37 @@ import MemoryButton from '@/components/MemoryButton.vue'
 import MemoryInput from '@/components/MemoryInput.vue'
 import { ref } from 'vue'
 import { ProviderSignUpErrors } from '@/types'
+import type { ProviderEndpoints } from '@/types'
 import { useI18n } from '@/i18n'
+
+function normalizeProviderEndpoint(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null
+    }
+    parsed.hash = ''
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    return null
+  }
+}
+
+const configuredProviderEndpoints = [
+  import.meta.env.VITE_POD_PROVIDER_BASE_URL,
+  import.meta.env.VITE_ACTIVITYPUB_PROXY_BASE_URL,
+  ...(String(import.meta.env.VITE_MEMORY_POD_PROVIDER_ENDPOINTS ?? '').split(',')),
+]
+  .map(value => normalizeProviderEndpoint(String(value ?? '')))
+  .filter((value): value is string => value !== null)
+
+const allowedProviderEndpoints = new Set<string>([
+  'http://localhost:3000',
+  ...configuredProviderEndpoints,
+])
 
 // Store
 const authStore = useAuthStore()
@@ -40,7 +70,7 @@ async function submitForm() {
       email.value,
       username.value,
       password.value,
-      endpoint.value as any,
+      endpoint.value as ProviderEndpoints,
     )
     // if the response is a string, it means that there was an error
     if (authResponse) {
@@ -95,9 +125,15 @@ function validateForm(): void {
     }
 
     // endpoint check
-    if (!endpoint.value.startsWith('http')) {
+    const normalizedEndpoint = normalizeProviderEndpoint(endpoint.value)
+    if (!normalizedEndpoint) {
       errorMessages.value.endpoint = 'Must be a valid http:// or https:// URL'
       valid = false
+    } else if (!allowedProviderEndpoints.has(normalizedEndpoint)) {
+      errorMessages.value.endpoint = `Provider must be one of: ${Array.from(allowedProviderEndpoints).join(', ')}`
+      valid = false
+    } else {
+      endpoint.value = normalizedEndpoint
     }
 
     formIsValid.value = valid
@@ -166,7 +202,7 @@ function validateForm(): void {
     <MemoryButton
       :loading="isRequesting"
       @click="submitForm"
-      class="mb-(--padding-large) w-full"
+      class="mb-(--padding-large) w-full bg-accent text-white"
       :disabled="!formIsValid"
     >
       {{ t('common.actions.signUp') }}

@@ -23,6 +23,7 @@ import { signedIn, signedInGuard } from './elysiaCompat'
 import { db } from '../db/client'
 import { atPosts, atIdentities, atFirehoseCursors, unifiedFeedView, atRecords, unifiedFeedCandidatesView, apRemotePosts, apActorCache } from '../db/atBridgeSchema'
 import { desc, eq, and, sql, ilike, or, gt, inArray, type SQL } from 'drizzle-orm'
+import { isPublicHttpUrl } from '../utils/urlGuards'
 import setupPlugin from './setup'
 import { extractHashtagsFromFacets, normalizeHashtag } from '../utils/hashtags'
 import { mapFeedMetricCounts } from '../utils/feedMetrics'
@@ -31,10 +32,8 @@ import crypto from 'crypto'
 import {
   applyViewerThreadMetrics,
   applyViewerWarningFlags,
-  appendVisibleThreadWindow,
   buildViewerThreadMetrics,
   filterViewerModeratedRows as filterViewerModeratedRowsBase,
-  finalizeVisibleThreadWindow,
   getThreadRootUri,
   isRowHiddenForViewer,
   type ModerationVisibilityAction,
@@ -216,22 +215,6 @@ function normalizeThreadUri(value: string): string | null {
   if (trimmed.length === 0 || trimmed.length > 3072) return null
   if (/\s/.test(trimmed)) return null
   return trimmed
-}
-
-function encodeCursor(offset: number): string {
-  return Buffer.from(String(offset), 'utf8').toString('base64url')
-}
-
-function decodeCursor(cursor: string | undefined): number {
-  if (!cursor) return 0
-  try {
-    const decoded = Buffer.from(cursor, 'base64url').toString('utf8')
-    const parsed = Number.parseInt(decoded, 10)
-    if (!Number.isFinite(parsed) || parsed < 0) return 0
-    return parsed
-  } catch {
-    return 0
-  }
 }
 
 function encodeFeedCursor(row: UnifiedFeedRow): string | null {
@@ -644,8 +627,12 @@ async function loadRepostCandidateRows(params: {
   hashtag?: string | null
   sinceDate?: Date | null
   viewerIds?: ReadonlySet<string>
+  followedAuthorIds?: readonly string[]
 }): Promise<UnifiedFeedRow[]> {
-  const { fetchLimit, source, hashtag, sinceDate, viewerIds = new Set<string>() } = params
+  const { fetchLimit, source, hashtag, sinceDate, viewerIds = new Set<string>(), followedAuthorIds } = params
+  const normalizedFollowed = followedAuthorIds
+    ? [...new Set(followedAuthorIds.map(id => id.trim()).filter(id => id.length > 0))]
+    : []
 
   const recordFilters: SQL[] = [
     eq(atRecords.isActive, true),
@@ -653,6 +640,9 @@ async function loadRepostCandidateRows(params: {
   ]
   if (sinceDate) {
     recordFilters.push(gt(atRecords.createdAt, sinceDate))
+  }
+  if (normalizedFollowed.length > 0) {
+    recordFilters.push(sql`${atRecords.authorDid} = ANY(${normalizedFollowed}::text[])`)
   }
 
   const boostRecords = await db
@@ -733,14 +723,20 @@ async function queryFeedCandidates(params: {
   hashtag?: string | null
   sinceDate?: Date | null
   viewerIds?: ReadonlySet<string>
+  followedAuthorIds?: readonly string[]
+  keysetCursor?: FeedCursorPayload | null
 }): Promise<UnifiedFeedRow[]> {
-  const { fetchLimit, source, hashtag, sinceDate, viewerIds } = params
+  const { fetchLimit, source, hashtag, sinceDate, viewerIds, followedAuthorIds, keysetCursor } = params
   const includeAt = !source || source === 'all' || source === 'atproto'
   const includeAp = !source || source === 'all' || source === 'activitypods'
   const normalizedTag = hashtag ? normalizeHashtag(hashtag) : null
+  const normalizedFollowed = followedAuthorIds
+    ? [...new Set(followedAuthorIds.map(id => id.trim()).filter(id => id.length > 0))]
+    : []
 
   const atFilters: SQL[] = [sql`ap.is_public = true`]
   const apFilters: SQL[] = [sql`p.is_public = true`]
+  const apRemoteFilters: SQL[] = [sql`apr.is_public = true`]
 
   if (normalizedTag) {
     const tagPattern = `%${normalizedTag}%`
@@ -750,10 +746,35 @@ async function queryFeedCandidates(params: {
   if (sinceDate) {
     atFilters.push(sql`ap.created_at > ${sinceDate}`)
     apFilters.push(sql`p.created_at > ${sinceDate}`)
+    apRemoteFilters.push(sql`apr.created_at > ${sinceDate}`)
+  }
+
+  if (normalizedFollowed.length > 0) {
+    atFilters.push(sql`ap.author_did = ANY(${normalizedFollowed}::text[])`)
+    apFilters.push(sql`u.web_id = ANY(${normalizedFollowed}::text[])`)
+    apRemoteFilters.push(sql`apr.author_web_id = ANY(${normalizedFollowed}::text[])`)
+  }
+
+  if (keysetCursor) {
+    const cursorTs = keysetCursor.createdAt
+    const cursorId = keysetCursor.id
+    atFilters.push(sql`(
+      LEAST(ap.created_at, NOW()) < ${cursorTs}::timestamptz
+      OR (LEAST(ap.created_at, NOW()) = ${cursorTs}::timestamptz AND ap.id < ${cursorId})
+    )`)
+    apFilters.push(sql`(
+      p.created_at < ${cursorTs}::timestamptz
+      OR (p.created_at = ${cursorTs}::timestamptz AND p.id < ${cursorId})
+    )`)
+    apRemoteFilters.push(sql`(
+      LEAST(apr.created_at, NOW()) < ${cursorTs}::timestamptz
+      OR (LEAST(apr.created_at, NOW()) = ${cursorTs}::timestamptz AND apr.id < ${cursorId})
+    )`)
   }
 
   const atWhere = sql.join(atFilters, sql` AND `)
   const apWhere = sql.join(apFilters, sql` AND `)
+  const apRemoteWhere = sql.join(apRemoteFilters, sql` AND `)
 
   const cteFragments: SQL[] = []
   const unionArms: SQL[] = []
@@ -824,7 +845,7 @@ async function queryFeedCandidates(params: {
         apr.reply_parent_uri, apr.reply_root_uri,
         apr.object_uri AS candidate_uri
       FROM ap_remote_posts apr
-      WHERE apr.is_public = true
+      WHERE ${apRemoteWhere}
       ORDER BY apr.created_at DESC
       LIMIT ${fetchLimit}
     )`)
@@ -921,6 +942,7 @@ async function queryFeedCandidates(params: {
     hashtag,
     sinceDate,
     viewerIds,
+    followedAuthorIds,
   })
 
   return mergeRepostRows(postRows, repostRows, fetchLimit)
@@ -1120,12 +1142,7 @@ function feedItemObjectId(row: UnifiedFeedRow): string | null {
 
 function isRepostableTargetUri(value: string): boolean {
   if (value.startsWith('at://')) return parseAtUri(value) !== null
-  try {
-    const parsed = new URL(value)
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
-  } catch {
-    return false
-  }
+  return isPublicHttpUrl(value)
 }
 
 function normalizeRepostTarget(body: { objectUri?: string | null; atUri?: string | null }): string | null {
@@ -1397,6 +1414,7 @@ function extractCurrentUserIds(user: { atprotoDid?: string | null; getWebId?: ((
 async function resolveFollowedAuthorIds(user: { atprotoDid?: string | null; getWebId?: (() => string) | undefined }): Promise<Set<string>> {
   const currentUserIds = extractCurrentUserIds(user)
   if (currentUserIds.size === 0) return new Set<string>()
+  const currentUserIdList = [...currentUserIds]
 
   const followRecords = await db
     .select({
@@ -1408,6 +1426,7 @@ async function resolveFollowedAuthorIds(user: { atprotoDid?: string | null; getW
     .where(
       and(
         eq(atRecords.isActive, true),
+        inArray(atRecords.authorDid, currentUserIdList),
         or(
           eq(atRecords.collection, 'app.bsky.graph.follow'),
           eq(atRecords.collection, 'canonical.follow'),
@@ -1667,12 +1686,23 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
           ? (() => { const d = new Date(since); return isNaN(d.getTime()) ? null : d })()
           : null
 
+        const followedIds = timelineMode === 'following'
+          ? await resolveFollowedAuthorIds(user)
+          : null
+        if (timelineMode === 'following' && (!followedIds || followedIds.size === 0)) {
+          return useCursorPaging
+            ? ({ items: [], nextCursor: null, hasMore: false } as FeedPageResponse)
+            : []
+        }
+
         const candidateRows = dedupeFeedRows(await queryFeedCandidates({
           fetchLimit,
           source: source && source !== 'all' ? source : null,
           hashtag: hashtag?.trim().length ? hashtag : null,
           sinceDate,
           viewerIds: extractCurrentUserIds(user),
+          followedAuthorIds: followedIds ? [...followedIds] : undefined,
+          keysetCursor,
         }))
         const queryDuration = Date.now() - queryStartTime
         console.log('[AT Bridge /feed] Query executed', { duration: queryDuration, rows: candidateRows.length })
@@ -1701,27 +1731,31 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
         const bumpedResults = await applyReplyThreadBumps(candidateRows, user)
         console.log('[AT Bridge /feed] Thread bumps applied', { duration: Date.now() - bumpStartTime, results: bumpedResults.length })
 
-        const mediaFlaggedResults = await applyAtprotoMediaFlags(bumpedResults)
-        const warningResults = applyViewerWarningFlags(mediaFlaggedResults, moderationState)
+        const warningResults = applyViewerWarningFlags(bumpedResults, moderationState)
         const { visible: moderatedResults } = filterViewerModeratedRows(warningResults, moderationState)
         console.log('[AT Bridge /feed] Moderation filtered', { visible: moderatedResults.length, hidden: warningResults.length - moderatedResults.length })
 
-        // For the following mode, filter down to only posts from followed authors.
-        let results = moderatedResults
-        if (timelineMode === 'following') {
-          const followedIds = await resolveFollowedAuthorIds(user)
-          if (followedIds.size > 0) {
-            results = moderatedResults.filter(row => {
-              // Match ATProto author DID or ActivityPub webId against followed set.
-              return followedIds.has(row.authorWebId) ||
-                (row.atUri != null && followedIds.has(row.authorWebId))
-            })
+        const results = moderatedResults
+
+        let postViewershipResults = results
+        if (excludeViewed && isViewershipIntegrationEnabled()) {
+          const objectIds = [...new Set(results.map(feedItemObjectId).filter((value): value is string => !!value))]
+          if (objectIds.length > 0) {
+            try {
+              const viewed = await resolveViewedObjectIds(user.getWebId(), objectIds)
+              postViewershipResults = results.filter(item => {
+                const objectId = feedItemObjectId(item)
+                return !objectId || !viewed.has(objectId)
+              })
+            } catch (error) {
+              console.warn('[AT Bridge] Viewership filtering unavailable:', error)
+            }
           }
         }
 
         const cursorScopedResults = useCursorPaging
-          ? results.filter(row => isBeforeFeedCursor(row, keysetCursor!))
-          : results
+          ? postViewershipResults.filter(row => isBeforeFeedCursor(row, keysetCursor!))
+          : postViewershipResults
 
         const rawPage = timelineMode === 'chronological' || timelineMode === 'following' || source === 'activitypods' || source === 'atproto'
           ? (useCursorPaging
@@ -1732,22 +1766,7 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
             : buildBalancedFeed(cursorScopedResults, limit, offset, normalizedApWeight, normalizedAtWeight))
 
         const hasMore = useCursorPaging ? rawPage.length > limit : false
-        let output = useCursorPaging ? rawPage.slice(0, limit) : rawPage
-
-        if (excludeViewed && isViewershipIntegrationEnabled()) {
-          const objectIds = [...new Set(output.map(feedItemObjectId).filter((value): value is string => !!value))]
-          if (objectIds.length > 0) {
-            try {
-              const viewed = await resolveViewedObjectIds(user.getWebId(), objectIds)
-              output = output.filter(item => {
-                const objectId = feedItemObjectId(item)
-                return !objectId || !viewed.has(objectId)
-              })
-            } catch (error) {
-              console.warn('[AT Bridge] Viewership filtering unavailable:', error)
-            }
-          }
-        }
+        const output = useCursorPaging ? rawPage.slice(0, limit) : rawPage
 
         let metricsByRootUri = new Map<string, ViewerThreadMetrics>()
         try {
@@ -1802,13 +1821,17 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .get(
     '/thread',
-    async ({ query: { rootUri, limit, cursor }, status, user }) => {
+    async ({ query: { rootUri, limit, cursor }, set, user }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const normalizedRootUri = normalizeThreadUri(rootUri)
       if (!normalizedRootUri) {
         return status(400, 'Invalid rootUri')
       }
 
-      const offset = decodeCursor(cursor)
+      const threadCursor = decodeFeedCursor(cursor)
 
       try {
         const [rootRow] = await db
@@ -1824,35 +1847,59 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
         const moderationState = await safeResolveViewerModerationState(user, 'thread')
 
-        let window = { page: [] as UnifiedFeedRow[], nextOffset: offset }
-        let hasMore = false
+        const visibleRows: UnifiedFeedRow[] = []
         let exhausted = false
+        let hasMore = false
+        let queryCursor = threadCursor
         const batchSize = Math.min(100, Math.max(limit * 3, 25))
         const maxScannedRows = Math.min(500, Math.max(limit * 12, 100))
+        let scannedRows = 0
 
-        while (window.page.length < limit + 1 && window.nextOffset - offset < maxScannedRows) {
+        while (visibleRows.length < limit + 1 && scannedRows < maxScannedRows) {
+          const threadFilters: SQL[] = [
+            or(
+              eq(unifiedFeedCandidatesView.replyRootUri, normalizedRootUri),
+              eq(unifiedFeedCandidatesView.replyParentUri, normalizedRootUri),
+            )!,
+            eq(unifiedFeedCandidatesView.isPublic, true),
+          ]
+
+          if (queryCursor) {
+            threadFilters.push(sql`(
+              ${unifiedFeedCandidatesView.createdAt} < ${queryCursor.createdAt}::timestamptz
+              OR (
+                ${unifiedFeedCandidatesView.createdAt} = ${queryCursor.createdAt}::timestamptz
+                AND ${unifiedFeedCandidatesView.id} < ${queryCursor.id}
+              )
+            )`)
+          }
+
           const batch = (await db
             .select()
             .from(unifiedFeedCandidatesView)
-            .where(
-              and(
-                or(
-                  eq(unifiedFeedCandidatesView.replyRootUri, normalizedRootUri),
-                  eq(unifiedFeedCandidatesView.replyParentUri, normalizedRootUri),
-                ),
-                eq(unifiedFeedCandidatesView.isPublic, true),
-              ),
-            )
+            .where(and(...threadFilters))
             .orderBy(desc(unifiedFeedCandidatesView.createdAt), desc(unifiedFeedCandidatesView.id))
-            .limit(batchSize)
-            .offset(window.nextOffset)) as UnifiedFeedRow[]
+            .limit(batchSize)) as UnifiedFeedRow[]
 
           if (batch.length === 0) {
             exhausted = true
             break
           }
 
-          window = appendVisibleThreadWindow(window, batch, limit, moderationState)
+          scannedRows += batch.length
+
+          const lastBatchCursor = encodeFeedCursor(batch[batch.length - 1])
+          queryCursor = lastBatchCursor ? decodeFeedCursor(lastBatchCursor) : null
+
+          for (const row of batch) {
+            if (moderationState && isRowHiddenForViewer(row, moderationState)) {
+              continue
+            }
+            visibleRows.push(row)
+            if (visibleRows.length >= limit + 1) {
+              break
+            }
+          }
 
           if (batch.length < batchSize) {
             exhausted = true
@@ -1860,10 +1907,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
           }
         }
 
-        const finalizedWindow = finalizeVisibleThreadWindow(window.page, window.nextOffset, limit, exhausted)
-        hasMore = finalizedWindow.hasMore
-        const visiblePage = finalizedWindow.visiblePage
-        const nextCursor = finalizedWindow.nextCursorOffset !== null ? encodeCursor(finalizedWindow.nextCursorOffset) : null
+        const visiblePage = visibleRows.slice(0, limit)
+        hasMore = visibleRows.length > limit || (!exhausted && visiblePage.length > 0)
+        const nextCursor = hasMore && visiblePage.length > 0
+          ? encodeFeedCursor(visiblePage[visiblePage.length - 1])
+          : null
 
         const visibleRoot = rootRow && !isRowHiddenForViewer(rootRow as UnifiedFeedRow, moderationState)
           ? mapFeedItemForResponse(rootRow as UnifiedFeedRow)
@@ -1957,7 +2005,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
         return status(400, 'Choose a valid ActivityPub object URL or AT URI to repost')
@@ -2033,7 +2085,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/reposts/remove',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const targetUri = normalizeRepostTarget(body)
       if (!targetUri) {
         return status(400, 'Choose a valid ActivityPub object URL or AT URI to remove from reposts')
@@ -2097,7 +2153,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/moderation/author',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const subject = deriveModerationSubject(body)
       if (!subject) {
         return status(400, 'Unable to determine moderation subject')
@@ -2140,7 +2200,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
 
   .post(
     '/feed/viewed',
-    async ({ body, user, status }) => {
+    async ({ body, user, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const objectIds = [...new Set([body.objectId, ...(body.objectIds ?? [])].filter((value): value is string => !!value && value.trim().length > 0))]
       if (objectIds.length === 0) {
         return status(400, 'objectId or objectIds is required')
@@ -2382,7 +2446,11 @@ const atBridgePlugin = new Elysia({ name: 'at-bridge', prefix: '/at' })
   // -------------------------------------------------------------------------
   .post(
     '/subscribe',
-    async ({ body, status }) => {
+    async ({ body, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const { sourceId, url, sourceType } = body
 
       // Validate URL format
@@ -2460,7 +2528,11 @@ export const xrpcFeedPlugin = new Elysia({ name: 'xrpc-feed', prefix: '/xrpc' })
   .use(setupPlugin)
   .get(
     '/app.bsky.feed.getFeedSkeleton',
-    async ({ query: { feed, limit, cursor }, status: elysiaError }) => {
+    async ({ query: { feed, limit, cursor }, set }) => {
+      const elysiaError = (code: number, body: unknown) => {
+        set.status = code
+        return body
+      }
       // Determine mode from the feed AT URI's rkey.
       const feedRkey = (() => {
         if (!feed) return 'memory-unified'

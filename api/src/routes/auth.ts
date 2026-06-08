@@ -38,7 +38,11 @@ const authPlugin = new Elysia({name: 'auth'})
   .use(setupPlugin)
   .post(
     '/signin',
-    async ({ body, jwt, headers, status }) => {
+    async ({ body, jwt, headers, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in
@@ -130,7 +134,11 @@ const authPlugin = new Elysia({name: 'auth'})
   )
   .post(
     '/signup',
-    async ({ body, status, headers, jwt }) => {
+    async ({ body, headers, jwt, set }) => {
+      const status = (code: number, message: string) => {
+        set.status = code
+        return message
+      }
       const locale = localeFromHeaders(headers)
       const auth = headers.auth
       // check if user is already logged in

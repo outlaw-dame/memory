@@ -96,12 +96,12 @@ function scrollTo(idx: number) {
                 class="flex-1 rounded-full"
                 :style="{
                   height: `${Math.max(15, Math.min(100, 20 + 60 * Math.abs(Math.sin(j * 0.4)) * Math.abs(Math.sin(j * 0.15 + 0.5))))}%`,
-                  background: 'rgba(99,100,246,0.35)',
+                  background: 'color-mix(in srgb, var(--color-accent) 35%, transparent)',
                 }"
               />
             </div>
             <div class="flex items-center gap-2 w-full">
-              <svg class="w-4 h-4 flex-shrink-0" style="color:rgb(99,100,246)" viewBox="0 0 24 24" fill="currentColor">
+              <svg class="w-4 h-4 flex-shrink-0" style="color:var(--color-accent)" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3v18M8 8v8M4 10v4M16 8v8M20 10v4"/>
               </svg>
               <span class="text-caption text-dark-50 truncate">{{ item.filename ?? 'audio.wav' }}</span>
@@ -119,7 +119,7 @@ function scrollTo(idx: number) {
         type="button"
         class="rounded-full transition-all duration-200"
         :style="i === activeIndex
-          ? 'width:16px;height:6px;background:rgb(99,100,246);'
+          ? 'width:16px;height:6px;background:var(--color-accent);'
           : 'width:6px;height:6px;background:rgba(55,55,55,0.2);'"
         @click="scrollTo(i)"
       />

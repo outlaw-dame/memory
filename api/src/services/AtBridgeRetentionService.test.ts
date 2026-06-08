@@ -28,6 +28,7 @@ describe('AtBridgeRetentionService', () => {
       atPostsRetentionDays: 45,
       atRecordsRetentionDays: 21,
       inactiveRecordsRetentionDays: 5,
+      storyRecordsRetentionHours: 48,
       dryRun: true,
     })
   })

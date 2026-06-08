@@ -408,7 +408,7 @@ function safetyColor(source: string): string {
 
               <!-- Storage -->
               <td class="px-3 py-2.5 text-center">
-                <span class="text-[rgb(99,100,246)] font-semibold">{{ pod.storageLabel }}</span>
+                <span class="text-[var(--color-accent)] font-semibold">{{ pod.storageLabel }}</span>
               </td>
 
               <!-- Federation status -->
@@ -526,7 +526,7 @@ function safetyColor(source: string): string {
                   :key="a"
                   class="text-[10px] font-semibold py-1.5 rounded-lg capitalize transition-colors"
                   :class="actionPanel.action === a
-                    ? 'bg-[rgb(99,100,246)] text-white'
+                    ? 'bg-accent text-white'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'"
                   @click="actionPanel.action = a"
                 >{{ a }}</button>
@@ -537,7 +537,7 @@ function safetyColor(source: string): string {
                 v-model="actionPanel.reason"
                 placeholder="Reason (optional)"
                 rows="2"
-                class="w-full text-[11px] rounded-xl border border-gray-200 px-3 py-2 outline-none resize-none focus:border-[rgb(99,100,246)] placeholder-gray-300"
+                class="w-full text-[11px] rounded-xl border border-gray-200 px-3 py-2 outline-none resize-none focus:border-accent placeholder-gray-300"
               ></textarea>
 
               <!-- Extra labels -->
@@ -555,7 +555,7 @@ function safetyColor(source: string): string {
                     v-model="actionPanel.labelInput"
                     type="text"
                     placeholder="Add label…"
-                    class="flex-1 text-[11px] rounded-lg border border-gray-200 px-2 py-1 outline-none focus:border-[rgb(99,100,246)] placeholder-gray-300"
+                    class="flex-1 text-[11px] rounded-lg border border-gray-200 px-2 py-1 outline-none focus:border-accent placeholder-gray-300"
                     @keyup.enter="addLabel"
                   />
                   <button class="text-[11px] bg-gray-100 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-200 transition-colors" @click="addLabel">Add</button>
@@ -564,7 +564,7 @@ function safetyColor(source: string): string {
 
               <!-- Submit -->
               <button
-                class="w-full text-[12px] font-semibold bg-[rgb(99,100,246)] text-white py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors disabled:opacity-50"
+                class="w-full text-[12px] font-semibold bg-accent text-white py-2 rounded-xl hover:bg-accent-pressed transition-colors disabled:opacity-50"
                 :disabled="pending"
                 @click="submitAction"
               >

@@ -22,7 +22,7 @@ const plan = {
           <p class="text-[20px] font-bold text-gray-800">{{ plan.name }}</p>
           <p class="text-[12px] text-gray-500 mt-0.5">{{ plan.price }} · renews {{ plan.renewsAt }}</p>
         </div>
-        <button class="text-[12px] font-semibold bg-[rgb(99,100,246)] text-white px-4 py-2 rounded-xl hover:bg-[rgb(80,81,220)] transition-colors">
+        <button class="text-[12px] font-semibold bg-accent text-white px-4 py-2 rounded-xl hover:bg-accent-pressed transition-colors">
           Manage Plan
         </button>
       </div>
@@ -31,14 +31,14 @@ const plan = {
           <p class="text-[11px] text-gray-400 mb-1">Pods</p>
           <p class="text-[20px] font-bold text-gray-800">{{ plan.pods }} <span class="text-[13px] font-normal text-gray-400">/ {{ plan.maxPods }}</span></p>
           <div class="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div class="h-full bg-[rgb(99,100,246)] rounded-full" :style="`width: ${(plan.pods / plan.maxPods * 100).toFixed(0)}%`"></div>
+            <div class="h-full bg-accent rounded-full" :style="`width: ${(plan.pods / plan.maxPods * 100).toFixed(0)}%`"></div>
           </div>
         </div>
         <div class="rounded-2xl border border-gray-100 shadow-sm bg-white px-5 py-4">
           <p class="text-[11px] text-gray-400 mb-1">Storage</p>
           <p class="text-[20px] font-bold text-gray-800">{{ plan.storage }} <span class="text-[13px] font-normal text-gray-400">/ {{ plan.maxStorage }}</span></p>
           <div class="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div class="h-full bg-[rgb(99,100,246)] rounded-full" style="width: 56%"></div>
+            <div class="h-full bg-accent rounded-full" style="width: 56%"></div>
           </div>
         </div>
       </div>

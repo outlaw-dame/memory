@@ -13,6 +13,8 @@ const DEFAULT_MAX_BATCHES_PER_RUN = 8
 const DEFAULT_AT_POSTS_RETENTION_DAYS = 30
 const DEFAULT_AT_RECORDS_RETENTION_DAYS = 14
 const DEFAULT_INACTIVE_RECORDS_RETENTION_DAYS = 3
+const DEFAULT_STORY_RECORDS_RETENTION_HOURS = 48
+const STORY_COLLECTION = 'org.activitypods.story.slide'
 
 export interface AtBridgeRetentionConfig {
   enabled: boolean
@@ -22,11 +24,13 @@ export interface AtBridgeRetentionConfig {
   atPostsRetentionDays: number
   atRecordsRetentionDays: number
   inactiveRecordsRetentionDays: number
+  storyRecordsRetentionHours: number
   dryRun: boolean
 }
 
 export interface AtBridgeRetentionRunSummary {
   deletedAtPosts: number
+  deletedStoryAtRecords: number
   deletedActiveAtRecords: number
   deletedInactiveAtRecords: number
 }
@@ -49,6 +53,10 @@ function retentionCutoff(days: number): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 }
 
+function retentionCutoffHours(hours: number): Date {
+  return new Date(Date.now() - hours * 60 * 60 * 1000)
+}
+
 export function isProtectedActiveRecordCollection(collection: string): boolean {
   return PROTECTED_ACTIVE_RECORD_COLLECTIONS.includes(collection as (typeof PROTECTED_ACTIVE_RECORD_COLLECTIONS)[number])
 }
@@ -64,6 +72,7 @@ export function readAtBridgeRetentionConfig(env: NodeJS.ProcessEnv = process.env
     atPostsRetentionDays: parsePositiveInteger(env.AT_BRIDGE_RETENTION_AT_POSTS_DAYS, DEFAULT_AT_POSTS_RETENTION_DAYS),
     atRecordsRetentionDays: parsePositiveInteger(env.AT_BRIDGE_RETENTION_AT_RECORDS_DAYS, DEFAULT_AT_RECORDS_RETENTION_DAYS),
     inactiveRecordsRetentionDays: parsePositiveInteger(env.AT_BRIDGE_RETENTION_INACTIVE_RECORDS_DAYS, DEFAULT_INACTIVE_RECORDS_RETENTION_DAYS),
+    storyRecordsRetentionHours: parsePositiveInteger(env.AT_BRIDGE_RETENTION_STORY_RECORDS_HOURS, DEFAULT_STORY_RECORDS_RETENTION_HOURS),
     dryRun: parseBoolean(env.AT_BRIDGE_RETENTION_DRY_RUN, false),
   }
 }
@@ -93,6 +102,23 @@ async function collectActiveRecordIds(cutoff: Date, batchSize: number): Promise<
         eq(atRecords.isActive, true),
         lt(atRecords.ingestedAt, cutoff),
         notInArray(atRecords.collection, [...PROTECTED_ACTIVE_RECORD_COLLECTIONS]),
+        sql`${atRecords.collection} <> ${STORY_COLLECTION}`,
+      ),
+    )
+    .orderBy(atRecords.ingestedAt, atRecords.id)
+    .limit(batchSize)
+
+  return rows.map(row => row.id)
+}
+
+async function collectStoryRecordIds(cutoff: Date, batchSize: number): Promise<number[]> {
+  const rows = await db
+    .select({ id: atRecords.id })
+    .from(atRecords)
+    .where(
+      and(
+        eq(atRecords.collection, STORY_COLLECTION),
+        lt(atRecords.ingestedAt, cutoff),
       ),
     )
     .orderBy(atRecords.ingestedAt, atRecords.id)
@@ -126,11 +152,13 @@ async function deleteByIds(tableName: 'at_records' | 'at_posts', ids: number[]):
 export async function runAtBridgeRetention(config: AtBridgeRetentionConfig): Promise<AtBridgeRetentionRunSummary> {
   const summary: AtBridgeRetentionRunSummary = {
     deletedAtPosts: 0,
+    deletedStoryAtRecords: 0,
     deletedActiveAtRecords: 0,
     deletedInactiveAtRecords: 0,
   }
 
   const inactiveCutoff = retentionCutoff(config.inactiveRecordsRetentionDays)
+  const storyCutoff = retentionCutoffHours(config.storyRecordsRetentionHours)
   const activeRecordCutoff = retentionCutoff(config.atRecordsRetentionDays)
   const atPostCutoff = retentionCutoff(config.atPostsRetentionDays)
 
@@ -138,6 +166,13 @@ export async function runAtBridgeRetention(config: AtBridgeRetentionConfig): Pro
     const ids = await collectInactiveRecordIds(inactiveCutoff, config.batchSize)
     if (ids.length === 0) break
     summary.deletedInactiveAtRecords += ids.length
+    if (!config.dryRun) await deleteByIds('at_records', ids)
+  }
+
+  for (let batchIndex = 0; batchIndex < config.maxBatchesPerRun; batchIndex += 1) {
+    const ids = await collectStoryRecordIds(storyCutoff, config.batchSize)
+    if (ids.length === 0) break
+    summary.deletedStoryAtRecords += ids.length
     if (!config.dryRun) await deleteByIds('at_records', ids)
   }
 
@@ -155,7 +190,12 @@ export async function runAtBridgeRetention(config: AtBridgeRetentionConfig): Pro
     if (!config.dryRun) await deleteByIds('at_posts', ids)
   }
 
-  if (!config.dryRun && (summary.deletedAtPosts > 0 || summary.deletedActiveAtRecords > 0 || summary.deletedInactiveAtRecords > 0)) {
+  if (!config.dryRun && (
+    summary.deletedAtPosts > 0 ||
+    summary.deletedStoryAtRecords > 0 ||
+    summary.deletedActiveAtRecords > 0 ||
+    summary.deletedInactiveAtRecords > 0
+  )) {
     await db.execute(sql`ANALYZE at_records`)
     await db.execute(sql`ANALYZE at_posts`)
   }
@@ -191,6 +231,7 @@ export function startAtBridgeRetentionService(env: NodeJS.ProcessEnv = process.e
     atPostsRetentionDays: config.atPostsRetentionDays,
     atRecordsRetentionDays: config.atRecordsRetentionDays,
     inactiveRecordsRetentionDays: config.inactiveRecordsRetentionDays,
+    storyRecordsRetentionHours: config.storyRecordsRetentionHours,
     dryRun: config.dryRun,
     protectedCollections: [...PROTECTED_ACTIVE_RECORD_COLLECTIONS],
   })

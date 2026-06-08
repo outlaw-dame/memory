@@ -48,14 +48,24 @@ export const posts = table('posts', {
   summary: text('summary'),
   clientPostKey: varchar('client_post_key', { length: 128 }),
   clientPostRequestHash: varchar('client_post_request_hash', { length: 64 }),
+  /**
+   * When set, this post was written on another user's wall (Facebook-style).
+   * The value is the ID of the profile owner whose wall received the post.
+   * Wall posts use the ActivityStreams `target` property (on the Create activity)
+   * to federate the wall context, following Friendica's implementation pattern.
+   */
+  wallTargetUserId: integer('wall_target_user_id').references(() => users.id),
 }, t => [
   uniqueIndex('posts_author_client_key_unique_idx').on(t.authorId, t.clientPostKey).where(sql`${t.clientPostKey} IS NOT NULL`),
+  index('posts_wall_target_user_id_idx').on(t.wallTargetUserId),
 ])
 
 export const mediaAttachments = table('media_attachments', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
   postId: integer('post_id').references(() => posts.id),
+  storyUri: text('story_uri'),
+  storyExpiresAt: timestamp('story_expires_at', { withTimezone: true }),
   state: text('state', { enum: ['uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted'] }).notNull().default('uploading'),
   kind: text('kind', { enum: ['image', 'gif', 'video', 'audio', 'unknown'] }).notNull(),
   sourceUrl: text('source_url'),
@@ -83,6 +93,8 @@ export const mediaAttachments = table('media_attachments', {
 }, t => [
   index('media_attachments_user_state_idx').on(t.userId, t.state),
   index('media_attachments_user_post_idx').on(t.userId, t.postId),
+  index('media_attachments_story_uri_idx').on(t.storyUri),
+  index('media_attachments_story_expires_at_idx').on(t.storyExpiresAt),
   index('media_attachments_expires_at_idx').on(t.expiresAt),
   check('media_attachments_state_check', sql`${t.state} IN ('uploading', 'uploaded', 'processing', 'ready', 'failed', 'expired', 'deleted')`),
   check('media_attachments_kind_check', sql`${t.kind} IN ('image', 'gif', 'video', 'audio', 'unknown')`),
