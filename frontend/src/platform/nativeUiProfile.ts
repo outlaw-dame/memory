@@ -65,12 +65,19 @@ function detectEnvironment(): NativeUiEnvironment {
     return 'capacitor-native'
   }
   
-  // Check for standalone/PWA mode
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
-  
-  if (isStandalone || navigatorWithStandalone.standalone === true) {
-    return 'pwa-installed'
+  // Check for standalone/PWA mode - safely check for window/navigator
+  if (typeof window !== 'undefined') {
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
+    
+    // Check if matchMedia is available
+    if (window.matchMedia) {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      if (isStandalone || navigatorWithStandalone.standalone === true) {
+        return 'pwa-installed'
+      }
+    } else if (navigatorWithStandalone.standalone === true) {
+      return 'pwa-installed'
+    }
   }
   
   return 'browser'

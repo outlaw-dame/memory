@@ -12,6 +12,8 @@ import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPrev
 import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CreatePoll, MediaAttachmentInput } from '@/types'
 import { parseHashtagInput } from '@/utils/hashtags'
+import AppTextField from '@/design/components/AppTextField.vue'
+import AppTextArea from '@/design/components/AppTextArea.vue'
 
 const postsStore = usePostsStore()
 const atBridgeStore = useAtBridgeStore()
@@ -314,44 +316,52 @@ async function createPost() {
 
       <div v-if="postType === 'article'" class="flex flex-col gap-3 px-(--padding-main) pb-1 pt-3">
         <div class="flex flex-col gap-1.5">
-          <label class="text-footnote text-dark font-semibold" for="composer-article-title">
-            {{ t('composer.article.titleLabel') }}
-          </label>
-          <input
+          <AppTextField
             id="composer-article-title"
             v-model="articleTitle"
-            type="text"
-            class="border-dark-10 text-dark rounded-2xl border bg-white px-4 py-3 outline-none focus:border-indigo-400"
+            purpose="text"
+            :label="t('composer.article.titleLabel')"
             :placeholder="t('composer.article.titlePlaceholder')"
+            :maxlength="ARTICLE_TITLE_LIMIT"
+            :error="isArticleTitleOverLimit"
+            :error-message="articleTitleCountLabel"
+            rounded="md"
+            size="md"
           />
-          <span class="text-caption" :class="isArticleTitleOverLimit ? 'text-red-500' : 'text-dark-50'">
-            {{ articleTitleCountLabel }}
-          </span>
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <label class="text-footnote text-dark font-semibold" for="composer-article-summary">
-            {{ t('composer.article.summaryLabel') }}
-          </label>
-          <textarea
+          <AppTextArea
             id="composer-article-summary"
             v-model="articleSummary"
-            class="border-dark-10 text-dark min-h-24 resize-none rounded-2xl border bg-white px-4 py-3 outline-none focus:border-indigo-400"
+            purpose="composer"
+            :label="t('composer.article.summaryLabel')"
             :placeholder="t('composer.article.summaryPlaceholder')"
+            :maxlength="ARTICLE_SUMMARY_LIMIT"
+            :show-counter="true"
+            :error="isArticleSummaryOverLimit"
+            rounded="md"
+            size="md"
           />
-          <span class="text-caption" :class="isArticleSummaryOverLimit ? 'text-red-500' : 'text-dark-50'">
-            {{ articleSummaryCountLabel }}
-          </span>
         </div>
       </div>
 
       <!-- Textarea -->
-      <textarea
+      <AppTextArea
         id="composer-textarea"
         v-model="content"
-        class="text-dark w-full resize-none appearance-none border-none bg-transparent px-(--padding-main) py-3 text-base leading-snug outline-none"
-        rows="5"
+        purpose="composer"
+        class="w-full px-(--padding-main) py-3"
+        :class="{ 'border-none': !isOverLimit }"
         :placeholder="composerPlaceholder"
+        :maxlength="currentCharLimit"
+        :show-counter="false"
+        :error="isOverLimit"
+        rounded="none"
+        size="md"
+        :auto-resize="true"
+        :min-rows="5"
+        :max-rows="20"
       />
 
       <!-- Character counter -->
@@ -367,10 +377,12 @@ async function createPost() {
 
       <!-- Out-of-band hashtags -->
       <div class="px-(--padding-main) pb-3">
-        <input
+        <AppTextField
           v-model="outOfBandHashtags"
-          class="border-dark-10 text-dark w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+          purpose="hashtag"
           :placeholder="extraHashtagsPlaceholder"
+          rounded="md"
+          size="sm"
         />
       </div>
 
@@ -521,10 +533,13 @@ async function createPost() {
 
         <!-- Option inputs -->
         <div v-for="(_, i) in pollOptions" :key="i" class="flex items-center gap-2">
-          <input
+          <AppTextField
             v-model="pollOptions[i]"
-            class="text-dark border-dark-10 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+            purpose="text"
             :placeholder="pollOptionPlaceholder(i + 1)"
+            rounded="md"
+            size="sm"
+            class="flex-1"
           />
           <button
             v-if="pollOptions.length > 2"
@@ -552,11 +567,13 @@ async function createPost() {
         </button>
 
         <!-- End time (optional) -->
-        <input
+        <AppTextField
           v-model="pollEndTime"
           type="datetime-local"
-          class="text-dark border-dark-10 w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+          purpose="text"
           :placeholder="pollEndTimePlaceholder"
+          rounded="md"
+          size="sm"
         />
       </div>
 

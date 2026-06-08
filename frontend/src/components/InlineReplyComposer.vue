@@ -2,6 +2,7 @@
 import MemoryButton from './MemoryButton.vue'
 import { ref, watch } from 'vue'
 import type { ReplyPolicyResolution, ReplySubmissionResult } from '@/composables/useReply'
+import AppTextArea from '@/design/components/AppTextArea.vue'
 
 const props = defineProps<{
   policy: ReplyPolicyResolution | null
@@ -57,11 +58,17 @@ defineExpose({ applyResult })
       <div v-else-if="policy.requiresApproval" class="mb-2 text-caption text-amber-700">
         Your reply will be sent for approval before wider delivery.
       </div>
-      <textarea
+      <AppTextArea
         v-if="policy.mayReply"
         v-model="content"
-        class="mb-3 min-h-24 w-full resize-y rounded border border-gray-300 px-3 py-2 text-sm"
+        purpose="composer"
+        class="mb-3"
         placeholder="Write a reply"
+        :auto-resize="true"
+        :min-rows="4"
+        :max-rows="8"
+        rounded="md"
+        size="sm"
       />
       <div v-if="error" class="mb-2 text-caption text-red-700">
         {{ error }}

@@ -5,6 +5,7 @@ import UnifiedFeedList from '@/components/UnifiedFeedList.vue'
 import PostEmbedCard from '@/components/PostEmbedCard.vue'
 import { useFollow } from '@/composables/useFollow'
 import AppIcon from '@/components/AppIcon.vue'
+import AppSearchBar from '@/design/components/AppSearchBar.vue'
 
 const router = useRouter()
 const { follow, isFollowing } = useFollow()
@@ -151,19 +152,15 @@ const demoPost = {
         </button>
       </div>
 
-      <form @submit.prevent="submitSearch">
-        <div class="relative">
-          <div class="absolute left-4 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-dark-40 shrink-0" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            class="w-full rounded-full bg-white pl-9 pr-4 py-3 text-sm text-dark outline-none placeholder-dark-30"
-            placeholder="Search posts/tags/users..."
-            @focus="isSearchFocused = true"
-            @blur="isSearchFocused = submittedQuery.length > 0 ? false : isSearchFocused"
-          />
-        </div>
-      </form>
+      <AppSearchBar
+        v-model="searchQuery"
+        placeholder="Search posts/tags/users..."
+        :show-cancel="false"
+        @focus="isSearchFocused = true"
+        @blur="isSearchFocused = submittedQuery.length > 0 ? false : isSearchFocused"
+        @search="submitSearch"
+        @clear="searchQuery = ''"
+      />
     </div>
 
     <!-- Results header: back button + search bar only (no title) -->
@@ -181,16 +178,13 @@ const demoPost = {
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
 
-      <form class="flex-1" @submit.prevent="submitSearch">
-        <div class="relative">
-          <div class="absolute left-4 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-dark-40 shrink-0" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            class="w-full rounded-full bg-white pl-9 pr-4 py-3 text-sm text-dark outline-none"
-          />
-        </div>
-      </form>
+      <AppSearchBar
+        v-model="searchQuery"
+        class="flex-1"
+        :show-cancel="false"
+        @search="submitSearch"
+        @clear="searchQuery = ''"
+      />
     </div>
 
     <!-- ================================================================
