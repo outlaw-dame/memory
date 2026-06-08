@@ -4,6 +4,13 @@ import { useAuthStore } from '@/stores/authStore'
 import ky from 'ky'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/i18n'
+import {
+  AppList,
+  AppListItem,
+  AppGroupedList,
+  AppRadioList,
+  type AppRadioOption
+} from '@/design/semantic'
 
 type Preference = Record<string, unknown>
 type TrustSource = Record<string, unknown>
@@ -158,90 +165,127 @@ async function onAtprotoLabelerChange(value: string) {
   }
 }
 
+// Radio options for moderation actions
+const moderationActionOptions: AppRadioOption[] = [
+  { value: 'off', label: t('settings.moderation.action.off') },
+  { value: 'warn', label: t('settings.moderation.action.warn') },
+  { value: 'hide', label: t('settings.moderation.action.hide') }
+]
+
+// Descriptions for each action type
+const sensitiveMediaDescriptions = {
+  off: t('settings.moderation.sensitiveMedia.off'),
+  warn: t('settings.moderation.sensitiveMedia.warn'),
+  hide: t('settings.moderation.sensitiveMedia.hide')
+}
+
+const atprotoLabelerDescriptions = {
+  off: t('settings.moderation.atprotoLabelers.off'),
+  warn: t('settings.moderation.atprotoLabelers.warn'),
+  hide: t('settings.moderation.atprotoLabelers.hide')
+}
+
 onMounted(() => {
   void Promise.all([loadPreferences(), loadTrustSources()])
 })
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 py-4">
-    <div>
-      <h2 class="text-xl font-semibold">{{ t('settings.moderation.title') }}</h2>
-      <p class="text-caption mt-1">{{ t('settings.moderation.description') }}</p>
-    </div>
+  <div class="pb-20">
+    <!-- Header -->
+    <AppGroupedList :title="t('settings.moderation.title')" :inset="true">
+      <p class="app-settings-description">{{ t('settings.moderation.description') }}</p>
+    </AppGroupedList>
 
-    <div v-if="isLoading" class="rounded-default bg-pastel-light p-[var(--padding-main)] text-sm">
-      {{ t('settings.moderation.loading') }}
-    </div>
+    <!-- Loading state -->
+    <AppGroupedList v-if="isLoading" :inset="true">
+      <AppList :inset="false">
+        <AppListItem :title="t('settings.moderation.loading')" />
+      </AppList>
+    </AppGroupedList>
 
-    <div v-else class="rounded-default bg-pastel-light p-[var(--padding-main)] flex flex-col gap-4">
-      <p v-if="errorMessage" class="rounded bg-red-100 px-3 py-2 text-sm text-red-800">
-        {{ errorMessage }}
-      </p>
-      <p v-if="successMessage" class="rounded bg-emerald-100 px-3 py-2 text-sm text-emerald-800">
-        {{ successMessage }}
-      </p>
+    <template v-else>
+      <!-- Error/Success messages -->
+      <AppGroupedList v-if="errorMessage || successMessage" :inset="true">
+        <AppList :inset="false">
+          <AppListItem v-if="errorMessage" :title="errorMessage" class="text-red-800" />
+          <AppListItem v-if="successMessage" :title="successMessage" class="text-emerald-800" />
+        </AppList>
+      </AppGroupedList>
 
       <!-- Sensitive Media Display preference -->
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium" for="sensitive-media-action">
-          {{ t('settings.moderation.sensitiveMedia.label') }}
-        </label>
-        <p class="text-caption text-dark-50">
-          {{ t('settings.moderation.sensitiveMedia.description') }}
-        </p>
-        <select
-          id="sensitive-media-action"
-          :value="sensitiveMediaAction"
-          class="rounded border border-gray-300 bg-white px-3 py-2 font-normal"
-          @change="e => onSensitiveMediaChange((e.target as HTMLSelectElement).value)"
-        >
-          <option value="off">{{ t('settings.moderation.action.off') }}</option>
-          <option value="warn">{{ t('settings.moderation.action.warn') }}</option>
-          <option value="hide">{{ t('settings.moderation.action.hide') }}</option>
-        </select>
-        <p v-if="sensitiveMediaAction === 'off'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.sensitiveMedia.off') }}
-        </p>
-        <p v-if="sensitiveMediaAction === 'warn'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.sensitiveMedia.warn') }}
-        </p>
-        <p v-if="sensitiveMediaAction === 'hide'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.sensitiveMedia.hide') }}
-        </p>
-      </div>
+      <AppGroupedList :title="t('settings.moderation.sensitiveMedia.label')" :inset="true">
+        <p class="app-settings-description">{{ t('settings.moderation.sensitiveMedia.description') }}</p>
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <AppRadioList
+                v-model="sensitiveMediaAction"
+                :options="moderationActionOptions"
+                :aria-label="t('settings.moderation.sensitiveMedia.label')"
+                @change="onSensitiveMediaChange"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem
+            v-if="sensitiveMediaAction in sensitiveMediaDescriptions"
+            :title="sensitiveMediaDescriptions[sensitiveMediaAction]"
+            class="text-caption"
+          />
+        </AppList>
+      </AppGroupedList>
 
       <!-- ATProto Labeler preference (only show if labelers enabled) -->
-      <div v-if="enabledLabelerCount > 0" class="flex flex-col gap-2 rounded border border-gray-300 bg-white p-3">
-        <label class="text-sm font-medium" for="atproto-labeler-action">
-          {{ t('settings.moderation.atprotoLabelers.label') }}
-          <span class="text-caption text-dark-50">({{ enabledLabelerCount }} {{ t('settings.moderation.atprotoLabelers.enabled') }})</span>
-        </label>
-        <p class="text-caption text-dark-50">
+      <AppGroupedList v-if="enabledLabelerCount > 0" :title="t('settings.moderation.atprotoLabelers.label')" :inset="true">
+        <p class="app-settings-description">
           {{ t('settings.moderation.atprotoLabelers.description') }}
+          <span class="text-caption">({{ enabledLabelerCount }} {{ t('settings.moderation.atprotoLabelers.enabled') }})</span>
         </p>
-        <select
-          id="atproto-labeler-action"
-          :value="atprotoLabelerAction"
-          class="rounded border border-gray-300 bg-white px-3 py-2 font-normal"
-          @change="e => onAtprotoLabelerChange((e.target as HTMLSelectElement).value)"
-        >
-          <option value="off">{{ t('settings.moderation.action.off') }}</option>
-          <option value="warn">{{ t('settings.moderation.action.warn') }}</option>
-          <option value="hide">{{ t('settings.moderation.action.hide') }}</option>
-        </select>
-        <p v-if="atprotoLabelerAction === 'off'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.atprotoLabelers.off') }}
-        </p>
-        <p v-if="atprotoLabelerAction === 'warn'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.atprotoLabelers.warn') }}
-        </p>
-        <p v-if="atprotoLabelerAction === 'hide'" class="text-caption text-dark-50">
-          {{ t('settings.moderation.atprotoLabelers.hide') }}
-        </p>
-      </div>
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <AppRadioList
+                v-model="atprotoLabelerAction"
+                :options="moderationActionOptions"
+                :aria-label="t('settings.moderation.atprotoLabelers.label')"
+                @change="onAtprotoLabelerChange"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem
+            v-if="atprotoLabelerAction in atprotoLabelerDescriptions"
+            :title="atprotoLabelerDescriptions[atprotoLabelerAction]"
+            class="text-caption"
+          />
+        </AppList>
+      </AppGroupedList>
 
-      <RouterLink to="/settings" class="text-sm underline">{{ t('common.actions.backToSettings') }}</RouterLink>
-    </div>
+      <!-- Back Navigation -->
+      <AppGroupedList :inset="true">
+        <AppList :inset="false">
+          <AppListItem
+            link
+            :title="t('common.actions.backToSettings')"
+            @click="$router.push('/settings')"
+            chevron-right
+          />
+        </AppList>
+      </AppGroupedList>
+    </template>
   </div>
 </template>
+
+<style scoped>
+/* Settings-specific styling */
+.app-settings-description {
+  font-family: var(--font-family);
+  font-size: var(--text-size-caption);
+  color: var(--color-secondary);
+  padding: 0 var(--padding-main) 0.5rem;
+}
+
+.app-settings-description span {
+  display: block;
+  margin-top: 0.25rem;
+}
+</style>

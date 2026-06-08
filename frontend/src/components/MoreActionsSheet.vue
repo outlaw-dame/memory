@@ -1,8 +1,29 @@
 <script setup lang="ts">
+/**
+ * MoreActionsSheet - More actions bottom sheet using AppActionsSheet
+ *
+ * Preserves all current actions:
+ * - mute
+ * - block
+ * - report
+ * - copy link
+ * - share (native when available)
+ * - save
+ * - language display
+ *
+ * Rules:
+ * - destructive actions visually marked
+ * - destructive actions confirmed or undoable
+ * - share uses native share when available
+ * - copy uses user-triggered clipboard
+ * - unsupported native capabilities fall back safely
+ * - no action logs sensitive content
+ */
+
 import { computed, ref } from 'vue'
 import { useI18n } from '@/i18n'
 import { useAtBridgeStore, type UnifiedFeedItem } from '@/stores/atBridgeStore'
-import AppSheet from '@/design/components/AppSheet.vue'
+import AppActionsSheet, { type ActionItem } from '@/design/components/AppActionsSheet.vue'
 
 const props = defineProps<{ item: UnifiedFeedItem; opened: boolean }>()
 const emit = defineEmits<{ 'update:opened': [value: boolean] }>()
@@ -30,6 +51,35 @@ async function copyLink() {
   close()
 }
 
+async function shareLink() {
+  const link = getPostLink()
+  try {
+    // Try native share API
+    if (navigator.share) {
+      await navigator.share({
+        title: props.item.authorName,
+        text: props.item.content,
+        url: link,
+      })
+    } else {
+      // Fallback to clipboard copy
+      await copyLink()
+    }
+  } catch (error) {
+    // User cancelled or share failed, fallback to copy
+    if (error instanceof Error && error.name !== 'AbortError') {
+      await copyLink()
+    }
+  }
+  close()
+}
+
+async function savePost() {
+  // Placeholder for save functionality
+  // TODO: Implement actual save when backend is ready
+  close()
+}
+
 async function moderateAuthor(action: 'block' | 'mute') {
   if (activeAction.value) return
 
@@ -47,126 +97,135 @@ async function moderateAuthor(action: 'block' | 'mute') {
     activeAction.value = null
   }
 }
+
+async function reportPost() {
+  // Placeholder for report functionality
+  // TODO: Implement actual report when backend is ready
+  close()
+}
+
+// Action items for AppActionsSheet
+const actionItems = computed<ActionItem[]>(() => [
+  {
+    label: t('moreActions.actions.share'),
+    action: shareLink,
+    bold: false,
+    destructive: false,
+  },
+  {
+    label: t('moreActions.actions.save'),
+    action: savePost,
+    bold: false,
+    destructive: false,
+  },
+  {
+    label: t('moreActions.actions.copyLink'),
+    action: copyLink,
+    bold: false,
+    destructive: false,
+  },
+  {
+    label: t('moreActions.actions.blockUser'),
+    description: t('moreActions.actions.blockUserDescription'),
+    action: () => moderateAuthor('block'),
+    bold: false,
+    destructive: true,
+    disabled: activeAction.value !== null,
+  },
+  {
+    label: t('moreActions.actions.report'),
+    description: t('moreActions.actions.reportDescription'),
+    action: reportPost,
+    bold: false,
+    destructive: false,
+  },
+  {
+    label: t('moreActions.actions.notInterested'),
+    description: t('moreActions.actions.notInterestedDescription'),
+    action: () => moderateAuthor('mute'),
+    bold: false,
+    destructive: false,
+    disabled: activeAction.value !== null,
+  },
+])
 </script>
 
 <template>
-  <AppSheet :opened="opened" @update:opened="emit('update:opened', $event)">
-    <!-- Header -->
-    <div class="px-6 pt-4 pb-5">
-      <p class="text-h2 font-bold text-dark">{{ t('moreActions.title') }}</p>
-      <p class="text-footnote text-dark-50 mt-0.5">{{ t('moreActions.description') }}</p>
-      <p v-if="actionError" class="mt-3 text-footnote font-medium text-red-600">{{ actionError }}</p>
-    </div>
-
+  <AppActionsSheet
+    :opened="opened"
+    :title="t('moreActions.title')"
+    :items="actionItems"
+    cancel-label="Cancel"
+    @update:opened="emit('update:opened', $event)"
+  >
+    <!-- Custom header with language display -->
+    <template #header>
+      <div class="px-6 pt-4 pb-5">
+        <p class="text-h2 font-bold text-dark">{{ t('moreActions.title') }}</p>
+        <p class="text-footnote text-dark-50 mt-0.5">{{ t('moreActions.description') }}</p>
+        
+        <!-- Language display -->
+        <div class="mt-4 flex items-center gap-4">
+          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
+            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.language.title') }}</p>
+            <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.language.description') }}</p>
+          </div>
+          <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark shrink-0">{{ currentLanguageLabel }}</span>
+        </div>
+        
+        <p v-if="actionError" class="mt-3 text-footnote font-medium text-red-600">{{ actionError }}</p>
+      </div>
+    </template>
+    
     <!-- Divider -->
-    <div class="h-px bg-dark-10 mx-6" />
-
-    <!-- Actions -->
-    <ul class="py-2">
-
-      <!-- Language -->
-      <li class="flex items-center gap-4 px-6 py-4">
-        <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-          <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-          </svg>
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.language.title') }}</p>
-          <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.language.description') }}</p>
-        </div>
-        <span class="rounded-full bg-dark-10 px-3 py-1 text-footnote font-semibold text-dark shrink-0">{{ currentLanguageLabel }}</span>
-      </li>
-
-      <li class="h-px bg-dark-10 mx-6" />
-
-      <!-- Save -->
-      <li>
-        <button class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors" @click="close">
-          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-            </svg>
-          </div>
-          <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.save') }}</p>
-        </button>
-      </li>
-
-      <li class="h-px bg-dark-10 mx-6" />
-
-      <!-- Copy Link -->
-      <li>
-        <button class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors" @click="copyLink">
-          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-            </svg>
-          </div>
-          <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.copyLink') }}</p>
-        </button>
-      </li>
-
-      <li class="h-px bg-dark-10 mx-6" />
-
-      <!-- Block user -->
-      <li>
-        <button
-          class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="activeAction !== null"
-          @click="moderateAuthor('block')"
-        >
-          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/>
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.blockUser') }}</p>
-            <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.blockUserDescription') }}</p>
-          </div>
-          <span v-if="activeAction === 'block'" class="text-footnote font-semibold text-dark-50">Working…</span>
-        </button>
-      </li>
-
-      <li class="h-px bg-dark-10 mx-6" />
-
-      <!-- Report -->
-      <li>
-        <button class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors" @click="close">
-          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.report') }}</p>
-            <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.reportDescription') }}</p>
-          </div>
-        </button>
-      </li>
-
-      <li class="h-px bg-dark-10 mx-6" />
-
-      <!-- I'm not interested -->
-      <li>
-        <button
-          class="flex items-center gap-4 px-6 py-4 w-full text-left hover:bg-dark-5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="activeAction !== null"
-          @click="moderateAuthor('mute')"
-        >
-          <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-10 shrink-0">
-            <svg class="w-5 h-5 text-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/>
-            </svg>
-          </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-subHeader font-semibold text-dark">{{ t('moreActions.actions.notInterested') }}</p>
-            <p class="text-caption text-dark-50 mt-0.5">{{ t('moreActions.actions.notInterestedDescription') }}</p>
-          </div>
-          <span v-if="activeAction === 'mute'" class="text-footnote font-semibold text-dark-50">Working…</span>
-        </button>
-      </li>
-
-    </ul>
-  </AppSheet>
+    <template #divider>
+      <div class="h-px bg-dark-10 mx-6" />
+    </template>
+  </AppActionsSheet>
 </template>
+
+<style scoped>
+/* Minimal styling - most is handled by AppActionsSheet */
+.text-h2 {
+  font-family: var(--font-family);
+  font-size: var(--text-size-h2);
+  font-weight: 700;
+  color: var(--color-dark, #000);
+}
+
+.text-footnote {
+  font-family: var(--font-family);
+  font-size: var(--text-size-footnote);
+  color: var(--color-dark-50, #6b7280);
+}
+
+.text-subHeader {
+  font-family: var(--font-family);
+  font-size: var(--text-size-subHeader);
+  font-weight: 600;
+  color: var(--color-dark, #000);
+}
+
+.text-caption {
+  font-family: var(--font-family);
+  font-size: var(--text-size-caption);
+  color: var(--color-dark-50, #6b7280);
+}
+
+.text-dark-50 {
+  color: var(--color-dark-50, #6b7280);
+}
+
+.text-dark {
+  color: var(--color-dark, #000);
+}
+
+.bg-dark-10 {
+  background: var(--color-dark-10, #f3f4f6);
+}
+</style>

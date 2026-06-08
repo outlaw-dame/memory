@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { kList, kListItem, kToggle, kBlockTitle } from 'konsta/vue'
 import { useI18n } from '@/i18n'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useAppearanceStore } from '@/stores/appearanceStore'
+import { AppList, AppListItem, AppGroupedList, AppSwitch } from '@/design/semantic'
+import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 
 const router = useRouter()
 const { availableLocales, locale, setLocale, t } = useI18n()
 const notificationsStore = useNotificationsStore()
 const appearance = useAppearanceStore()
+const nativeUiProfile = useNativeUiProfile()
+
+const windowHoursOptions = [
+  { value: 24, label: t('settings.appearance.notifications.window.24h') },
+  { value: 72, label: t('settings.appearance.notifications.window.72h') },
+  { value: 168, label: t('settings.appearance.notifications.window.168h') },
+  { value: 336, label: t('settings.appearance.notifications.window.336h') },
+]
 
 function onLocaleChange(event: Event) {
   const target = event.target as HTMLSelectElement | null
@@ -23,125 +32,139 @@ function onWindowHoursChange(event: Event) {
     void notificationsStore.setGroupingPreferences({ windowHours })
   }
 }
+
+function handleToggleChange(value: boolean, setter: (value: boolean) => void) {
+  setter(value)
+}
 </script>
 
 <template>
   <div class="pb-20">
 
     <!-- ── Language ────────────────────────────────────────────────────────── -->
-    <kBlockTitle>{{ t('common.language') }}</kBlockTitle>
-    <kList>
-      <kListItem :title="t('common.language')">
-        <template #after>
-          <select
-            :value="locale"
-            class="rounded-lg border border-separator bg-surface px-3 py-1.5 text-sm text-label focus:outline-none focus:ring-2 focus:ring-accent/20"
-            @change="onLocaleChange"
-          >
-            <option
-              v-for="l in availableLocales"
-              :key="l"
-              :value="l"
-            >{{ t(`common.languages.${l}`) }}</option>
-          </select>
-        </template>
-      </kListItem>
-    </kList>
-    <p class="px-(--padding-main) text-xs text-label-secondary">{{ t('settings.language.description') }}</p>
-    <p class="px-(--padding-main) mt-0.5 text-xs text-label-tertiary">{{ t('settings.language.updatesImmediately') }}</p>
+    <AppGroupedList :title="t('common.language')" :inset="true">
+      <AppList :inset="false">
+        <AppListItem>
+          <template #title>
+            {{ t('common.language') }}
+          </template>
+          <template #after>
+            <select
+              :value="locale"
+              class="app-settings-select"
+              @change="onLocaleChange"
+              :aria-label="t('common.language')"
+            >
+              <option
+                v-for="l in availableLocales"
+                :key="l"
+                :value="l"
+              >{{ t(`common.languages.${l}`) }}</option>
+            </select>
+          </template>
+        </AppListItem>
+      </AppList>
+      <p class="app-settings-description">{{ t('settings.language.description') }}</p>
+      <p class="app-settings-description-secondary">{{ t('settings.language.updatesImmediately') }}</p>
+    </AppGroupedList>
 
     <!-- ── Feed appearance ───────────────────────────────────────────────────── -->
-    <kBlockTitle>Feed</kBlockTitle>
-    <kList>
-      <kListItem title="Show source badge" subtitle="Protocol logo next to each post">
-        <template #after>
-          <kToggle
-            :checked="appearance.showProtocolBadge"
-            @change="(e: Event) => { appearance.showProtocolBadge = (e.target as HTMLInputElement).checked }"
-          />
-        </template>
-      </kListItem>
-      <kListItem title="Show visibility indicator" subtitle="Lock icon on followers-only posts">
-        <template #after>
-          <kToggle
-            :checked="appearance.showVisibilityIndicator"
-            @change="(e: Event) => { appearance.showVisibilityIndicator = (e.target as HTMLInputElement).checked }"
-          />
-        </template>
-      </kListItem>
-      <kListItem title="Show client app" subtitle="'via Memory / Tusky / …' in thread view">
-        <template #after>
-          <kToggle
-            :checked="appearance.showClientApp"
-            @change="(e: Event) => { appearance.showClientApp = (e.target as HTMLInputElement).checked }"
-          />
-        </template>
-      </kListItem>
-    </kList>
+    <AppGroupedList title="Feed" :inset="true">
+      <AppList :inset="false">
+        <AppListItem title="Show source badge" subtitle="Protocol logo next to each post">
+          <template #after>
+            <AppSwitch
+              v-model="appearance.showProtocolBadge"
+              @change="(value: boolean) => { appearance.showProtocolBadge = value }"
+              :aria-label="t('settings.appearance.showSourceBadge')"
+            />
+          </template>
+        </AppListItem>
+        <AppListItem title="Show visibility indicator" subtitle="Lock icon on followers-only posts">
+          <template #after>
+            <AppSwitch
+              v-model="appearance.showVisibilityIndicator"
+              @change="(value: boolean) => { appearance.showVisibilityIndicator = value }"
+              :aria-label="t('settings.appearance.showVisibilityIndicator')"
+            />
+          </template>
+        </AppListItem>
+        <AppListItem title="Show client app" subtitle="'via Memory / Tusky / …' in thread view">
+          <template #after>
+            <AppSwitch
+              v-model="appearance.showClientApp"
+              @change="(value: boolean) => { appearance.showClientApp = value }"
+              :aria-label="t('settings.appearance.showClientApp')"
+            />
+          </template>
+        </AppListItem>
+      </AppList>
+    </AppGroupedList>
 
     <!-- ── Notification grouping ───────────────────────────────────────────── -->
-    <kBlockTitle>{{ t('settings.appearance.title') }}</kBlockTitle>
-    <kList>
-      <kListItem :title="t('settings.appearance.notifications.groupFollows')">
-        <template #after>
-          <kToggle
-            :checked="notificationsStore.groupingPreferences.includeFollows"
-            @change="(e: Event) => notificationsStore.setGroupingPreferences({ includeFollows: (e.target as HTMLInputElement).checked })"
-          />
-        </template>
-      </kListItem>
-      <kListItem :title="t('settings.appearance.notifications.groupMentions')">
-        <template #after>
-          <kToggle
-            :checked="notificationsStore.groupingPreferences.includeMentions"
-            @change="(e: Event) => notificationsStore.setGroupingPreferences({ includeMentions: (e.target as HTMLInputElement).checked })"
-          />
-        </template>
-      </kListItem>
-      <kListItem :title="t('settings.appearance.notifications.groupWindow')">
-        <template #after>
-          <select
-            :value="notificationsStore.groupingPreferences.windowHours"
-            class="rounded-lg border border-separator bg-surface px-3 py-1.5 text-sm text-label focus:outline-none focus:ring-2 focus:ring-accent/20"
-            @change="onWindowHoursChange"
-          >
-            <option :value="24">{{ t('settings.appearance.notifications.window.24h') }}</option>
-            <option :value="72">{{ t('settings.appearance.notifications.window.72h') }}</option>
-            <option :value="168">{{ t('settings.appearance.notifications.window.168h') }}</option>
-            <option :value="336">{{ t('settings.appearance.notifications.window.336h') }}</option>
-          </select>
-        </template>
-      </kListItem>
-    </kList>
+    <AppGroupedList :title="t('settings.appearance.title')" :inset="true">
+      <AppList :inset="false">
+        <AppListItem :title="t('settings.appearance.notifications.groupFollows')">
+          <template #after>
+            <AppSwitch
+              :model-value="notificationsStore.groupingPreferences.includeFollows"
+              @change="(value: boolean) => notificationsStore.setGroupingPreferences({ includeFollows: value })"
+              :aria-label="t('settings.appearance.notifications.groupFollows')"
+            />
+          </template>
+        </AppListItem>
+        <AppListItem :title="t('settings.appearance.notifications.groupMentions')">
+          <template #after>
+            <AppSwitch
+              :model-value="notificationsStore.groupingPreferences.includeMentions"
+              @change="(value: boolean) => notificationsStore.setGroupingPreferences({ includeMentions: value })"
+              :aria-label="t('settings.appearance.notifications.groupMentions')"
+            />
+          </template>
+        </AppListItem>
+        <AppListItem :title="t('settings.appearance.notifications.groupWindow')">
+          <template #after>
+            <select
+              :value="notificationsStore.groupingPreferences.windowHours"
+              class="app-settings-select"
+              @change="onWindowHoursChange"
+              :aria-label="t('settings.appearance.notifications.groupWindow')"
+            >
+              <option v-for="opt in windowHoursOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </template>
+        </AppListItem>
+      </AppList>
+    </AppGroupedList>
 
     <!-- ── Navigation ──────────────────────────────────────────────────────── -->
-    <kBlockTitle>{{ t('settings.title') }}</kBlockTitle>
-    <kList>
-      <kListItem
-        link
-        :title="t('settings.cards.profile.title')"
-        :subtitle="t('settings.cards.profile.description')"
-        component="button"
-        :link-props="{ type: 'button' }"
-        @click="router.push('/settings/profile')"
-      />
-      <kListItem
-        link
-        :title="t('settings.cards.feedControls.title')"
-        :subtitle="t('settings.cards.feedControls.description')"
-        component="button"
-        :link-props="{ type: 'button' }"
-        @click="router.push('/settings/feed-controls')"
-      />
-      <kListItem
-        link
-        :title="t('settings.cards.moderation.title')"
-        :subtitle="t('settings.cards.moderation.description')"
-        component="button"
-        :link-props="{ type: 'button' }"
-        @click="router.push('/settings/moderation')"
-      />
-    </kList>
+    <AppGroupedList :title="t('settings.title')" :inset="true">
+      <AppList :inset="false">
+        <AppListItem
+          link
+          :title="t('settings.cards.profile.title')"
+          :subtitle="t('settings.cards.profile.description')"
+          @click="router.push('/settings/profile')"
+          chevron-right
+        />
+        <AppListItem
+          link
+          :title="t('settings.cards.feedControls.title')"
+          :subtitle="t('settings.cards.feedControls.description')"
+          @click="router.push('/settings/feed-controls')"
+          chevron-right
+        />
+        <AppListItem
+          link
+          :title="t('settings.cards.moderation.title')"
+          :subtitle="t('settings.cards.moderation.description')"
+          @click="router.push('/settings/moderation')"
+          chevron-right
+        />
+      </AppList>
+    </AppGroupedList>
 
   </div>
 </template>

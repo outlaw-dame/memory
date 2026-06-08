@@ -25,6 +25,13 @@ import { useAuthStore } from '@/stores/authStore'
 import ky from 'ky'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from '@/i18n'
+import {
+  AppList,
+  AppListItem,
+  AppGroupedList,
+  AppSwitch,
+  AppDestructiveAction
+} from '@/design/semantic'
 
 type ActorProfile = Record<string, unknown>
 
@@ -230,234 +237,462 @@ const clearStatus = () => {
   statusDraft.value = clearActorStatusDraft()
 }
 
+const handleStatusChange = (field: keyof ActorStatusDraft, value: string) => {
+  statusDraft.value = { ...statusDraft.value, [field]: value }
+}
+
+const handleAttributionDomainChange = (index: number, value: string) => {
+  attributionDomains.value[index] = value
+}
+
+const handleMetadataFieldChange = (index: number, field: keyof ProfileField, value: string | boolean) => {
+  metadataFields.value = metadataFields.value.map((f, i) =>
+    i === index ? { ...f, [field]: value } : f
+  )
+}
+
 onMounted(() => {
   void loadProfile()
 })
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 py-4">
-    <div>
-      <h2 class="text-xl font-semibold">{{ t('settings.profile.title') }}</h2>
-      <p class="text-caption mt-1">{{ t('settings.profile.description') }}</p>
-    </div>
+  <div class="pb-20">
+    <!-- Header -->
+    <AppGroupedList :title="t('settings.profile.title')" :inset="true">
+      <p class="app-settings-description">{{ t('settings.profile.description') }}</p>
+    </AppGroupedList>
 
-    <div v-if="isLoading" class="rounded-default bg-pastel-light p-[var(--padding-main)] text-sm">
-      {{ t('settings.profile.loading') }}
-    </div>
+    <!-- Loading state -->
+    <AppGroupedList v-if="isLoading" :inset="true">
+      <AppList :inset="false">
+        <AppListItem :title="t('settings.profile.loading')" />
+      </AppList>
+    </AppGroupedList>
 
-    <div v-else class="rounded-default bg-pastel-light p-[var(--padding-main)] flex flex-col gap-4">
-      <p v-if="errorMessage" class="rounded bg-red-100 px-3 py-2 text-sm text-red-800">
-        {{ errorMessage }}
-      </p>
-      <p v-if="successMessage" class="rounded bg-emerald-100 px-3 py-2 text-sm text-emerald-800">
-        {{ successMessage }}
-      </p>
+    <template v-else>
+      <!-- Error/Success messages -->
+      <AppGroupedList v-if="errorMessage || successMessage" :inset="true">
+        <AppList :inset="false">
+          <AppListItem v-if="errorMessage" :title="errorMessage" class="text-red-800" />
+          <AppListItem v-if="successMessage" :title="successMessage" class="text-emerald-800" />
+        </AppList>
+      </AppGroupedList>
 
-      <label class="flex flex-col gap-1 text-sm font-medium">
-        {{ t('settings.profile.displayName') }}
-        <input v-model.trim="name" type="text" class="rounded border border-gray-300 px-3 py-2 font-normal bg-white" />
-      </label>
+      <!-- Profile Basics -->
+      <AppGroupedList :title="t('settings.profile.basics.title')" :inset="true">
+        <AppList :inset="false">
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.displayName') }}
+            </template>
+            <template #after>
+              <input
+                v-model.trim="name"
+                type="text"
+                class="app-settings-input"
+                :aria-label="t('settings.profile.displayName')"
+                placeholder="Display name"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.summary') }}
+            </template>
+            <template #after>
+              <textarea
+                v-model.trim="summary"
+                rows="3"
+                class="app-settings-textarea"
+                :aria-label="t('settings.profile.summary')"
+                placeholder="Bio"
+              />
+            </template>
+          </AppListItem>
+        </AppList>
+      </AppGroupedList>
 
-      <label class="flex flex-col gap-1 text-sm font-medium">
-        {{ t('settings.profile.summary') }}
-        <textarea
-          v-model.trim="summary"
-          rows="4"
-          class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
-        />
-      </label>
+      <!-- Discovery Settings -->
+      <AppGroupedList :title="t('settings.profile.discovery.title')" :inset="true">
+        <AppList :inset="false">
+          <AppListItem :title="t('settings.profile.discovery.limitExternalDiscovery')" :subtitle="t('settings.profile.discovery.description')">
+            <template #after>
+              <AppSwitch
+                v-model="limitExternalDiscovery"
+                @change="(value: boolean) => { limitExternalDiscovery = value }"
+                :aria-label="t('settings.profile.discovery.limitExternalDiscovery')"
+              />
+            </template>
+          </AppListItem>
+        </AppList>
+      </AppGroupedList>
 
-      <label class="flex items-start gap-3 rounded bg-white p-3 text-sm shadow-sm">
-        <input
-          v-model="limitExternalDiscovery"
-          type="checkbox"
-          class="mt-1"
-        />
-        <span class="flex flex-col gap-1">
-          <span class="font-semibold">{{ t('settings.profile.discovery.limitExternalDiscovery') }}</span>
-          <span class="text-caption">{{ t('settings.profile.discovery.description') }}</span>
-        </span>
-      </label>
+      <!-- Status -->
+      <AppGroupedList :title="t('settings.profile.status.title')" :inset="true">
+        <p class="app-settings-description">{{ t('settings.profile.status.description') }}</p>
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <button
+                class="app-settings-button secondary"
+                type="button"
+                @click="clearStatus"
+                :aria-label="t('settings.profile.status.clear')"
+              >
+                {{ t('settings.profile.status.clear') }}
+              </button>
+            </template>
+          </AppListItem>
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.status.content') }}
+            </template>
+            <template #after>
+              <textarea
+                v-model.trim="statusDraft.content"
+                rows="2"
+                class="app-settings-textarea"
+                :aria-label="t('settings.profile.status.content')"
+                placeholder="What's on your mind?"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem :title="t('settings.profile.status.counter', { count: statusCharacterCount, limit: STATUS_CHAR_LIMIT })" />
+          
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.status.expiration') }}
+            </template>
+            <template #after>
+              <input
+                v-model="statusDraft.endTimeLocal"
+                type="datetime-local"
+                class="app-settings-input"
+                :aria-label="t('settings.profile.status.expiration')"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem :title="t('settings.profile.status.expirationHint')" class="text-caption" />
+          
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.status.linkTitle') }}
+            </template>
+            <template #after>
+              <input
+                v-model.trim="statusDraft.linkName"
+                type="text"
+                class="app-settings-input"
+                :aria-label="t('settings.profile.status.linkTitle')"
+                placeholder="Link title"
+              />
+            </template>
+          </AppListItem>
+          
+          <AppListItem>
+            <template #title>
+              {{ t('settings.profile.status.linkUrl') }}
+            </template>
+            <template #after>
+              <input
+                v-model.trim="statusDraft.linkUrl"
+                type="url"
+                class="app-settings-input"
+                :aria-label="t('settings.profile.status.linkUrl')"
+                placeholder="https://"
+              />
+            </template>
+          </AppListItem>
+          <AppListItem :title="t('settings.profile.status.linkHint')" class="text-caption" />
+          
+          <AppListItem v-if="statusValidationKey" :title="t(statusValidationKey)" class="text-amber-800" />
+        </AppList>
+      </AppGroupedList>
 
-      <div class="flex flex-col gap-3 rounded bg-white p-3 shadow-sm">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h3 class="text-base font-semibold">{{ t('settings.profile.status.title') }}</h3>
-            <p class="text-caption mt-1">{{ t('settings.profile.status.description') }}</p>
-          </div>
-          <button class="rounded bg-pastel-dark px-3 py-2 text-sm font-medium" type="button" @click="clearStatus">
-            {{ t('settings.profile.status.clear') }}
-          </button>
-        </div>
-
-        <label class="flex flex-col gap-1 text-sm font-medium">
-          {{ t('settings.profile.status.content') }}
-          <textarea
-            v-model.trim="statusDraft.content"
-            rows="2"
-            class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
+      <!-- Author Attribution -->
+      <AppGroupedList :title="t('settings.profile.authorAttribution.title')" :inset="true">
+        <p class="app-settings-description">{{ t('settings.profile.authorAttribution.description') }}</p>
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <button
+                class="app-settings-button primary"
+                type="button"
+                @click="addAttributionDomain"
+                :disabled="attributionDomains.length >= ATTRIBUTION_DOMAIN_LIMIT"
+                :aria-label="t('settings.profile.authorAttribution.addDomain')"
+              >
+                {{ t('settings.profile.authorAttribution.addDomain') }}
+              </button>
+            </template>
+          </AppListItem>
+          <AppListItem :title="t('settings.profile.authorAttribution.hint', { limit: ATTRIBUTION_DOMAIN_LIMIT })" class="text-caption" />
+          
+          <AppListItem
+            v-if="attributionDomains.length === 0"
+            :title="t('settings.profile.authorAttribution.empty')"
+            class="text-gray-600"
           />
-          <span class="text-caption">
-            {{ t('settings.profile.status.counter', { count: statusCharacterCount, limit: STATUS_CHAR_LIMIT }) }}
-          </span>
-        </label>
+          
+          <AppListItem
+            v-for="(domain, index) in attributionDomains"
+            :key="`${index}-${domain}`"
+          >
+            <template #title>
+              {{ t('settings.profile.authorAttribution.domainLabel') }}
+            </template>
+            <template #after>
+              <input
+                :value="domain"
+                type="text"
+                class="app-settings-input"
+                :aria-label="t('settings.profile.authorAttribution.domainLabel')"
+                placeholder="example.com"
+                @input="(e) => handleAttributionDomainChange(index, (e.target as HTMLInputElement).value)"
+              />
+            </template>
+          </AppListItem>
+          
+          <AppListItem v-if="authorAttributionValidationKey" :title="t(authorAttributionValidationKey)" class="text-amber-800" />
+        </AppList>
+      </AppGroupedList>
 
-        <label class="flex flex-col gap-1 text-sm font-medium">
-          {{ t('settings.profile.status.expiration') }}
-          <input
-            v-model="statusDraft.endTimeLocal"
-            type="datetime-local"
-            class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
+      <!-- Profile Fields -->
+      <AppGroupedList :title="t('settings.profile.fields.title')" :inset="true">
+        <p class="app-settings-description">{{ t('settings.profile.fields.description') }}</p>
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <button
+                class="app-settings-button primary"
+                type="button"
+                @click="addField"
+                :aria-label="t('common.actions.addField')"
+              >
+                {{ t('common.actions.addField') }}
+              </button>
+            </template>
+          </AppListItem>
+          
+          <AppListItem
+            v-if="metadataFields.length === 0"
+            :title="t('settings.profile.fields.empty')"
+            class="text-gray-600"
           />
-          <span class="text-caption">{{ t('settings.profile.status.expirationHint') }}</span>
-        </label>
+          
+          <template v-for="(field, index) in metadataFields" :key="`${index}-${field.name}-${field.value}`">
+            <AppListItem>
+              <template #title>
+                {{ t('settings.profile.fields.label') }}
+              </template>
+              <template #after>
+                <input
+                  :value="field.name"
+                  type="text"
+                  class="app-settings-input"
+                  :aria-label="t('settings.profile.fields.label')"
+                  @input="(e) => handleMetadataFieldChange(index, 'name', (e.target as HTMLInputElement).value)"
+                />
+              </template>
+            </AppListItem>
+            
+            <AppListItem>
+              <template #title>
+                {{ t('settings.profile.fields.type') }}
+              </template>
+              <template #after>
+                <select
+                  :value="field.kind"
+                  class="app-settings-select"
+                  :aria-label="t('settings.profile.fields.type')"
+                  @change="(e) => handleMetadataFieldChange(index, 'kind', (e.target as HTMLSelectElement).value)"
+                >
+                  <option value="text">{{ t('settings.profile.fields.types.text') }}</option>
+                  <option value="link">{{ t('settings.profile.fields.types.link') }}</option>
+                </select>
+              </template>
+            </AppListItem>
+            
+            <AppListItem>
+              <template #title>
+                {{ t('settings.profile.fields.value') }}
+              </template>
+              <template #after>
+                <input
+                  :value="field.value"
+                  type="text"
+                  class="app-settings-input"
+                  :aria-label="t('settings.profile.fields.value')"
+                  @input="(e) => handleMetadataFieldChange(index, 'value', (e.target as HTMLInputElement).value)"
+                />
+              </template>
+            </AppListItem>
+            
+            <AppListItem v-if="field.kind === 'link'">
+              <template #title>
+                {{ t('settings.profile.fields.relMe') }}
+              </template>
+              <template #after>
+                <AppSwitch
+                  :model-value="field.relMe"
+                  @change="(value: boolean) => handleMetadataFieldChange(index, 'relMe', value)"
+                  :aria-label="t('settings.profile.fields.relMe')"
+                />
+              </template>
+            </AppListItem>
+            
+            <AppListItem>
+              <template #after>
+                <AppDestructiveAction
+                  label="Remove"
+                  danger-level="low"
+                  @confirm="removeField(index)"
+                />
+              </template>
+            </AppListItem>
+          </template>
+        </AppList>
+      </AppGroupedList>
 
-        <div class="grid gap-3 md:grid-cols-2">
-          <label class="flex flex-col gap-1 text-sm font-medium">
-            {{ t('settings.profile.status.linkTitle') }}
-            <input
-              v-model.trim="statusDraft.linkName"
-              type="text"
-              class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
-            />
-          </label>
+      <!-- Actions -->
+      <AppGroupedList :inset="true">
+        <AppList :inset="false">
+          <AppListItem>
+            <template #after>
+              <div class="flex gap-2">
+                <button
+                  class="app-settings-button primary"
+                  type="button"
+                  :disabled="saveDisabled"
+                  @click="saveProfile"
+                  :aria-label="isSaving ? t('common.states.saving') : t('settings.profile.saveProfile')"
+                >
+                  {{ isSaving ? t('common.states.saving') : t('settings.profile.saveProfile') }}
+                </button>
+                <button
+                  class="app-settings-button secondary"
+                  type="button"
+                  :disabled="isVerifying"
+                  @click="verifyLinks"
+                  :aria-label="isVerifying ? t('common.states.verifying') : t('common.actions.verifyLinks')"
+                >
+                  {{ isVerifying ? t('common.states.verifying') : t('common.actions.verifyLinks') }}
+                </button>
+              </div>
+            </template>
+          </AppListItem>
+        </AppList>
+      </AppGroupedList>
 
-          <label class="flex flex-col gap-1 text-sm font-medium">
-            {{ t('settings.profile.status.linkUrl') }}
-            <input
-              v-model.trim="statusDraft.linkUrl"
-              type="url"
-              class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
-              placeholder="https://"
-            />
-          </label>
-        </div>
+      <!-- Verification Results -->
+      <AppGroupedList v-if="verification" :title="t('settings.profile.verifiedSummary', verifiedSummary)" :inset="true">
+        <AppList :inset="false">
+          <AppListItem
+            v-for="link in verification.links"
+            :key="link.href"
+          >
+            <template #title>
+              <a :href="link.href" target="_blank" rel="noopener noreferrer me" class="break-all text-blue-700 underline">
+                {{ link.href }}
+              </a>
+            </template>
+            <template #after>
+              <span :class="link.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'" class="rounded px-2 py-1 text-xs font-semibold">
+                {{ link.verified ? t('settings.profile.verified') : link.reason || t('settings.profile.notVerified') }}
+              </span>
+            </template>
+          </AppListItem>
+        </AppList>
+      </AppGroupedList>
+    </template>
 
-        <p class="text-caption">{{ t('settings.profile.status.linkHint') }}</p>
-        <p v-if="statusValidationKey" class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {{ t(statusValidationKey) }}
-        </p>
-      </div>
-
-      <div class="flex flex-col gap-3 rounded bg-white p-3 shadow-sm">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h3 class="text-base font-semibold">{{ t('settings.profile.authorAttribution.title') }}</h3>
-            <p class="text-caption mt-1">{{ t('settings.profile.authorAttribution.description') }}</p>
-          </div>
-          <button class="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white" type="button" @click="addAttributionDomain">
-            {{ t('settings.profile.authorAttribution.addDomain') }}
-          </button>
-        </div>
-
-        <p class="text-caption">{{ t('settings.profile.authorAttribution.hint', { limit: ATTRIBUTION_DOMAIN_LIMIT }) }}</p>
-
-        <div
-          v-if="attributionDomains.length === 0"
-          class="rounded border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-600"
-        >
-          {{ t('settings.profile.authorAttribution.empty') }}
-        </div>
-
-        <div
-          v-for="(domain, index) in attributionDomains"
-          :key="`${index}-${domain}`"
-          class="grid gap-3 rounded border border-gray-200 bg-gray-50 p-3 md:grid-cols-[1fr_auto] md:items-end"
-        >
-          <label class="flex flex-col gap-1 text-sm font-medium">
-            {{ t('settings.profile.authorAttribution.domainLabel') }}
-            <input
-              v-model.trim="attributionDomains[index]"
-              type="text"
-              class="rounded border border-gray-300 px-3 py-2 font-normal bg-white"
-              placeholder="example.com"
-            />
-          </label>
-
-          <button class="rounded bg-pastel-dark px-3 py-2 text-sm font-medium" type="button" @click="removeAttributionDomain(index)">
-            {{ t('common.actions.remove') }}
-          </button>
-        </div>
-
-        <p v-if="authorAttributionValidationKey" class="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {{ t(authorAttributionValidationKey) }}
-        </p>
-      </div>
-
-      <div class="flex flex-col gap-3">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h3 class="text-base font-semibold">{{ t('settings.profile.fields.title') }}</h3>
-            <p class="text-caption mt-1">{{ t('settings.profile.fields.description') }}</p>
-          </div>
-          <button class="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white" type="button" @click="addField">
-            {{ t('common.actions.addField') }}
-          </button>
-        </div>
-
-        <div v-if="metadataFields.length === 0" class="rounded border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-600">
-          {{ t('settings.profile.fields.empty') }}
-        </div>
-
-        <div v-for="(field, index) in metadataFields" :key="`${index}-${field.name}-${field.value}`" class="rounded bg-white p-3 shadow-sm flex flex-col gap-3">
-          <div class="grid gap-3 md:grid-cols-[1fr_160px_auto] md:items-end">
-            <label class="flex flex-col gap-1 text-sm font-medium">
-              {{ t('settings.profile.fields.label') }}
-              <input v-model.trim="field.name" type="text" class="rounded border border-gray-300 px-3 py-2 font-normal" />
-            </label>
-
-            <label class="flex flex-col gap-1 text-sm font-medium">
-              {{ t('settings.profile.fields.type') }}
-              <select v-model="field.kind" class="rounded border border-gray-300 px-3 py-2 font-normal bg-white">
-                <option value="text">{{ t('settings.profile.fields.types.text') }}</option>
-                <option value="link">{{ t('settings.profile.fields.types.link') }}</option>
-              </select>
-            </label>
-
-            <button class="rounded bg-pastel-dark px-3 py-2 text-sm font-medium" type="button" @click="removeField(index)">
-              {{ t('common.actions.remove') }}
-            </button>
-          </div>
-
-          <label class="flex flex-col gap-1 text-sm font-medium">
-            {{ t('settings.profile.fields.value') }}
-            <input v-model.trim="field.value" type="text" class="rounded border border-gray-300 px-3 py-2 font-normal" />
-          </label>
-
-          <label v-if="field.kind === 'link'" class="flex items-center gap-2 text-sm">
-            <input v-model="field.relMe" type="checkbox" />
-            {{ t('settings.profile.fields.relMe') }}
-          </label>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <button class="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-60" type="button" :disabled="saveDisabled" @click="saveProfile">
-          {{ isSaving ? t('common.states.saving') : t('settings.profile.saveProfile') }}
-        </button>
-        <button class="rounded bg-pastel-dark px-3 py-2 text-sm font-medium disabled:opacity-60" type="button" :disabled="isVerifying" @click="verifyLinks">
-          {{ isVerifying ? t('common.states.verifying') : t('common.actions.verifyLinks') }}
-        </button>
-      </div>
-
-      <div v-if="verification" class="rounded bg-white p-3 shadow-sm flex flex-col gap-2">
-        <p class="text-sm font-semibold">
-          {{ t('settings.profile.verifiedSummary', verifiedSummary) }}
-        </p>
-        <div v-if="verification.links?.length" class="flex flex-col gap-2">
-          <div v-for="link in verification.links" :key="link.href" class="flex flex-col gap-1 rounded border border-gray-200 px-3 py-2 md:flex-row md:items-center md:justify-between">
-            <a :href="link.href" target="_blank" rel="noopener noreferrer me" class="break-all text-blue-700 underline">
-              {{ link.href }}
-            </a>
-            <span :class="link.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'" class="rounded px-2 py-1 text-xs font-semibold">
-              {{ link.verified ? t('settings.profile.verified') : link.reason || t('settings.profile.notVerified') }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <RouterLink to="/settings" class="text-sm underline">{{ t('common.actions.backToSettings') }}</RouterLink>
+    <AppGroupedList :inset="true">
+      <AppList :inset="false">
+        <AppListItem
+          link
+          :title="t('common.actions.backToSettings')"
+          @click="$router.push('/settings')"
+          chevron-right
+        />
+      </AppList>
+    </AppGroupedList>
   </div>
 </template>
+
+<style scoped>
+/* Settings-specific styling */
+.app-settings-description {
+  font-family: var(--font-family);
+  font-size: var(--text-size-caption);
+  color: var(--color-secondary);
+  padding: 0 var(--padding-main) 0.5rem;
+}
+
+.app-settings-input {
+  font-family: var(--font-family);
+  font-size: var(--text-size-base);
+  padding: 0.5rem;
+  border: 1px solid var(--color-secondary, #ccc);
+  border-radius: var(--rounded);
+  background: var(--bg-color, #fff);
+  color: var(--color-primary);
+  min-width: 150px;
+}
+
+.app-settings-textarea {
+  font-family: var(--font-family);
+  font-size: var(--text-size-base);
+  padding: 0.5rem;
+  border: 1px solid var(--color-secondary, #ccc);
+  border-radius: var(--rounded);
+  background: var(--bg-color, #fff);
+  color: var(--color-primary);
+  min-width: 150px;
+  resize: vertical;
+}
+
+.app-settings-select {
+  font-family: var(--font-family);
+  font-size: var(--text-size-base);
+  padding: 0.5rem;
+  border: 1px solid var(--color-secondary, #ccc);
+  border-radius: var(--rounded);
+  background: var(--bg-color, #fff);
+  color: var(--color-primary);
+  min-width: 150px;
+}
+
+.app-settings-button {
+  font-family: var(--font-family);
+  font-size: var(--text-size-base);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: var(--rounded);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.app-settings-button.primary {
+  background-color: var(--color-accent, #1d9bf0);
+  color: white;
+  border: none;
+}
+
+.app-settings-button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.app-settings-button.secondary {
+  background-color: var(--bg-color-secondary, #f7f7f7);
+  color: var(--color-primary);
+  border: 1px solid var(--color-secondary, #ccc);
+}
+
+.app-settings-button.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
