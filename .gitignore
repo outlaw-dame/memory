@@ -30,6 +30,8 @@ yalc.lock
 /logs
 
 .env.local
+
+/docs/internal/
 .env.*.local
 
 *.sqlite

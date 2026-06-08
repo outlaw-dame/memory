@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { kApp } from 'konsta/vue'
+import AppRoot from '@/design/semantic/AppRoot.vue'
 import AppTopBar from '@/design/components/AppTopBar.vue'
 import AppTabBar from '@/design/components/AppTabBar.vue'
 import { useKonstaTheme } from '@/design/composables/useKonstaTheme'
@@ -123,39 +124,40 @@ onMounted(() => {
 
 <template>
   <!--
-    kApp sets the Konsta theme context (ios or material) for all child
-    components. dark=false keeps Memory in its default light-mode palette.
-    The flex-col + h-lvh layout gives us a three-row shell:
-      top bar (shrink-0) / scrollable content (flex-1) / tab bar (shrink-0)
+    AppRoot provides the Framework7 foundation with theme detection from nativeUiProfile.
+    It wraps the existing Konsta-based layout to provide Framework7 context for future migration.
+    The kApp component remains as the primary layout container for now.
   -->
-  <kApp
-    :theme="konstaTheme"
-    :dark="false"
-    component="div"
-    class="flex flex-col overflow-hidden bg-background h-lvh"
-  >
-    <!-- Auth routes: full-screen, no shell, simple fade -->
-    <RouterView v-if="isAuthRoute" v-slot="{ Component }">
-      <Transition name="route-fade" mode="out-in">
-        <component :is="Component" :key="route.path" class="flex-1" />
-      </Transition>
-    </RouterView>
+  <AppRoot>
+    <kApp
+      :theme="konstaTheme"
+      :dark="false"
+      component="div"
+      class="flex flex-col overflow-hidden bg-background h-lvh"
+    >
+      <!-- Auth routes: full-screen, no shell, simple fade -->
+      <RouterView v-if="isAuthRoute" v-slot="{ Component }">
+        <Transition name="route-fade" mode="out-in">
+          <component :is="Component" :key="route.path" class="flex-1" />
+        </Transition>
+      </RouterView>
 
-    <!-- App shell: top bar + scrollable content + tab bar -->
-    <template v-else>
-      <AppTopBar class="shrink-0" />
-      <!--
-        overflow-x-hidden clips the entering/leaving view during slide transitions
-        so the 100% translateX doesn't cause a horizontal scrollbar.
-      -->
-      <main ref="mainRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
-        <RouterView v-slot="{ Component }">
-          <Transition :name="transitionName" mode="out-in">
-            <component :is="Component" :key="route.path" />
-          </Transition>
-        </RouterView>
-      </main>
-      <AppTabBar class="shrink-0" />
-    </template>
-  </kApp>
+      <!-- App shell: top bar + scrollable content + tab bar -->
+      <template v-else>
+        <AppTopBar class="shrink-0" />
+        <!--
+          overflow-x-hidden clips the entering/leaving view during slide transitions
+          so the 100% translateX doesn't cause a horizontal scrollbar.
+        -->
+        <main ref="mainRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
+          <RouterView v-slot="{ Component }">
+            <Transition :name="transitionName" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </Transition>
+          </RouterView>
+        </main>
+        <AppTabBar class="shrink-0" />
+      </template>
+    </kApp>
+  </AppRoot>
 </template>

@@ -40,6 +40,8 @@
     "@tanstack/vue-virtual": "^3.13.24",
     "@vueuse/core": "^14.3.0",
     "drizzle-orm": "^0.45.2",
+    "framework7": "^9.0.5",
+    "framework7-vue": "^9.0.5",
     "ionicons": "^8.0.13",
     "konsta": "^5.0.9",
     "ky": "^1.7.4",
