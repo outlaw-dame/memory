@@ -144,20 +144,41 @@ onMounted(() => {
 
       <!-- App shell: top bar + scrollable content + tab bar -->
       <template v-else>
-        <AppTopBar class="shrink-0" />
+        <AppTopBar class="app-shell-topbar" />
         <!--
-          overflow-x-hidden clips the entering/leaving view during slide transitions
-          so the 100% translateX doesn't cause a horizontal scrollbar.
+          Main content area with padding to accommodate fixed navbar and toolbar.
+          Framework7 navbar and toolbar use relative positioning within the flex container.
         -->
-        <main ref="mainRef" class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
+        <main ref="mainRef" class="app-shell-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
           <RouterView v-slot="{ Component }">
             <Transition :name="transitionName" mode="out-in">
               <component :is="Component" :key="route.path" />
             </Transition>
           </RouterView>
         </main>
-        <AppTabBar class="shrink-0" />
+        <AppTabBar class="app-shell-tabbar" />
       </template>
     </kApp>
   </AppRoot>
 </template>
+
+<style scoped>
+/* Shell layout - ensure Framework7 navbar and toolbar work within flex container */
+:deep(.app-shell-topbar) {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+:deep(.app-shell-main) {
+  /* Account for navbar height at top */
+  padding-top: 44px;
+  /* Account for toolbar height at bottom */
+  padding-bottom: 56px;
+}
+
+:deep(.app-shell-tabbar) {
+  flex: 0 0 auto;
+  width: 100%;
+}
+</style>
+
