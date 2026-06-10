@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - memory.</title>
+  <meta name="description" content="You are currently offline. memory. will be available when you reconnect to the internet.">
+  <meta name="theme-color" content="#6364f6">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #edead7;
+      color: #1f2937;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .offline-container {
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .offline-icon {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 1.5rem;
+      opacity: 0.8;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 0.75rem;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #4b5563;
+      margin-bottom: 1.5rem;
+    }
+
+    .offline-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background-color: #6364f6;
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      opacity: 0.8;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .retry-button {
+      background-color: #6364f6;
+    }
+
+    .retry-button:disabled {
+      background-color: #93c5fd;
+    }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .status.checking {
+      color: #6364f6;
+    }
+
+    .status.online {
+      color: #16a34a;
+    }
+
+    .status.offline {
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/>
+      <path d="M2 12l10 5 10-5"/>
+    </svg>
+    
+    <h1>You're offline</h1>
+    <p>It looks like you don't have an active internet connection. memory. requires an internet connection to work properly.</p>
+    
+    <div class="offline-actions">
+      <button id="retryButton" class="retry-button" onclick="checkConnection()">
+        <span id="buttonText">Check Connection</span>
+      </button>
+    </div>
+    
+    <div id="status" class="status offline">Offline</div>
+  </div>
+
+  <script>
+    // Check online status and update UI
+    function updateConnectionStatus() {
+      const isOnline = navigator.onLine;
+      const statusElement = document.getElementById('status');
+      const buttonElement = document.getElementById('retryButton');
+      const buttonTextElement = document.getElementById('buttonText');
+
+      if (isOnline) {
+        statusElement.textContent = 'Back online! Redirecting...';
+        statusElement.className = 'status online';
+        buttonElement.disabled = true;
+        buttonTextElement.textContent = 'Redirecting...';
+        
+        // Try to reload the app
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        statusElement.textContent = 'Offline';
+        statusElement.className = 'status offline';
+        buttonElement.disabled = false;
+        buttonTextElement.textContent = 'Check Connection';
+      }
+    }
+
+    function checkConnection() {
+      const buttonElement = document.getElementById('retryButton');
+      const buttonTextElement = document.getElementById('buttonText');
+      const statusElement = document.getElementById('status');
+      
+      // Show checking state
+      statusElement.textContent = 'Checking...';
+      statusElement.className = 'status checking';
+      buttonElement.disabled = true;
+      buttonTextElement.textContent = 'Checking...';
+      
+      // Check if online
+      if (navigator.onLine) {
+        updateConnectionStatus();
+      } else {
+        // If still offline, wait a bit and check again
+        setTimeout(() => {
+          if (navigator.onLine) {
+            updateConnectionStatus();
+          } else {
+            statusElement.textContent = 'Still offline';
+            statusElement.className = 'status offline';
+            buttonElement.disabled = false;
+            buttonTextElement.textContent = 'Check Connection';
+          }
+        }, 1000);
+      }
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+
+    // Initial check
+    updateConnectionStatus();
+  </script>
+</body>
+</html>

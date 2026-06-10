@@ -12,11 +12,17 @@ interface SyncEvent extends ExtendableEvent {
   readonly tag: string
 }
 
-const CACHE = 'memory-v2'
+// Cache version - increment this with each release to force cache invalidation
+// This enables better cache busting during app updates
+const APP_VERSION = '2.0.0' // Update this version number with each release
+const CACHE = `memory-v${APP_VERSION}`
 
 // Merge build-time injected asset URLs with the required shell entries.
 // Deduplicate so '/' and '/index.html' don't appear twice if already in the manifest.
-const PRECACHE_URLS = [...new Set(['/', '/index.html', ...__WB_MANIFEST.map(e => e.url)])]
+const PRECACHE_URLS = [...new Set(['/', '/index.html', '/offline.html', ...__WB_MANIFEST.map(e => e.url)])]
+
+// Offline fallback page
+const OFFLINE_PAGE = '/offline.html'
 
 // ---------------------------------------------------------------------------
 // Install — precache shell + all hashed build assets
@@ -35,11 +41,32 @@ self.addEventListener('install', event => {
 // Activate — prune stale caches and claim clients immediately
 // ---------------------------------------------------------------------------
 
+// Maximum number of cached requests to prevent excessive storage usage
+const MAX_CACHE_ENTRIES = 200
+
+// Cache cleanup function to limit cache size by number of entries
+async function cleanupCache() {
+  const cache = await caches.open(CACHE)
+  const keys = await cache.keys()
+  
+  // If cache has more entries than our limit, delete the oldest ones
+  if (keys.length > MAX_CACHE_ENTRIES) {
+    // Sort by URL to get a consistent order and take the oldest entries
+    const sortedKeys = [...keys].sort((a, b) => a.url.localeCompare(b.url))
+    const keysToDelete = sortedKeys.slice(0, keys.length - MAX_CACHE_ENTRIES)
+    
+    await Promise.all(
+      keysToDelete.map(request => cache.delete(request))
+    )
+  }
+}
+
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches
       .keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => cleanupCache())
       .then(() => self.clients.claim()),
   )
 })
@@ -65,9 +92,21 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(cached => {
       const network = fetch(event.request).then(res => {
         if (res.ok && event.request.method === 'GET') {
-          caches.open(CACHE).then(cache => cache.put(event.request, res.clone()))
+          caches.open(CACHE).then(cache => {
+            cache.put(event.request, res.clone())
+            // Periodically clean up cache to prevent excessive growth
+            if (Math.random() < 0.01) { // ~1% chance to clean up on each request
+              cleanupCache()
+            }
+          })
         }
         return res
+      }).catch(() => {
+        // If network fails, check if this is a navigation request
+        if (event.request.mode === 'navigate') {
+          return caches.match(OFFLINE_PAGE)
+        }
+        return null
       })
       return cached ?? network
     }),
