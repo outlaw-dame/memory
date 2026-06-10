@@ -228,7 +228,9 @@ describe('keyboardPolicy', () => {
     it('should return the correct preset for each purpose', () => {
       Object.keys(KEYBOARD_PRESETS).forEach(purpose => {
         const config = getKeyboardConfig(purpose as keyof typeof KEYBOARD_PRESETS)
-        expect(config).toEqual(KEYBOARD_PRESETS[purpose])
+        // getKeyboardConfig spreads text preset first, so it includes all text properties
+        // then overrides with the specific preset properties
+        expect(config).toEqual({ ...KEYBOARD_PRESETS.text, ...KEYBOARD_PRESETS[purpose as keyof typeof KEYBOARD_PRESETS] })
       })
     })
 

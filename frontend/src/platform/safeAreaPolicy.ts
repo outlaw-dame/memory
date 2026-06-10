@@ -31,7 +31,7 @@ export interface SafeAreaInsets {
  * Default safe area insets for different environments
  * These are fallback values when CSS env() is not available
  */
-const DEFAULT_INSETS: Record<string, SafeAreaInsets> = {
+export const DEFAULT_INSETS: Record<string, SafeAreaInsets> = {
   // Default for desktop/browser
   browser: { top: 0, right: 0, bottom: 0, left: 0 },
   
