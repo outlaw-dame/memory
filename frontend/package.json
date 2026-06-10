@@ -15,7 +15,11 @@
     "format": "prettier --write src/",
     "sync": "cap sync",
     "open:android": "cap open android",
-    "open:ios": "cap open ios"
+    "open:ios": "cap open ios",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.1",
