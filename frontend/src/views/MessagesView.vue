@@ -413,7 +413,7 @@ function handleMessageAction(action: string, messageId: string): void {
               <p class="font-semibold text-dark">{{ t('messages.replyingTo') }}</p>
               <p>{{ getMessageReplySnippet(replyToMessageId) ?? t('messages.deletedPreview') }}</p>
             </div>
-            <button type="button" class="rounded-full bg-dark-10 px-3 py-1 text-xs font-semibold text-dark-60" @click="clearReplyTarget">
+            <button type="button" class="rounded-full bg-dark-10 px-3 py-1 text-xs font-semibold text-dark-60" aria-label="Cancel reply" @click="clearReplyTarget">
               {{ t('messages.cancelReply') }}
             </button>
           </div>
@@ -428,6 +428,7 @@ function handleMessageAction(action: string, messageId: string): void {
                 type="button"
                 class="flex w-full items-center justify-between rounded-[18px] px-3 py-2 text-left"
                 :class="mentionSuggestions[activeMentionIndex] === suggestion ? 'bg-dark-10' : 'hover:bg-dark-10'"
+                :aria-label="`Mention @${formatMemberLabel(suggestion)}`"
                 @click="insertMention(suggestion)"
               >
                 <span class="font-semibold text-dark">@{{ formatMemberLabel(suggestion) }}</span>
