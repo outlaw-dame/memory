@@ -131,7 +131,7 @@ function handleMediaKeyDown(event: KeyboardEvent, index: number) {
         <template v-if="item.type === 'image' || item.type === 'gif'">
           <img
             :src="item.url"
-            :alt="item.alt ?? ''"
+            :alt="item.alt || 'Post media'"
             loading="lazy"
             class="post-media-carousel__media w-full h-full object-cover"
             :class="{ 'cursor-pointer': item.type === 'image' || item.type === 'gif' }"

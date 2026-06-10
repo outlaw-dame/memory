@@ -165,6 +165,7 @@ async function selectGif(gif: KlipyGif) {
         <!-- Blur placeholder -->
         <img
           :src="gif.blur_preview"
+          alt=""
           class="absolute inset-0 w-full h-full object-cover"
           :class="gifLoaded[gif.slug] ? 'opacity-0' : 'opacity-100'"
           aria-hidden="true"

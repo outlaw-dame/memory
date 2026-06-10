@@ -49,13 +49,15 @@ export {
   createHapticContext,
   resetHapticRateLimiter,
   HapticLevel,
+  ImpactStyle,
+  NotificationType,
   type HapticOptions,
 } from './hapticPolicy'
 
-// Re-export from capabilities
+// Re-export platform capabilities from nativeUiProfile for backwards compatibility
 export {
   getPlatformCapabilities,
   applyPlatformCapabilities,
   type PlatformCapabilities,
   type PlatformOs,
-} from './capabilities'
+} from './nativeUiProfile'

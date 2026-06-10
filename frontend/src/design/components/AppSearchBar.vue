@@ -242,6 +242,7 @@ defineOptions({
       v-if="props.showCancel && isFocused"
       type="button"
       class="app-search-bar-cancel"
+      aria-label="Cancel search"
       @click="handleCancel"
     >
       {{ props.cancelText }}

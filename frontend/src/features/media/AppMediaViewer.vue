@@ -31,6 +31,7 @@ import { useMediaPreload } from './useMediaPreload'
 import MediaViewerToolbar from './MediaViewerToolbar.vue'
 import MediaViewerGestureLayer from './MediaViewerGestureLayer.vue'
 import type { CarouselMediaItem } from '@/components/PostMediaCarousel.vue'
+import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 
 export interface AppMediaViewerProps {
   items: CarouselMediaItem[]
@@ -60,6 +61,7 @@ const imageRef = ref<HTMLImageElement | null>(null)
 
 // Get media URLs
 const mediaUrls = computed(() => props.items.map(item => item.url))
+const nativeUiProfile = useNativeUiProfile()
 
 // Use media preload
 const { preloadCurrent, preloadNext, preloadPrevious, cancelAll } = useMediaPreload({
@@ -295,7 +297,7 @@ onBeforeUnmount(() => {
         @click="toggleChrome"
       >
         <MediaViewerGestureLayer
-          :disable-gestures="!currentItem"
+          :disable-gestures="!currentItem || nativeUiProfile.prefersReducedMotion"
           @swipe-left="next"
           @swipe-right="previous"
           @swipe-down="close"

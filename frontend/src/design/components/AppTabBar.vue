@@ -8,7 +8,7 @@ import {
 } from 'framework7-vue'
 import { useI18n } from '@/i18n'
 import { useNotificationsStore } from '@/stores/notificationsStore'
-import { useHaptics, ImpactStyle } from '@/composables/useHaptics'
+import { useHaptics, ImpactStyle } from '@/platform/hapticPolicy'
 import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 import AppIcon from '@/components/AppIcon.vue'
 import type { AppIconName } from '@/components/AppIcon.types'
@@ -201,6 +201,11 @@ function getIconName(item: NavItem): AppIconName {
 /* Safe area handling */
 :deep(.toolbar:after) {
   content: none;
+}
+
+/* Add safe area padding at the bottom for devices with home indicator */
+:deep(.toolbar) {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>
 

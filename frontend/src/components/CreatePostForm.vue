@@ -319,7 +319,7 @@ async function createPost() {
           <AppTextField
             id="composer-article-title"
             v-model="articleTitle"
-            purpose="text"
+            purpose="title"
             :label="t('composer.article.titleLabel')"
             :placeholder="t('composer.article.titlePlaceholder')"
             :maxlength="ARTICLE_TITLE_LIMIT"

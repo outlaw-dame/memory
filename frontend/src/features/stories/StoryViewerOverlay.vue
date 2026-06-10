@@ -17,6 +17,7 @@ import StoryProgressBar from './StoryProgressBar.vue'
 import StoryViewerHeader from './StoryViewerHeader.vue'
 import StoryViewerFooter from './StoryViewerFooter.vue'
 import type { StoryGroup, StoryItem } from '@/stores/atBridgeStore'
+import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 
 export interface StoryViewerOverlayProps {
   groups: StoryGroup[]
@@ -51,6 +52,8 @@ const playback = useStoryPlayback({
   initialGroupIndex: props.initialGroupIndex
 })
 
+const nativeUiProfile = useNativeUiProfile()
+
 const gestures = useStoryGestures({
   element: overlayRef,
   onNext: playback.advance,
@@ -65,7 +68,7 @@ const gestures = useStoryGestures({
     // Optional: haptic feedback on release
   },
   isPaused: playback.isPaused,
-  disableGestures: ref(false)
+  disableGestures: computed(() => nativeUiProfile.prefersReducedMotion)
 })
 
 // Current group and item

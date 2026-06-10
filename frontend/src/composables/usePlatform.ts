@@ -1,4 +1,4 @@
-import { getPlatformCapabilities, type PlatformCapabilities } from '@/platform/capabilities'
+import { getPlatformCapabilities, type PlatformCapabilities } from '@/platform/nativeUiProfile'
 
 let _cached: PlatformCapabilities | null = null
 

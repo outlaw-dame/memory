@@ -78,7 +78,7 @@ function handleClose() {
         <img
           v-if="group.actor.avatarUrl"
           :src="group.actor.avatarUrl"
-          alt=""
+          :alt="`${displayName}'s avatar`"
           class="h-full w-full object-cover"
         />
         <span v-else>{{ avatarInitials }}</span>

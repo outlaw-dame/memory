@@ -18,7 +18,7 @@ import { useNativeUiProfile } from './nativeUiProfile'
 
 export interface KeyboardConfig {
   // Keyboard type for mobile input
-  type?: 'default' | 'ascii-capable' | 'decimal' | 'email' | 'numeric' | 'phone-pad' | 'search' | 'url'
+  type?: 'default' | 'ascii-capable' | 'decimal' | 'email' | 'numeric' | 'phone-pad' | 'search' | 'url' | 'password' | 'text'
   
   // Enter key hint for mobile keyboards
   enterKeyHint?: 'done' | 'enter' | 'go' | 'next' | 'previous' | 'search' | 'send'
@@ -33,7 +33,7 @@ export interface KeyboardConfig {
   spellCheck?: boolean
   
   // Autocomplete behavior
-  autoComplete?: 'off' | 'on' | 'name' | 'email' | 'username' | 'password' | 'tel' | 'url' | 'address-line1' | 'address-line2' | 'city' | 'country' | 'postal-code'
+  autoComplete?: 'off' | 'on' | 'name' | 'email' | 'username' | 'password' | 'current-password' | 'new-password' | 'tel' | 'url' | 'address-line1' | 'address-line2' | 'city' | 'country' | 'postal-code'
   
   // Input mode for virtual keyboards
   inputMode?: 'text' | 'search' | 'email' | 'url' | 'numeric' | 'decimal' | 'tel' | 'password'
@@ -140,11 +140,22 @@ export const KEYBOARD_PRESETS: Record<string, KeyboardConfig> = {
   // Composer/long text input
   composer: {
     type: 'default',
-    enterKeyHint: 'default',
+    enterKeyHint: 'enter',
     autoCapitalize: 'sentences',
     autoCorrect: true,
     spellCheck: true,
     autoComplete: 'on',
+    inputMode: 'text',
+  },
+  
+  // Title input (for post/article titles)
+  title: {
+    type: 'text',
+    enterKeyHint: 'done',
+    autoCapitalize: 'sentences',
+    autoCorrect: true,
+    spellCheck: true,
+    autoComplete: 'off',
     inputMode: 'text',
   },
   
@@ -159,9 +170,30 @@ export const KEYBOARD_PRESETS: Record<string, KeyboardConfig> = {
     inputMode: 'text',
   },
   
+  // Profile handle input (username-like)
+  handle: {
+    type: 'default',
+    enterKeyHint: 'next',
+    autoCapitalize: 'none',
+    autoCorrect: false,
+    spellCheck: false,
+    autoComplete: 'username',
+    inputMode: 'text',
+  },
+  
+  // New password input
+  newPassword: {
+    type: 'password',
+    enterKeyHint: 'done',
+    autoCapitalize: 'none',
+    autoCorrect: false,
+    spellCheck: false,
+    autoComplete: 'new-password',
+    inputMode: 'text',
+  },
+  
   // Multiline text (textarea)
   multiline: {
-    enterKeyHint: 'default',
     autoCapitalize: 'sentences',
     autoCorrect: true,
     spellCheck: true,

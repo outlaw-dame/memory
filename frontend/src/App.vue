@@ -4,14 +4,13 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
-import { kApp } from 'konsta/vue'
 import AppRoot from '@/design/semantic/AppRoot.vue'
 import AppTopBar from '@/design/components/AppTopBar.vue'
 import AppTabBar from '@/design/components/AppTabBar.vue'
-import { useKonstaTheme } from '@/design/composables/useKonstaTheme'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useI18n } from '@/i18n'
+import { f7App, f7Views, f7View, f7Page } from 'framework7-vue'
 
 const mainRef = ref<HTMLElement | null>(null)
 provide('scrollEl', mainRef)
@@ -19,7 +18,6 @@ provide('scrollEl', mainRef)
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
-const konstaTheme = useKonstaTheme()
 
 // Initialize application-wide singletons
 useNetworkStatus()
@@ -123,18 +121,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <!--
-    AppRoot provides the Framework7 foundation with theme detection from nativeUiProfile.
-    It wraps the existing Konsta-based layout to provide Framework7 context for future migration.
-    The kApp component remains as the primary layout container for now.
-  -->
   <AppRoot>
-    <kApp
-      :theme="konstaTheme"
-      :dark="false"
-      component="div"
-      class="flex flex-col overflow-hidden bg-background h-lvh"
-    >
+    <!-- Framework7 Page structure replaces kApp -->
+    <f7Page no-navbar no-toolbar no-swipeback class="flex flex-col overflow-hidden bg-background h-lvh">
       <!-- Auth routes: full-screen, no shell, simple fade -->
       <RouterView v-if="isAuthRoute" v-slot="{ Component }">
         <Transition name="route-fade" mode="out-in">
@@ -158,7 +147,7 @@ onMounted(() => {
         </main>
         <AppTabBar class="app-shell-tabbar" />
       </template>
-    </kApp>
+    </f7Page>
   </AppRoot>
 </template>
 
@@ -180,5 +169,19 @@ onMounted(() => {
   flex: 0 0 auto;
   width: 100%;
 }
-</style>
 
+/* Ensure Framework7 page fills container */
+:deep(.page) {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Remove default Framework7 page padding and margins */
+:deep(.page-content) {
+  padding: 0;
+  margin: 0;
+}
+</style>

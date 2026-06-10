@@ -16,6 +16,9 @@ import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { getNativeUiProfile } from './nativeUiProfile'
 
+// Re-export types for convenience
+export { ImpactStyle, NotificationType }
+
 /**
  * Haptic feedback types with intensity levels
  */

@@ -43,7 +43,6 @@
     "framework7": "^9.0.5",
     "framework7-vue": "^9.0.5",
     "ionicons": "^8.0.13",
-    "konsta": "^5.0.9",
     "ky": "^1.7.4",
     "luxon": "^3.5.0",
     "pinia": "^2.3.1",

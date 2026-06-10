@@ -17,6 +17,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSafeArea } from '@/platform/safeAreaPolicy'
 import { useHaptics } from '@/platform/hapticPolicy'
+import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 
 export interface AppPullToRefreshProps {
   // Refresh state
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 
 const safeArea = useSafeArea()
 const haptics = useHaptics()
+const nativeUiProfile = useNativeUiProfile()
 
 const containerRef = ref<HTMLElement | null>(null)
 const startY = ref(0)
@@ -69,6 +71,9 @@ const pullPercentage = computed(() => {
 })
 const shouldRefresh = computed(() => pullDistance.value >= props.refreshTriggerDistance)
 
+// Disable pull-to-refresh when reduced motion is preferred
+const isPullToRefreshEnabled = computed(() => !nativeUiProfile.prefersReducedMotion)
+
 // State indicators
 const refreshState = computed(() => {
   if (props.loading || isRefreshing.value) return 'loading'
@@ -79,7 +84,7 @@ const refreshState = computed(() => {
 
 // Touch handlers
 function handleTouchStart(event: TouchEvent) {
-  if (props.disabled || props.loading) return
+  if (props.disabled || props.loading || !isPullToRefreshEnabled.value) return
   
   const container = containerRef.value
   if (!container) return
@@ -103,7 +108,7 @@ function handleTouchStart(event: TouchEvent) {
 }
 
 function handleTouchMove(event: TouchEvent) {
-  if (!isDragging.value || props.disabled) return
+  if (!isDragging.value || props.disabled || !isPullToRefreshEnabled.value) return
   
   const touch = event.touches[0]
   currentY.value = touch.clientY
@@ -115,7 +120,7 @@ function handleTouchMove(event: TouchEvent) {
 }
 
 function handleTouchEnd() {
-  if (!isDragging.value) return
+  if (!isDragging.value || !isPullToRefreshEnabled.value) return
   
   isDragging.value = false
   

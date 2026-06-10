@@ -71,7 +71,7 @@ function handleOpen() {
       <img
         v-if="group.actor.avatarUrl"
         :src="group.actor.avatarUrl"
-        alt=""
+        :alt="`${actorLabel}'s avatar`"
         class="h-full w-full object-cover"
         loading="lazy"
       />

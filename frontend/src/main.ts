@@ -5,7 +5,7 @@ import App from './App.vue'
 import router from './router'
 import { initLocalDb } from './db/localDb'
 import { initializeLocale } from './i18n'
-import { applyPlatformCapabilities } from './platform/capabilities'
+import { applyPlatformCapabilities } from './platform/nativeUiProfile'
 import { logSessionPolicyConfig } from './utils/sessionPolicy'
 
 // Styles

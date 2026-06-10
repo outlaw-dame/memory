@@ -125,5 +125,10 @@ function handleBack() {
 :deep(.navbar:after) {
   content: none;
 }
+
+/* Add safe area padding at the top for devices with notch */
+:deep(.navbar) {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 </style>
 
