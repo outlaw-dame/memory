@@ -335,6 +335,7 @@ watch(internalDraft, () => {
         <button
           type="button"
           class="message-composer-reply-cancel"
+          aria-label="Cancel reply"
           @click="cancelReply"
         >
           ×
@@ -350,6 +351,7 @@ watch(internalDraft, () => {
           :key="attachment.id"
           type="button"
           class="message-composer-attachment"
+          :aria-label="`Remove ${attachment.filename}`"
           @click="removeAttachment(attachment.id)"
         >
           <span class="message-composer-attachment-name">{{ attachment.filename }}</span>
@@ -388,7 +390,7 @@ watch(internalDraft, () => {
       <slot name="actions" :send="sendMessage" :clear="clearDraft" :disabled="isSendDisabled">
         <div class="message-composer-actions-left">
           <!-- File attachment button -->
-          <label class="message-composer-action message-composer-action-attach">
+          <label class="message-composer-action message-composer-action-attach" aria-label="Attach file">
             <input
               type="file"
               class="message-composer-file-input"
@@ -408,6 +410,7 @@ watch(internalDraft, () => {
             type="button"
             class="message-composer-action message-composer-action-clear"
             :disabled="disabled"
+            aria-label="Clear message"
             @click="clearDraft"
           >
             <svg viewBox="0 0 24 24" class="message-composer-action-icon" fill="none" stroke="currentColor" stroke-width="2">
@@ -421,6 +424,7 @@ watch(internalDraft, () => {
             class="message-composer-action message-composer-action-send"
             :class="{ 'message-composer-action-send-disabled': isSendDisabled }"
             :disabled="isSendDisabled"
+            aria-label="Send message"
             @click="sendMessage"
           >
             <svg viewBox="0 0 24 24" class="message-composer-action-icon" fill="none" stroke="currentColor" stroke-width="2">

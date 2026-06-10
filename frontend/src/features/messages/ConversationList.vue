@@ -99,6 +99,7 @@ expose({
         <button
           type="button"
           class="conversation-list-load-more"
+          aria-label="Load more conversations"
           @click="handleLoadMore"
         >
           Load more...

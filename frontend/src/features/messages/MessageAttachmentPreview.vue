@@ -312,7 +312,7 @@ onBeforeUnmount(() => {
           {{ fileSizeDisplay }}
         </span>
       </div>
-      <button v-if="showDownload" type="button" class="message-attachment-preview-file-download" @click.stop="handleDownload">
+      <button v-if="showDownload" type="button" class="message-attachment-preview-file-download" aria-label="Download attachment" @click.stop="handleDownload">
         <span>Download</span>
         <svg viewBox="0 0 24 24" class="message-attachment-preview-download-icon" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

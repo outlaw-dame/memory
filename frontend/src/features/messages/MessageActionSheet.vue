@@ -218,6 +218,7 @@ expose({
           <button
             type="button"
             class="message-action-sheet-close"
+            aria-label="Close"
             @click="hide"
           >
             <svg viewBox="0 0 24 24" class="message-action-sheet-close-icon" fill="none" stroke="currentColor" stroke-width="2">
@@ -242,6 +243,7 @@ expose({
             <button
               type="button"
               class="message-action-sheet-button message-action-sheet-button-secondary"
+              aria-label="Cancel"
               @click="cancelConfirmation"
             >
               Cancel
@@ -249,6 +251,7 @@ expose({
             <button
               type="button"
               class="message-action-sheet-button message-action-sheet-button-destructive"
+              :aria-label="confirmationAction.label"
               @click="confirmAction"
             >
               {{ confirmationAction.label }}
@@ -265,6 +268,7 @@ expose({
               :key="action.id"
               type="button"
               class="message-action-sheet-action"
+              :aria-label="action.label"
               @click="executeAction(action.id)"
             >
               <slot name="action" :action="action">
@@ -295,6 +299,7 @@ expose({
               :key="action.id"
               type="button"
               class="message-action-sheet-action message-action-sheet-action-destructive"
+              :aria-label="action.label"
               @click="executeAction(action.id)"
             >
               <slot name="action" :action="action">
