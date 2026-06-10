@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -100,7 +101,12 @@ export default defineConfig({
     format: 'es'
   },
   build: {
-    chunkSizeWarningLimit: 900,
+    // Performance budgets for bundle size monitoring
+    reportCompressedSize: true,
+    // Warn if chunk exceeds 1MB
+    chunkSizeWarningLimit: 1000,
+    // Custom performance budgets
+    cssCodeSplit: true,
     rollupOptions: {
       onwarn(warning, warn) {
         if (isKnownPglitePackagingWarning(warning)) return
@@ -116,7 +122,16 @@ export default defineConfig({
           // cycles between pglite internals and a forced catch-all vendor chunk.
           return
         }
-      }
+      },
+      plugins: [
+        // Bundle visualization for performance analysis
+        visualizer({
+          open: true,
+          gzipSize: true,
+          brotliSize: true,
+          filename: 'dist/stats.html'
+        })
+      ]
     }
   }
 })
