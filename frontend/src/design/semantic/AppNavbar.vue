@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  f7Navbar,
-  f7NavLeft,
-  f7NavRight,
-  f7NavTitle,
-  f7Link,
-} from 'framework7-vue'
+import { f7Navbar, f7NavLeft, f7NavTitle, f7Link } from 'framework7-vue'
 import { useI18n } from '@/i18n'
 import { useLargeTitle } from '@/composables/useLargeTitle'
 import { useNativeUiProfile } from '@/platform/nativeUiProfile'
+
+export interface AppNavbarProps {
+  showBack?: boolean
+  title?: string
+  titleKey?: string
+}
+
+const props = withDefaults(defineProps<AppNavbarProps>(), {
+  showBack: false,
+  title: undefined,
+  titleKey: undefined,
+})
+
+const emit = defineEmits(['back'])
 
 const route = useRoute()
 const router = useRouter()
@@ -18,15 +26,11 @@ const { t } = useI18n()
 const { largeTitleVisible } = useLargeTitle()
 const nativeUiProfile = useNativeUiProfile()
 
-const AUTH_ROUTES = new Set(['signin', 'signup', 'welcome', 'experience', 'auth-callback'])
-const ROOT_ROUTES = new Set(['home', 'explore', 'messages', 'notifications', 'profile'])
-
-const show = computed(() => !AUTH_ROUTES.has(String(route.name)))
-const showBack = computed(() => !ROOT_ROUTES.has(String(route.name)) && show.value)
-
 // On the Home route, suppress the inline navbar title while the large title
 // in HomeView is still visible (IntersectionObserver drives largeTitleVisible).
-const title = computed(() => {
+const computedTitle = computed(() => {
+  if (props.title) return props.title
+  if (props.titleKey) return t(props.titleKey)
   if (route.name === 'home') return largeTitleVisible.value ? '' : 'memory.'
   const key = typeof route.meta.titleKey === 'string' ? route.meta.titleKey : 'app.name'
   return t(key)
@@ -39,12 +43,12 @@ const backIcon = computed(() => {
 })
 
 function handleBack() {
-  router.back()
+  emit('back')
 }
 </script>
 
 <template>
-  <f7Navbar v-if="show" no-shadow no-hairline>
+  <f7Navbar no-shadow no-hairline>
     <!-- Left: Back button -->
     <template #left>
       <f7Link
@@ -57,7 +61,7 @@ function handleBack() {
     </template>
 
     <!-- Center: Title -->
-    <f7NavTitle :title="title" class="app-topbar-title" />
+    <f7NavTitle :title="computedTitle" class="app-topbar-title" />
   </f7Navbar>
 </template>
 
@@ -131,4 +135,3 @@ function handleBack() {
   padding-top: env(safe-area-inset-top, 0px);
 }
 </style>
-

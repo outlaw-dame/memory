@@ -5,6 +5,13 @@
  * These components wrap Framework7 primitives with Memory's design system.
  */
 
+// Shell and Page components
+export { default as AppRoot } from './AppRoot.vue'
+export { default as AppShell } from './AppShell.vue'
+export { default as AppPage } from './AppPage.vue'
+export { default as AppNavbar } from './AppNavbar.vue'
+export { default as AppToolbar } from './AppToolbar.vue'
+
 // List components
 export { default as AppList } from './AppList.vue'
 export { default as AppListItem } from './AppListItem.vue'

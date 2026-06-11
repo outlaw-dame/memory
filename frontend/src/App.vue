@@ -5,12 +5,11 @@ import { Capacitor } from '@capacitor/core'
 import { App as CapApp } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import AppRoot from '@/design/semantic/AppRoot.vue'
-import AppTopBar from '@/design/components/AppTopBar.vue'
-import AppTabBar from '@/design/components/AppTabBar.vue'
+import AppShell from '@/design/semantic/AppShell.vue'
+import AppPage from '@/design/semantic/AppPage.vue'
 import { useNetworkStatus } from '@/composables/useNetworkStatus'
 import { useKeyboard } from '@/composables/useKeyboard'
 import { useI18n } from '@/i18n'
-import { f7App, f7Views, f7View, f7Page } from 'framework7-vue'
 
 const mainRef = ref<HTMLElement | null>(null)
 provide('scrollEl', mainRef)
@@ -89,8 +88,6 @@ router.afterEach(() => {
 
 // ── App shell ───────────────────────────────────────────────────────────────
 
-const isAuthRoute = computed(() => AUTH_ROUTES.has(String(route.name)))
-
 const documentTitle = computed(() => {
   const titleKey = typeof route.meta.titleKey === 'string' ? route.meta.titleKey : 'app.name'
   return `${t(titleKey)} · ${t('app.name')}`
@@ -122,66 +119,23 @@ onMounted(() => {
 
 <template>
   <AppRoot>
-    <!-- Framework7 Page structure replaces kApp -->
-    <f7Page no-navbar no-toolbar no-swipeback class="flex flex-col overflow-hidden bg-background h-lvh">
-      <!-- Auth routes: full-screen, no shell, simple fade -->
-      <RouterView v-if="isAuthRoute" v-slot="{ Component }">
-        <Transition name="route-fade" mode="out-in">
-          <component :is="Component" :key="route.path" class="flex-1" />
-        </Transition>
-      </RouterView>
-
-      <!-- App shell: top bar + scrollable content + tab bar -->
-      <template v-else>
-        <AppTopBar class="app-shell-topbar" />
-        <!--
-          Main content area with padding to accommodate fixed navbar and toolbar.
-          Framework7 navbar and toolbar use relative positioning within the flex container.
-        -->
-        <main ref="mainRef" class="app-shell-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-(--padding-main)">
-          <RouterView v-slot="{ Component }">
-            <Transition :name="transitionName" mode="out-in">
-              <component :is="Component" :key="route.path" />
-            </Transition>
-          </RouterView>
-        </main>
-        <AppTabBar class="app-shell-tabbar" />
-      </template>
-    </f7Page>
+    <AppPage>
+      <AppShell>
+        <!-- Main content area with RouterView -->
+        <RouterView v-slot="{ Component }">
+          <Transition :name="transitionName" mode="out-in">
+            <component :is="Component" :key="route.path" />
+          </Transition>
+        </RouterView>
+      </AppShell>
+    </AppPage>
   </AppRoot>
 </template>
 
 <style scoped>
-/* Shell layout - ensure Framework7 navbar and toolbar work within flex container */
-:deep(.app-shell-topbar) {
-  flex: 0 0 auto;
-  width: 100%;
-}
-
+/* Ensure AppShell fills the page container */
 :deep(.app-shell-main) {
-  /* Account for navbar height at top */
   padding-top: 44px;
-  /* Account for toolbar height at bottom */
   padding-bottom: 56px;
-}
-
-:deep(.app-shell-tabbar) {
-  flex: 0 0 auto;
-  width: 100%;
-}
-
-/* Ensure Framework7 page fills container */
-:deep(.page) {
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Remove default Framework7 page padding and margins */
-:deep(.page-content) {
-  padding: 0;
-  margin: 0;
 }
 </style>

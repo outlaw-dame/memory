@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  f7Toolbar,
-  f7Link,
-  f7Icon,
-} from 'framework7-vue'
+import { f7Toolbar, f7Link } from 'framework7-vue'
 import { useI18n } from '@/i18n'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useHaptics, ImpactStyle } from '@/platform/hapticPolicy'
 import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 import AppIcon from '@/components/AppIcon.vue'
 import type { AppIconName } from '@/components/AppIcon.types'
+
+export interface AppToolbarProps {
+  position?: 'top' | 'bottom'
+}
+
+const props = withDefaults(defineProps<AppToolbarProps>(), {
+  position: 'bottom',
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -44,7 +48,7 @@ function navigate(item: NavItem) {
     impact(ImpactStyle.Light).catch(() => {})
     router.push(item.route).catch(() => {})
   } catch (error) {
-    console.error('[AppTabBar] Navigation error:', error)
+    console.error('[AppToolbar] Navigation error:', error)
   }
 }
 
@@ -70,7 +74,7 @@ function getIconName(item: NavItem): AppIconName {
     v-if="show"
     :no-shadow="true"
     :no-hairline="true"
-    position="bottom"
+    :position="position"
     class="app-tabbar"
   >
     <f7Link
@@ -175,24 +179,6 @@ function getIconName(item: NavItem): AppIconName {
   color: var(--color-primary, #000);
 }
 
-/* Badge styling */
-.app-tabbar-badge {
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  min-width: 16px;
-  height: 16px;
-  font-size: 10px;
-  padding: 0 3px;
-  border-radius: 50%;
-  background: var(--color-red, #ef4444);
-  color: white;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* Remove default Framework7 hover effects */
 :deep(.link-highlight) {
   display: none;
@@ -208,4 +194,3 @@ function getIconName(item: NavItem): AppIconName {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 </style>
-

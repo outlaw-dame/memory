@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { f7Navbar, f7NavLeft, f7NavTitle, f7Link } from 'framework7-vue'
+import AppNavbar from '@/design/semantic/AppNavbar.vue'
 import SignInForm from '@/components/SignInForm.vue'
 import { useI18n } from '@/i18n'
-import { useNativeUiProfile } from '@/platform/nativeUiProfile'
 
 const router = useRouter()
 const { t } = useI18n()
-const nativeUiProfile = useNativeUiProfile()
 
 function goBack() {
   if (window.history.length > 1) {
@@ -17,21 +15,11 @@ function goBack() {
     router.replace({ name: 'welcome' })
   }
 }
-
-// Determine back icon based on platform theme
-const backIcon = computed(() => {
-  return nativeUiProfile.theme === 'ios' ? 'chevron_back' : 'arrow_back'
-})
 </script>
 
 <template>
   <div class="flex flex-col h-full">
-    <f7Navbar no-shadow no-hairline>
-      <template #left>
-        <f7Link icon-only :icon="backIcon" @click="goBack" class="app-topbar-back-link" />
-      </template>
-      <f7NavTitle :title="t('app.title.signin')" class="app-topbar-title" />
-    </f7Navbar>
+    <AppNavbar :title-key="'app.title.signin'" :show-back="true" @back="goBack" />
     <div class="flex-1 overflow-y-auto px-(--padding-main) pt-6">
       <h2 class="text-largeHeader font-bold mb-6">{{ t('signin.title') }}</h2>
       <SignInForm />

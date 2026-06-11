@@ -40,5 +40,17 @@ export default defineConfigWithVueTs(
     },
   },
 
+  {
+    name: 'app/architecture-rules',
+    files: ['src/views/**/*.vue', 'src/views/**/*.ts', 'src/features/**/*.vue', 'src/features/**/*.ts'],
+    rules: {
+      // Prevent direct framework7-vue imports in views and features
+      'no-restricted-imports': ['error', {
+        name: 'framework7-vue',
+        message: 'Direct framework7-vue imports are not allowed in views/features. Use semantic wrappers from @/design/semantic instead.',
+      }],
+    },
+  },
+
   skipFormatting,
 )
