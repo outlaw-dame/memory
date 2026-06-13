@@ -61,3 +61,36 @@ export {
   type PlatformCapabilities,
   type PlatformOs,
 } from './nativeUiProfile'
+
+// Capacitor App utilities
+export {
+  initCapacitorStatusBar,
+  initCapacitorBackButton,
+  isNativePlatform,
+  getPlatform,
+  exitApp,
+  setStatusBarStyle,
+  setStatusBarOverlaysWebView,
+  type Style,
+} from './capacitorApp'
+
+// Capacitor Keyboard utilities
+export {
+  initKeyboard,
+  useKeyboardHeight,
+  isKeyboardVisible,
+  getKeyboardHeight,
+  hideKeyboard,
+  showKeyboard,
+  setAccessoryBarVisible,
+} from './capacitorKeyboard'
+
+// Capacitor Network utilities
+export {
+  initNetwork,
+  useNetworkStatus,
+  getIsOnline,
+  getOnlineRef,
+  getNetworkStatus,
+  type ConnectionType,
+} from './capacitorNetwork'

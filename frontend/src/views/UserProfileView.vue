@@ -8,8 +8,7 @@ import { buildApiHeaders, getApiBaseUrl } from '@/controller/http'
 import { treaty } from '@elysiajs/eden'
 import WallComposer from '@/components/WallComposer.vue'
 import AppIcon from '@/components/AppIcon.vue'
-import AppSegmentedControl from '@/design/components/AppSegmentedControl.vue'
-import type { SegmentItem } from '@/design/components/AppSegmentedControl.vue'
+import { AppSegmentedControl, type SegmentItem } from '@/design/semantic'
 
 const route = useRoute()
 const router = useRouter()

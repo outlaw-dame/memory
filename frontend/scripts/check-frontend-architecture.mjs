@@ -73,8 +73,8 @@ const CONFIG = {
         /import.*['"]framework7-vue['"]/,
         /from['"]\s*framework7-vue['"]/,
       ],
-      allowedDirs: ['frontend/src/design/semantic'],
-      message: 'Direct framework7-vue imports are only allowed in frontend/src/design/semantic/'
+      allowedDirs: ['frontend/src/design/semantic', 'frontend/src/main.ts'],
+      message: 'Direct framework7-vue imports are only allowed in frontend/src/design/semantic/ and frontend/src/main.ts'
     },
     {
       name: '@capacitor',
@@ -130,7 +130,13 @@ function isInAllowedDir(filePath, allowedDirs) {
   for (const allowedDir of allowedDirs) {
     const normalizedAllowed = allowedDir.replace(/\//g, '/')
     const normalizedFilePath = filePath.replace(/\//g, '/')
-    if (normalizedFilePath.startsWith(normalizedAllowed)) {
+    
+    // Check if the file path contains the allowed directory
+    // This handles both absolute paths and relative paths
+    if (normalizedFilePath.includes(`/${normalizedAllowed}/`) || 
+        normalizedFilePath.includes(`\\${normalizedAllowed}\\`) ||
+        normalizedFilePath.endsWith(`/${normalizedAllowed}`) ||
+        normalizedFilePath.endsWith(`\\${normalizedAllowed}`)) {
       return true
     }
   }

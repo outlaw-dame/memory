@@ -37,6 +37,7 @@ export { default as AppTextField } from './AppTextField.vue'
 export { default as AppTextArea } from './AppTextArea.vue'
 export { default as AppComposer } from './AppComposer.vue'
 export { default as AppPullToRefresh } from './AppPullToRefresh.vue'
+export { default as AppSegmentedControl, type SegmentItem } from './AppSegmentedControl.vue'
 
 // Re-export from lists directory (if any)
 // export * from './lists'

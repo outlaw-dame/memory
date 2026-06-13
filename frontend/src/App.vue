@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watchEffect, provide } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { Capacitor } from '@capacitor/core'
-import { App as CapApp } from '@capacitor/app'
-import { StatusBar, Style } from '@capacitor/status-bar'
 import AppRoot from '@/design/semantic/AppRoot.vue'
 import AppShell from '@/design/semantic/AppShell.vue'
 import AppPage from '@/design/semantic/AppPage.vue'
-import { useNetworkStatus } from '@/composables/useNetworkStatus'
-import { useKeyboard } from '@/composables/useKeyboard'
+import {
+  initCapacitorStatusBar,
+  initCapacitorBackButton,
+  initNetwork,
+  initKeyboard,
+  useKeyboardHeight,
+} from '@/platform'
 import { useI18n } from '@/i18n'
 
 const mainRef = ref<HTMLElement | null>(null)
@@ -18,9 +20,18 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 
-// Initialize application-wide singletons
-useNetworkStatus()
-useKeyboard()
+// Initialize Capacitor platform utilities
+initCapacitorStatusBar()
+initCapacitorBackButton((canGoBack) => {
+  if (canGoBack) {
+    router.back()
+  }
+})
+initNetwork().catch(() => {})
+initKeyboard().catch(() => {})
+
+// Initialize keyboard height (needed for safe area calculations)
+useKeyboardHeight()
 
 // ── Route transition ────────────────────────────────────────────────────────
 
@@ -47,6 +58,9 @@ onMounted(() => {
 onUnmounted(() => {
   motionMq?.removeEventListener('change', onMotionChange)
 })
+
+// Capacitor initialization is now handled by platform utilities in the imports above
+// The status bar, back button, network, and keyboard are all set up
 
 router.beforeEach((to, from) => {
   // Initial page load — no animation
@@ -95,25 +109,6 @@ const documentTitle = computed(() => {
 
 watchEffect(() => {
   document.title = documentTitle.value
-})
-
-onMounted(() => {
-  if (!Capacitor.isNativePlatform()) return
-
-  // Configure status bar for a full-bleed native feel
-  StatusBar.setStyle({ style: Style.Light }).catch(() => {})
-  StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
-
-  // Handle Android hardware back button
-  if (Capacitor.getPlatform() === 'android') {
-    CapApp.addListener('backButton', ({ canGoBack }) => {
-      if (canGoBack) {
-        router.back()
-      } else {
-        CapApp.exitApp()
-      }
-    }).catch(() => {})
-  }
 })
 </script>
 

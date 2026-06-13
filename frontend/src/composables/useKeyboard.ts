@@ -1,25 +1,21 @@
 import { ref } from 'vue'
-import { Capacitor } from '@capacitor/core'
-import { Keyboard } from '@capacitor/keyboard'
+import { initKeyboard, useKeyboardHeight } from '@/platform'
 
 // Module-level singleton — keyboard height is application-wide state.
-const keyboardHeight = ref(0)
+// The actual initialization is now handled by the platform utility
+// We just need to ensure it's initialized when this composable is used
 let initialized = false
 
 async function initialize(): Promise<void> {
-  if (initialized || !Capacitor.isNativePlatform()) return
+  if (initialized) return
   initialized = true
-
-  await Keyboard.addListener('keyboardWillShow', info => {
-    keyboardHeight.value = info.keyboardHeight
-  }).catch(() => {})
-
-  await Keyboard.addListener('keyboardWillHide', () => {
-    keyboardHeight.value = 0
-  }).catch(() => {})
+  await initKeyboard()
 }
 
 export function useKeyboard() {
   initialize().catch(() => {})
-  return { keyboardHeight }
+  return useKeyboardHeight()
 }
+
+// Re-export scrollIntoView and other utilities that were previously here
+export { scrollIntoView } from '@/platform/safeAreaPolicy'

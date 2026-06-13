@@ -19,9 +19,7 @@
 // Import from '@/design/semantic' instead:
 // - AppNavbar (formerly AppTopBar)
 // - AppToolbar (formerly AppTabBar)
-
-// Segmented control (still in components)
-export { default as AppSegmentedControl } from './AppSegmentedControl.vue'
+// - AppSegmentedControl
 
 // Badge components
 export { default as PostVisibilityIcon } from './PostVisibilityIcon.vue'
