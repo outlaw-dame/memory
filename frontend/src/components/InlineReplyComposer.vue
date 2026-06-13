@@ -13,7 +13,7 @@
 
 import { ref, watch, computed } from 'vue'
 import type { ReplyPolicyResolution, ReplySubmissionResult } from '@/composables/useReply'
-import AppComposer from '@/design/components/AppComposer.vue'
+import { AppComposer } from '@/design/semantic'
 
 const props = defineProps<{
   policy: ReplyPolicyResolution | null

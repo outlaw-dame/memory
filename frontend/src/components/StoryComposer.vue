@@ -10,7 +10,7 @@
 
 import { computed, onBeforeUnmount, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
-import AppComposer from '@/design/components/AppComposer.vue'
+import { AppComposer } from '@/design/semantic'
 import { usePostsStore } from '@/stores/postsStore'
 import { useAtBridgeStore } from '@/stores/atBridgeStore'
 import type { MediaAttachmentInput } from '@/types'

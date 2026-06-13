@@ -27,5 +27,16 @@ export { default as AppDestructiveAction, type DangerLevel } from './AppDestruct
 // Virtual list component
 export { default as AppVirtualList, type AppVirtualListItem, type AppVirtualListProps } from './AppVirtualList.vue'
 
+// Sheet and Actions components
+export { default as AppSheet } from './AppSheet.vue'
+export { default as AppActionsSheet, type ActionItem } from './AppActionsSheet.vue'
+
+// Input and Form components
+export { default as AppSearchBar } from './AppSearchBar.vue'
+export { default as AppTextField } from './AppTextField.vue'
+export { default as AppTextArea } from './AppTextArea.vue'
+export { default as AppComposer } from './AppComposer.vue'
+export { default as AppPullToRefresh } from './AppPullToRefresh.vue'
+
 // Re-export from lists directory (if any)
 // export * from './lists'

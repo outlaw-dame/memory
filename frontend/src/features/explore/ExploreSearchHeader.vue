@@ -9,7 +9,7 @@
 
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import AppSearchBar from '@/design/components/AppSearchBar.vue'
+import { AppSearchBar } from '@/design/semantic'
 import AppIcon from '@/components/AppIcon.vue'
 import type { ExploreMode } from './useExploreSearch'
 

@@ -12,8 +12,7 @@ import { extractFirstHttpUrl, fetchLinkPreview } from '@/composables/useLinkPrev
 import type { LinkPreviewData } from './PostLinkPreview.vue'
 import type { CreatePoll, MediaAttachmentInput } from '@/types'
 import { parseHashtagInput } from '@/utils/hashtags'
-import AppTextField from '@/design/components/AppTextField.vue'
-import AppTextArea from '@/design/components/AppTextArea.vue'
+import { AppTextField, AppTextArea } from '@/design/semantic'
 
 const postsStore = usePostsStore()
 const atBridgeStore = useAtBridgeStore()

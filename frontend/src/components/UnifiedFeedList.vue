@@ -46,7 +46,7 @@ import { useI18n } from '@/i18n'
 import { useAtBridgeStore, type FeedSource, type TimelineMode, type UnifiedFeedItem as UnifiedFeedItemModel } from '@/stores/atBridgeStore'
 import UnifiedFeedItem from './UnifiedFeedItem.vue'
 import AppIcon from '@/components/AppIcon.vue'
-import AppPullToRefresh from '@/design/components/AppPullToRefresh.vue'
+import { AppPullToRefresh } from '@/design/semantic'
 import {
   FeedLoadingState,
   FeedErrorState,

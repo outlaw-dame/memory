@@ -23,7 +23,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from '@/i18n'
 import { useAtBridgeStore, type UnifiedFeedItem } from '@/stores/atBridgeStore'
-import AppActionsSheet, { type ActionItem } from '@/design/components/AppActionsSheet.vue'
+import { AppActionsSheet, type ActionItem } from '@/design/semantic'
 
 const props = defineProps<{ item: UnifiedFeedItem; opened: boolean }>()
 const emit = defineEmits<{ 'update:opened': [value: boolean] }>()
